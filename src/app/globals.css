@@ -1,26 +1,51 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --font-sans: system-ui, -apple-system, sans-serif;
+  
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(23% 0.06 285);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(23% 0.06 285);
+  --color-primary: oklch(55% 0.2 270);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(95% 0 0);
+  --color-secondary-foreground: oklch(23% 0.06 285);
+  --color-muted: oklch(95% 0 0);
+  --color-muted-foreground: oklch(55% 0 0);
+  --color-accent: oklch(95% 0 0);
+  --color-accent-foreground: oklch(23% 0.06 285);
+  --color-destructive: oklch(60% 0.18 25);
+  --color-destructive-foreground: oklch(100% 0 0);
+  --color-border: oklch(87% 0 0);
+  --color-input: oklch(87% 0 0);
+  --color-ring: oklch(55% 0.2 270);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+@variant dark (&:where(.dark, .dark *));
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+.dark {
+  --color-background: oklch(15% 0.06 285);
+  --color-foreground: oklch(98% 0 0);
+  --color-card: oklch(20% 0.06 285);
+  --color-card-foreground: oklch(98% 0 0);
+  --color-primary: oklch(60% 0.18 250);
+  --color-primary-foreground: oklch(100% 0 0);
+  --color-secondary: oklch(25% 0.06 285);
+  --color-secondary-foreground: oklch(98% 0 0);
+  --color-muted: oklch(25% 0.06 285);
+  --color-muted-foreground: oklch(70% 0 0);
+  --color-accent: oklch(25% 0.06 285);
+  --color-accent-foreground: oklch(98% 0 0);
+  --color-destructive: oklch(60% 0.18 25);
+  --color-destructive-foreground: oklch(98% 0 0);
+  --color-border: oklch(30% 0.06 285);
+  --color-input: oklch(30% 0.06 285);
+  --color-ring: oklch(60% 0.18 250);
 }
