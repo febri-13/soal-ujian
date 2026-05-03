@@ -59,13 +59,13 @@ export default function SoaresPage() {
         .eq("profile_id", u.id)
         .eq("is_submitted", true)
 
-      if (!matrixRows || matrixRows.length === 0) {
+if (!matrixRows || matrixRows.length === 0) {
         setToast({ message: "Silakan submit matrix terlebih dahulu", type: "error" })
         setTimeout(() => router.push("/dashboard/matrix"), 1500)
         return
       }
 
-      setMatrixData(matrixRows)
+      setMatrixData(matrixRows as BabMatrix[])
       setSelectedBab(matrixRows[0].bab_id)
 
       const { data: bankSoal } = await supabase
@@ -415,8 +415,8 @@ export default function SoaresPage() {
               <p style={{ color: "var(--color-muted-foreground)" }}>Belum ada soal yang diinput.</p>
             ) : (
               <div className="flex gap-6">
-                <div className="w-48 flex-shrink-0">
-                  <div className="grid grid-cols-5 gap-1">
+                <div className="w-56 flex-shrink-0">
+                  <div className="grid grid-cols-5 gap-1 sticky top-4" style={{ position: "sticky", maxHeight: "calc(100vh - 250px)", overflowY: "auto" }}>
                     {soalList.map((soal, index) => (
                       <button
                         key={soal.id}
@@ -434,64 +434,79 @@ export default function SoaresPage() {
                 
                 <div className="flex-1 space-y-4">
                   {soalList.map((soal, index) => (
-                    <div key={soal.id} id={`soal-${soal.id}`} className="p-4 border rounded-lg" style={{ borderColor: "var(--color-border)" }}>
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex gap-2">
-                          <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{soal.tipe}</span>
-                          <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
-                          <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>No. {index + 1}</span>
-                          <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
-                          <button
-                            onClick={async () => {
-                              const { data: soalData, error } = await supabase
-                                .from("bank_soal")
-                                .select("*")
-                                .eq("id", soal.id)
-                                .single()
-                              
-                              if (soalData) {
-                                setSelectedBab(soalData.bab_id_text)
-                                setSelectedTipe(soalData.tipe)
-                                setSelectedKesulitan(soalData.tingkat_kesulitan)
-                                setPertanyaan(soalData.pertanyaan)
-                                setBobot(soalData.bobot)
-                                setEditingId(soalData.id)
-                                
-                                if (soalData.pilihan) {
-                                  const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
-                                  setPilihan(teksArr)
-                                }
-                                if (soalData.pilihan_gambar) {
-                                  setPilihanGambar(soalData.pilihan_gambar)
-                                }
-                                setActiveTab("form")
-                              }
-                            }}
-                            className="text-blue-500 text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (!confirm("Yakin hapus soal ini?")) return
-                              await supabase.from("bank_soal").delete().eq("id", soal.id)
-                              setSoalList(soalList.filter(s => s.id !== soal.id))
-                            }}
-                            className="text-red-500 text-sm"
-                          >
-                            Hapus
-                          </button>
-                        </div>
+                    <div key={soal.id} id={`soal-${soal.id}`} className="p-4 border rounded-lg flex gap-4" style={{ borderColor: "var(--color-border)" }}>
+                      <div className="w-10 h-10 flex-shrink-0 border rounded-lg flex items-center justify-center font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}>
+                        {index + 1}
                       </div>
-                      <div 
-                        className="text-sm mb-2"
-                        dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
-                      />
-                      <div className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                        {new Date(soal.created_at).toLocaleDateString("id-ID")}
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex gap-2">
+                            <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{soal.tipe}</span>
+                            <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
+                            <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
+                            <button
+                              onClick={async () => {
+                                const { data: soalData } = await supabase
+                                  .from("bank_soal")
+                                  .select("*")
+                                  .eq("id", soal.id)
+                                  .single()
+                                
+                                if (soalData) {
+                                  setSelectedBab(soalData.bab_id_text)
+                                  setSelectedTipe(soalData.tipe)
+                                  setSelectedKesulitan(soalData.tingkat_kesulitan)
+                                  setPertanyaan(soalData.pertanyaan)
+                                  setBobot(soalData.bobot)
+                                  setEditingId(soalData.id)
+                                  
+                                  if (soalData.pilihan) {
+                                    const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
+                                    setPilihan(teksArr)
+                                  }
+                                  if (soalData.pilihan_gambar) {
+                                    setPilihanGambar(soalData.pilihan_gambar)
+                                  }
+                                  setActiveTab("form")
+                                }
+                              }}
+                              className="text-blue-500 text-sm"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm("Yakin hapus soal ini?")) return
+                                await supabase.from("bank_soal").delete().eq("id", soal.id)
+                                setSoalList(soalList.filter(s => s.id !== soal.id))
+                              }}
+                              className="text-red-500 text-sm"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                        <div 
+                          className="text-sm mb-2"
+                          dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                        />
+                        {soal.pilihan && soal.pilihan.length > 0 && (
+                          <div className="ml-4 mt-2 space-y-1">
+                            {soal.pilihan.map((p: any, i: number) => (
+                              <div key={i} className="flex items-start gap-2 text-sm">
+                                <span className="font-medium">{String.fromCharCode(65 + i)}.</span>
+                                <span>{p.teks}</span>
+                                {p.benar && <span className="text-green-500 text-xs">(Benar)</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-xs mt-2" style={{ color: "var(--color-muted-foreground)" }}>
+                          {new Date(soal.created_at).toLocaleDateString("id-ID")}
+                        </div>
                       </div>
                     </div>
                   ))}
