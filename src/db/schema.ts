@@ -66,11 +66,12 @@ export const psatGuruData = pgTable('psat_guru_data', {
 
 export const psatPatokanSoal = pgTable('psat_patokan_soal', {
   id: uuid('id').defaultRandom().primaryKey(),
+  profileId: uuid('profile_id').references(() => profiles.id).notNull(),
   mapelId: uuid('mapel_id').references(() => mataPelajaran.id),
   tipe: text('tipe').notNull(),
   tingkatKesulitan: text('tingkat_kesulitan').notNull(),
-  keluar: integer('keluar').default(0),
-  bank: integer('bank').default(0),
+  keluar: text('keluar').notNull(),
+  bank: text('bank').default(''),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

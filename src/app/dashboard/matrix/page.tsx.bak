@@ -160,11 +160,9 @@ export default function MatrixPage() {
         .eq("profile_id", u.id)
 
       if (existingBabs && existingBabs.length > 0) {
-        console.log("Loaded babs from DB:", existingBabs)
         setBabs(existingBabs.map(b => ({ id: b.bab_id, nama_bab: b.bab_id || "Bab" })))
         const dataMap: Record<string, any> = {}
         existingBabs.forEach(b => {
-          console.log("Loading bab:", b.bab_id, "data:", b.data)
           dataMap[b.bab_id] = b.data || INITIAL_DATA
         })
         setMatrixData(dataMap)
@@ -316,21 +314,6 @@ export default function MatrixPage() {
   }
 
   const handleFieldChange = (babId: string, field: string, value: number) => {
-    if (field.endsWith("_keluar")) {
-      const baseField = field.replace("_keluar", "_bank")
-      const currentBank = (matrixData[babId] as any)?.[baseField] || 0
-      
-      if (value > currentBank) {
-        setToast({ message: `Soal keluar (${value}) tidak boleh melebihi bank soal (${currentBank})`, type: "error" })
-        return
-      }
-      
-      if (currentBank > 0 && value === 0) {
-        setToast({ message: "Soal keluar minimal 1 jika bank soal tidak sama dengan 0", type: "error" })
-        return
-      }
-    }
-    
     setMatrixData({
       ...matrixData,
       [babId]: {
@@ -343,8 +326,6 @@ export default function MatrixPage() {
   const handleSave = async (babId: string) => {
     if (!user || !matrixData[babId]) return
 
-    console.log("Saving bab:", babId, "data:", matrixData[babId])
-    
     const { error } = await supabase
       .from("psat_matrix_input")
       .update({ data: matrixData[babId], updated_at: new Date().toISOString() })
@@ -352,41 +333,12 @@ export default function MatrixPage() {
       .eq("bab_id", babId)
     
     if (error) {
-      console.error("Save error:", error)
       setToast({ message: "Error saving: " + error.message, type: "error" })
-    } else {
-      console.log("Saved successfully!")
     }
-  }
-
-  const validateBabData = (babId: string): string[] => {
-    const errors: string[] = []
-    const babData = matrixData[babId] as any
-    
-    TIPE_OPTIONS.forEach(tipe => {
-      KESULITAN_OPTIONS.forEach(kesulitan => {
-        const keluar = babData?.[`${tipe}_${kesulitan}_keluar`] || 0
-        const bank = babData?.[`${tipe}_${kesulitan}_bank`] || 0
-        
-        if (bank > 0 && keluar === 0) {
-          errors.push(`${babId}: ${tipe} ${kesulitan} harus minimal 1 jika bank > 0`)
-        }
-        if (keluar > bank) {
-          errors.push(`${babId}: ${tipe} ${kesulitan} keluar (${keluar}) > bank (${bank})`)
-        }
-      })
-    })
-    return errors
   }
 
   const handleSubmit = async (babId: string) => {
     if (!user) return
-    
-    const babErrors = validateBabData(babId)
-    if (babErrors.length > 0) {
-      setToast({ message: "Error: " + babErrors.join(", "), type: "error" })
-      return
-    }
     
     const errors = validateMatrix()
     if (errors.length > 0) {
@@ -409,14 +361,6 @@ export default function MatrixPage() {
 
   const handleSubmitAll = async () => {
     if (!user) return
-
-    for (const bab of babs) {
-      const babErrors = validateBabData(bab.id)
-      if (babErrors.length > 0) {
-        setToast({ message: `Error di ${bab.id}: ` + babErrors.join(", "), type: "error" })
-        return
-      }
-    }
 
     const errors = validateMatrix()
     if (errors.length > 0) {
@@ -595,52 +539,45 @@ export default function MatrixPage() {
             </button>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {TIPE_OPTIONS.map(tipe => (
-              <div key={tipe}>
-                <div className="text-sm font-medium mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>
-                  {tipe}
-                </div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs w-16" style={{ color: "var(--color-muted-foreground)" }}></span>
-                  <span className="text-xs w-14 text-center" style={{ color: "var(--color-muted-foreground)" }}>soal</span>
-                  <span className="text-xs w-14 text-center" style={{ color: "var(--color-muted-foreground)" }}>bank</span>
-                </div>
-                {KESULITAN_OPTIONS.map(kesulitan => {
-                  return (
+            {TIPE_OPTIONS.map(tipe => {
+              const totals = calculateTotals()
+              return (
+                <div key={tipe}>
+                  <div className="text-sm font-medium mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>
+                    {tipe}
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs w-16" style={{ color: "var(--color-muted-foreground)" }}></span>
+                    <span className="text-xs w-14 text-center" style={{ color: "var(--color-muted-foreground)" }}>soal</span>
+                    <span className="text-xs w-14 text-center" style={{ color: "var(--color-muted-foreground)" }}>bank</span>
+                  </div>
+                  {KESULITAN_OPTIONS.map(kesulitan => (
                     <div key={kesulitan} className="flex items-center gap-2 mb-1">
                       <span className="text-xs capitalize w-16" style={{ color: "var(--color-muted-foreground)" }}>{kesulitan}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={patokan[`${tipe}_${kesulitan}_keluar`] || 0}
-                        onChange={(e) => handlePatokanChange(`${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
-                        className="w-14 px-2 py-1 rounded text-sm text-center"
-                        style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        value={patokan[`${tipe}_${kesulitan}_bank`] || 0}
-                        onChange={(e) => handlePatokanChange(`${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
-                        className="w-14 px-2 py-1 rounded text-sm text-center"
-                        style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                      <PatokanInputWithStats 
+                        tipe={tipe} 
+                        kesulitan={kesulitan} 
+                        patokan={patokan} 
+                        onChange={handlePatokanChange}
+                        showStats={false}
+                        total={{ keluar: 0, bank: 0 }}
                       />
                     </div>
-                  )
-                })}
-                {babs.length > 0 && (
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-                    <span className="text-xs font-medium w-16" style={{ color: "var(--color-foreground)" }}>TOTAL</span>
-                    <span className="w-14 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                      {KESULITAN_OPTIONS.reduce((sum, k) => sum + (patokan[`${tipe}_${k}_keluar`] || 0), 0)}
-                    </span>
-                    <span className="w-14 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                      {KESULITAN_OPTIONS.reduce((sum, k) => sum + (patokan[`${tipe}_${k}_bank`] || 0), 0)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ))}
+                  {babs.length > 0 && (
+                    <div className="flex items-center gap-2 mb-1 mt-2 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
+                      <span className="text-xs capitalize w-16 font-medium" style={{ color: "var(--color-foreground)" }}>TOTAL</span>
+                      <span className="w-14 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
+                        {KESULITAN_OPTIONS.reduce((sum, k) => sum + (totals[`${tipe}_${k}_keluar`] || 0), 0)}
+                      </span>
+                      <span className="w-14 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
+                        {KESULITAN_OPTIONS.reduce((sum, k) => sum + (totals[`${tipe}_${k}_bank`] || 0), 0)}
+                      </span>
+                    </div>
+)}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -673,16 +610,10 @@ export default function MatrixPage() {
                     <th key={`${bab.id}-soal`} className="p-1 text-center border text-xs" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
                       soal
                     </th>,
-<th key={`${bab.id}-bank`} className="p-1 text-center border text-xs" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
+                    <th key={`${bab.id}-bank`} className="p-1 text-center border text-xs" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
                       bank
-                    </th>,
+                    </th>
                   ])}
-                  <th key="total-soal" className="p-1 text-center border text-xs font-medium w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                    Total
-                  </th>
-                  <th key="total-bank" className="p-1 text-center border text-xs font-medium w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                    
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -697,7 +628,7 @@ export default function MatrixPage() {
                       <td className="p-2 border text-center capitalize" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-foreground)" }}>
                         {kesulitan}
                       </td>
-{babs.flatMap((bab) => [
+                      {babs.flatMap((bab) => [
                         <td key={`${bab.id}-keluar`} className="p-1 border" style={{ borderColor: "var(--color-border)" }}>
                           <input
                             type="number"
@@ -719,14 +650,8 @@ export default function MatrixPage() {
                             className="w-full px-1 py-1 rounded text-center text-sm"
                             style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
                           />
-                        </td>,
+                        </td>
                       ])}
-                      <td key="total-keluar" className="p-1 border text-center font-medium text-sm w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                        {babs.reduce((sum, bab) => sum + ((matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_keluar`] || 0), 0)}
-                      </td>
-                      <td key="total-bank" className="p-1 border text-center font-medium text-sm w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                        {babs.reduce((sum, bab) => sum + ((matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_bank`] || 0), 0)}
-                      </td>
                     </tr>
                   ))
                 ))}

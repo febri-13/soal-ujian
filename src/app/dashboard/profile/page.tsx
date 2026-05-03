@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-)
+import { supabase } from "@/lib/supabase"
 
 interface PsatGuruData {
   id: string
@@ -16,35 +11,36 @@ interface PsatGuruData {
   no_rekening: string | null
   bank: string | null
   unit_sekolah: string | null
+  mapel_id: string | null
+}
+
+interface MataPelajaran {
+  id: string
+  nama: string
+  kode: string
 }
 
 const UNIT_OPTIONS = [
-  "SMP Al Abidin 1",
-  "SMP Al Abidin 2", 
-  "SMP Al Abidin 3",
-  "SMP Al Abidin 4",
-  "SMP Al Abidin 5",
-  "SMP Al Abidin 6",
-  "SMP Al Abidin 7",
-  "SMP Al Abidin 8",
+  "SMP I Al Abidin Surakarta",
+  "SMP ABBS Surakarta",
+  "SMPII Al Abidin Karanganyar",
+  "SMPII Al Abidin Sukoharjo",
+  "SMPII Al Abidin Klaten",
+  "SMPII Al Abidin Boyolali",
+  "SMPII Al Abidin Yogyakarta",
+  "SMPII Al Abidin Salatiga",
 ]
 
 const BANK_OPTIONS = [
-  "Bank BCA",
-  "Bank BRI",
-  "Bank BSI",
-  "Bank Mandiri",
-  "Bank NTT",
-  "Bank BTN",
-  "Bank Nagari",
-  "Bank Aceh",
-  "Bank Lain",
+  "CIMB",
+  "MayBank",
 ]
 
 export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [guruData, setGuruData] = useState<PsatGuruData | null>(null)
+  const [mataPelajaran, setMataPelajaran] = useState<MataPelajaran[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -53,6 +49,7 @@ export default function ProfilePage() {
   const [noRekening, setNoRekening] = useState("")
   const [bank, setBank] = useState("")
   const [unitSekolah, setUnitSekolah] = useState("")
+  const [mapelId, setMapelId] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -63,11 +60,33 @@ export default function ProfilePage() {
       }
       setUser(u)
 
+      const { data: mapelData } = await supabase
+        .from("mata_pelajaran")
+        .select("id, nama, kode")
+        .order("nama")
+      
+      if (mapelData) {
+        setMataPelajaran(mapelData)
+      }
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", u.id)
+        .single()
+
+      if (!profileData) {
+        await supabase.from("profiles").insert({
+          id: u.id,
+          email: u.email,
+        })
+      }
+
       const { data } = await supabase
         .from("psat_guru_data")
         .select("*")
         .eq("profile_id", u.id)
-        .single()
+        .maybeSingle()
 
       if (data) {
         setGuruData(data)
@@ -75,6 +94,7 @@ export default function ProfilePage() {
         setNoRekening(data.no_rekening || "")
         setBank(data.bank || "")
         setUnitSekolah(data.unit_sekolah || "")
+        setMapelId(data.mapel_id || "")
       }
       setLoading(false)
     }
@@ -99,6 +119,7 @@ export default function ProfilePage() {
           no_rekening: noRekening, 
           bank, 
           unit_sekolah: unitSekolah, 
+          mapel_id: mapelId || null,
           updated_at: new Date().toISOString() 
         })
         .eq("id", existing.id)
@@ -110,7 +131,8 @@ export default function ProfilePage() {
           whatsapp, 
           no_rekening: noRekening, 
           bank, 
-          unit_sekolah: unitSekolah 
+          unit_sekolah: unitSekolah,
+          mapel_id: mapelId || null
         })
     }
 
@@ -183,7 +205,7 @@ export default function ProfilePage() {
               </select>
             </div>
 
-            <div>
+<div>
               <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Bank</label>
               <select
                 value={bank}
@@ -199,15 +221,18 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor Rekening</label>
-              <input
-                type="text"
-                value={noRekening}
-                onChange={(e) => setNoRekening(e.target.value)}
-                placeholder="xxxx-xxxx-xxxx"
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Mata Pelajaran</label>
+              <select
+                value={mapelId}
+                onChange={(e) => setMapelId(e.target.value)}
                 className="w-full px-3 py-2 rounded-md"
                 style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-              />
+              >
+                <option value="">Pilih Mata Pelajaran</option>
+                {mataPelajaran.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nama}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex gap-3 pt-4">

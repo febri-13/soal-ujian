@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-)
+import { supabase } from "@/lib/supabase"
 
 interface User {
   id: string
@@ -30,6 +25,27 @@ export default function DashboardPage() {
         router.push("/login")
         return
       }
+
+      const { data: profileData, error: profileQueryError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", u.id)
+        .maybeSingle()
+
+      if (profileQueryError) {
+        console.error("Query profile error:", profileQueryError)
+      }
+
+      if (!profileData) {
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: u.id,
+          email: u.email || "",
+        })
+        if (insertError) {
+          console.error("Insert profile error:", insertError)
+        }
+      }
+
       setUser({
         id: u.id,
         email: u.email || "",

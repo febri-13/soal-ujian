@@ -1,13 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-)
+  import { useRouter } from "next/navigation"
+  import { supabase } from "@/lib/supabase"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,7 +16,7 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -30,6 +25,21 @@ export default function LoginPage() {
       setError(signInError.message)
       setLoading(false)
       return
+    }
+
+    if (signInData?.user) {
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", signInData.user.id)
+        .single()
+
+      if (!existingProfile) {
+        await supabase.from("profiles").insert({
+          id: signInData.user.id,
+          email: email,
+        })
+      }
     }
 
     router.push("/dashboard")
