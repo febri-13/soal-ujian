@@ -20,6 +20,8 @@ export default function DashboardPage() {
   const [submittedCount, setSubmittedCount] = useState(0)
   const [approvedCount, setApprovedCount] = useState(0)
   const [revisionCount, setRevisionCount] = useState(0)
+  const [mapelCounts, setMapelCounts] = useState<Record<string, number>>({})
+  const [mapelNames, setMapelNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -95,6 +97,33 @@ export default function DashboardPage() {
         .eq("status", "needs_revision")
       setRevisionCount(revisionSoal || 0)
 
+      const { data: submittedByMapel } = await supabase
+        .from("bank_soal")
+        .select("mata_pelajaran_id")
+        .eq("status", "submitted")
+      
+      const counts: Record<string, number> = {}
+      const names: Record<string, string> = {}
+      if (submittedByMapel) {
+        submittedByMapel.forEach(s => {
+          if (s.mata_pelajaran_id) {
+            counts[s.mata_pelajaran_id] = (counts[s.mata_pelajaran_id] || 0) + 1
+          }
+        })
+        
+        const { data: mapels } = await supabase
+          .from("mata_pelajaran")
+          .select("id, nama")
+        
+        if (mapels) {
+          mapels.forEach(m => {
+            names[m.id] = m.nama
+          })
+        }
+      }
+      setMapelCounts(counts)
+      setMapelNames(names)
+
       setLoading(false)
     }
     checkAuth()
@@ -158,14 +187,30 @@ export default function DashboardPage() {
           )}
 
 {(isAdmin || isValidator) && submittedCount > 0 && (
-          <div 
-            onClick={() => router.push("/dashboard/validasi")}
-            className="mt-4 p-4 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: "#fef3c7", borderColor: "#f59e0b" }}
-          >
-            <p style={{ color: "#92400e" }}>
-              🔔 Ada {submittedCount} soal yang perlu divalidasi. Klik untuk review.
+          <div className="mt-4">
+            <p className="font-medium mb-2" style={{ color: "var(--color-foreground)" }}>
+              🔔 {submittedCount} soal perlu divalidasi:
             </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(mapelCounts).map(([mapelId, count]) => (
+                <button
+                  key={mapelId}
+                  onClick={() => {
+                    localStorage.setItem("selectedMapelId", mapelId)
+                    router.push("/dashboard/validasi")
+                  }}
+                  className="p-3 rounded-lg border text-left cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ backgroundColor: "#fef3c7", borderColor: "#f59e0b" }}
+                >
+                  <div className="font-medium" style={{ color: "#92400e" }}>
+                    {mapelNames[mapelId] || "Unknown"}
+                  </div>
+                  <div className="text-sm" style={{ color: "#b45309" }}>
+                    {count} soal
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

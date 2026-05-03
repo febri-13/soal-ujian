@@ -61,12 +61,22 @@ export default function ValidasiPage() {
 
       if (mapel) {
         setMapelList(mapel)
+        
+        const savedMapelId = localStorage.getItem("selectedMapelId")
+        if (savedMapelId) {
+          setSelectedMapel(savedMapelId)
+          localStorage.removeItem("selectedMapelId")
+        }
       }
 
       setLoading(false)
     }
     load()
   }, [router])
+
+  const handleMapelSelect = (mapelId: string) => {
+    setSelectedMapel(mapelId)
+  }
 
   useEffect(() => {
     async function loadSoal() {
