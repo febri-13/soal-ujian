@@ -9,8 +9,11 @@ import {
   Bold, Italic, Strikethrough, 
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, 
-  Image as ImageIcon
+  Image as ImageIcon,
+  Upload
 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface RichTextEditorProps {
   content: string
@@ -18,7 +21,17 @@ interface RichTextEditorProps {
   placeholder?: string
 }
 
+async function calculateFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 export default function RichTextEditor({ content, onChange, placeholder = "Write something..." }: RichTextEditorProps) {
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -47,6 +60,64 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
 
   if (!editor) {
     return null
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+
+    try {
+      const fileHash = await calculateFileHash(file)
+      const { data: existing } = await supabase
+        .from('psat_image_uploads')
+        .select('image_url')
+        .eq('file_hash', fileHash)
+        .maybeSingle()
+
+      if (existing) {
+        editor.chain().focus().setImage({ src: existing.image_url }).run()
+        setUploading(false)
+        return
+      }
+
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('soal-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        setUploading(false)
+        return
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('soal-images')
+        .getPublicUrl(fileName)
+
+      await supabase.from('psat_image_uploads').insert({
+        file_name: file.name,
+        file_size: file.size,
+        file_hash: fileHash,
+        image_url: publicUrl,
+      })
+
+      editor.chain().focus().setImage({ src: publicUrl }).run()
+    } catch (err) {
+      console.error('Error:', err)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
   return (
@@ -142,20 +213,22 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
         
         <div className="w-px bg-gray-300 dark:bg-gray-600 mx-1" />
         
-        <button
-          type="button"
-          onClick={() => {
-            const url = window.prompt("Enter image URL:")
-            if (url) {
-              editor.chain().focus().setImage({ src: url }).run()
-            }
-          }}
-          className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          onChange={handleImageUpload}
+          className="hidden"
+          id="image-upload-input"
+        />
+        <label
+          htmlFor="image-upload-input"
+          className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer ${uploading ? "opacity-50" : ""}`}
           style={{ color: "var(--color-foreground)" }}
-          title="Insert Image"
+          title="Upload Image"
         >
-          <ImageIcon className="w-4 h-4" />
-        </button>
+          {uploading ? <Upload className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+        </label>
       </div>
       <EditorContent editor={editor} />
     </div>

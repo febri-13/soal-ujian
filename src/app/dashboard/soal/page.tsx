@@ -31,6 +31,7 @@ export default function SoaresPage() {
   const [selectedKesulitan, setSelectedKesulitan] = useState<string>("mudah")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<"form" | "list">("form")
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
   const [pertanyaan, setPertanyaan] = useState("")
@@ -38,6 +39,7 @@ export default function SoaresPage() {
   const [pilihan, setPilihan] = useState<string[]>(["", "", "", ""])
   const [jawabanBenar, setJawabanBenar] = useState<number>(0)
   const [bobot, setBobot] = useState<number>(1.0)
+  const [soalList, setSoalList] = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
@@ -65,17 +67,26 @@ export default function SoaresPage() {
 
       const { data: bankSoal } = await supabase
         .from("bank_soal")
-        .select("bab_id,tipe,tingkat_kesulitan")
+        .select("bab_id_text,tipe,tingkat_kesulitan")
         .eq("guru_id", u.id)
 
       const stats: Record<string, number> = {}
       if (bankSoal) {
         bankSoal.forEach(s => {
-          const key = `${s.bab_id}_${s.tipe}_${s.tingkat_kesulitan}`
+          const key = `${s.bab_id_text}_${s.tipe}_${s.tingkat_kesulitan}`
           stats[key] = (stats[key] || 0) + 1
         })
       }
       setSoalStats(stats)
+
+      const { data: allSoal } = await supabase
+        .from("bank_soal")
+        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at")
+        .eq("guru_id", u.id)
+        .order("created_at", { ascending: false })
+      if (allSoal) {
+        setSoalList(allSoal)
+      }
 
       setLoading(false)
     }
@@ -123,7 +134,7 @@ export default function SoaresPage() {
       pertanyaan: pertanyaan,
       tipe: selectedTipe,
       guru_id: user.id,
-      bab_id: selectedBab,
+      bab_id_text: selectedBab,
       level: selectedKesulitan,
       bobot: bobot,
       tingkat_kesulitan: selectedKesulitan,
@@ -158,10 +169,26 @@ export default function SoaresPage() {
       <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
           <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Soal</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab("form")}
+              className={`py-2 px-4 rounded-md ${activeTab === "form" ? "bg-primary text-primary-foreground" : ""}`}
+            >
+              Form
+            </button>
+            <button
+              onClick={() => setActiveTab("list")}
+              className={`py-2 px-4 rounded-md ${activeTab === "list" ? "bg-primary text-primary-foreground" : ""}`}
+            >
+              Daftar ({soalList.length})
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto py-8 px-4">
+        {activeTab === "form" ? (
+          <>
         {/* Statistik Matrix */}
         <div className="rounded-lg p-6 border mb-6" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Statistik Input Matrix</h2>
@@ -328,6 +355,38 @@ export default function SoaresPage() {
             {saving ? "Menyimpan..." : "Simpan"}
           </button>
         </div>
+        </>
+        ) : (
+          <div className="rounded-lg p-6 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Daftar soal ({soalList.length})</h2>
+            
+            {soalList.length === 0 ? (
+              <p style={{ color: "var(--color-muted-foreground)" }}>Belum ada soal yang diinput.</p>
+            ) : (
+              <div className="space-y-4">
+                {soalList.map((soal) => (
+                  <div key={soal.id} className="p-4 border rounded-lg" style={{ borderColor: "var(--color-border)" }}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex gap-2">
+                        <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{soal.tipe}</span>
+                        <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
+                        <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
+                      </div>
+                      <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
+                    </div>
+                    <div 
+                      className="text-sm mb-2"
+                      dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                    />
+                    <div className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                      {new Date(soal.created_at).toLocaleDateString("id-ID")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {toast && (
