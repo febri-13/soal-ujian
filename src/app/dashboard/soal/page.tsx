@@ -40,6 +40,7 @@ export default function SoaresPage() {
   const [pilihan, setPilihan] = useState<string[]>(["", "", "", ""])
   const [pilihanGambar, setPilihanGambar] = useState<string[]>(["", "", "", ""])
   const [jawabanBenar, setJawabanBenar] = useState<number>(0)
+  const [jawabanBenarCeklist, setJawabanBenarCeklist] = useState<number[]>([])
   const [bobot, setBobot] = useState<number>(1.0)
   const [soalList, setSoalList] = useState<any[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -127,6 +128,7 @@ if (!matrixRows || matrixRows.length === 0) {
     setPilihan(["", "", "", ""])
     setPilihanGambar(["", "", "", ""])
     setJawabanBenar(0)
+    setJawabanBenarCeklist([])
     setBobot(getDefaultBobot(selectedTipe, selectedKesulitan))
     setEditingId(null)
     setSelectedBab(matrixData[0]?.bab_id || "")
@@ -151,7 +153,7 @@ if (!matrixRows || matrixRows.length === 0) {
     setSaving(true)
 
     const pilihanObj = selectedTipe === "pilgan" || selectedTipe === "ceklist"
-      ? pilihan.map((p, i) => ({ id: i, teks: p, benar: selectedTipe === "ceklist" ? pilihan[i] === "benar" : i === jawabanBenar }))
+      ? pilihan.map((p, i) => ({ id: i, teks: p, benar: selectedTipe === "ceklist" ? jawabanBenarCeklist.includes(i) : i === jawabanBenar }))
       : null
 
     if (editingId) {
@@ -359,11 +361,13 @@ if (!matrixRows || matrixRows.length === 0) {
                   ) : (
                     <input
                       type="checkbox"
-                      checked={p === "benar"}
+                      checked={jawabanBenarCeklist.includes(i)}
                       onChange={e => {
-                        const newPilihan = [...pilihan]
-                        newPilihan[i] = e.target.checked ? "benar" : ""
-                        setPilihan(newPilihan)
+                        if (e.target.checked) {
+                          setJawabanBenarCeklist([...jawabanBenarCeklist, i])
+                        } else {
+                          setJawabanBenarCeklist(jawabanBenarCeklist.filter(idx => idx !== i))
+                        }
                       }}
                     />
                   )}
@@ -463,10 +467,17 @@ if (!matrixRows || matrixRows.length === 0) {
                                   setBobot(soalData.bobot)
                                   setEditingId(soalData.id)
                                   
-                                  if (soalData.pilihan) {
-                                    const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
-                                    setPilihan(teksArr)
-                                  }
+if (soalData.pilihan) {
+                                      const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
+                                      setPilihan(teksArr)
+                                      if (soalData.tipe === "pilgan") {
+                                        const benarIdx = soalData.pilihan.findIndex((p: any) => p.benar === true)
+                                        if (benarIdx >= 0) setJawabanBenar(benarIdx)
+                                      } else if (soalData.tipe === "ceklist") {
+                                        const benarIdx = soalData.pilihan.filter((p: any) => p.benar === true).map((p: any) => p.id)
+                                        setJawabanBenarCeklist(benarIdx || [])
+                                      }
+                                    }
                                   if (soalData.pilihan_gambar) {
                                     setPilihanGambar(soalData.pilihan_gambar)
                                   }
@@ -498,8 +509,8 @@ if (!matrixRows || matrixRows.length === 0) {
                             {soal.pilihan.map((p: any, i: number) => (
                               <div key={i} className="flex items-start gap-2 text-sm">
                                 <span className="font-medium">{String.fromCharCode(65 + i)}.</span>
-                                <span>{p.teks}</span>
-                                {p.benar && <span className="text-green-500 text-xs">(Benar)</span>}
+                                <span>{p.teks === "benar" ? "" : p.teks}</span>
+                                {p.benar && <span className="text-green-500 text-xs ml-1">(Benar)</span>}
                               </div>
                             ))}
                           </div>
