@@ -197,16 +197,25 @@ export default function SoaresPage() {
 
     setSaving(false)
 
-    if (error) {
-      setToast({ message: "Error: " + error.message, type: "error" })
-    } else {
-      setToast({ message: "Soal berhasil disimpan!", type: "success" })
-      resetForm()
-      
-      const key = `${selectedBab}_${selectedTipe}_${selectedKesulitan}`
-      setSoalStats(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
+if (error) {
+        setToast({ message: "Error: " + error.message, type: "error" })
+      } else {
+        setToast({ message: "Soal berhasil disimpan!", type: "success" })
+        resetForm()
+        
+        const key = `${selectedBab}_${selectedTipe}_${selectedKesulitan}`
+        setSoalStats(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
+
+        const { data: newSoal } = await supabase
+          .from("bank_soal")
+          .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar")
+          .eq("guru_id", user.id)
+.order("created_at", { ascending: true })
+        if (newSoal) {
+          setSoalList(newSoal)
+        }
+      }
     }
-  }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
@@ -408,10 +417,11 @@ export default function SoaresPage() {
               <p style={{ color: "var(--color-muted-foreground)" }}>Belum ada soal yang diinput.</p>
             ) : (
               <div className="space-y-4">
-                {soalList.map((soal) => (
+                {soalList.map((soal, index) => (
                   <div key={soal.id} className="p-4 border rounded-lg" style={{ borderColor: "var(--color-border)" }}>
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex gap-2">
+                        <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">No. {index + 1}</span>
                         <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{soal.tipe}</span>
                         <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
                         <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
