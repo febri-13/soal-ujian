@@ -57,16 +57,14 @@ export default function DashboardPage() {
         .from("psat_guru_data")
         .select("id")
         .eq("profile_id", u.id)
-        .single()
-      setHasProfile(!!profile)
+      setHasProfile(!!profile && profile.length > 0)
 
-      const { data: matrix } = await supabase
+const { data: matrix } = await supabase
         .from("psat_matrix_input")
         .select("id")
         .eq("profile_id", u.id)
         .eq("is_submitted", true)
-        .single()
-      setHasMatrix(!!matrix)
+      setHasMatrix(!!matrix && matrix.length > 0)
 
       setLoading(false)
     }
