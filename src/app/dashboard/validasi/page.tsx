@@ -5,14 +5,17 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 
-const STATUS_OPTIONS = ["draft", "submitted", "needs_revision", "approved"]
+interface Mapel {
+  id: string
+  nama: string
+}
 
 export default function ValidasiPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  const [guruList, setGuruList] = useState<any[]>([])
-  const [soalByGuru, setSoalByGuru] = useState<Record<string, any[]>>({})
-  const [selectedGuru, setSelectedGuru] = useState<string>("")
+  const [mapelList, setMapelList] = useState<Mapel[]>([])
+  const [selectedMapel, setSelectedMapel] = useState<string>("")
+  const [soalList, setSoalList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
@@ -41,17 +44,23 @@ export default function ValidasiPage() {
 
       setUser(u)
 
-      const { data: gurus } = await supabase
+      const { data: validatorProfile } = await supabase
         .from("profiles")
-        .select("id,email,nama,role")
-        .eq("role", "guru")
+        .select("nama")
+        .eq("id", u.id)
+        .single()
+      
+      if (validatorProfile) {
+        setUser({ ...u, nama: validatorProfile.nama })
+      }
+
+      const { data: mapel } = await supabase
+        .from("mata_pelajaran")
+        .select("id, nama")
         .order("nama", { ascending: true })
 
-      if (gurus) {
-        setGuruList(gurus)
-        if (gurus.length > 0) {
-          setSelectedGuru(gurus[0].id)
-        }
+      if (mapel) {
+        setMapelList(mapel)
       }
 
       setLoading(false)
@@ -61,30 +70,41 @@ export default function ValidasiPage() {
 
   useEffect(() => {
     async function loadSoal() {
-      if (!selectedGuru) return
+      if (!selectedMapel) return
+      setSoalList([])
 
       const { data: soal } = await supabase
         .from("bank_soal")
         .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,guru_id")
-        .eq("guru_id", selectedGuru)
+        .eq("mata_pelajaran_id", selectedMapel)
+        .eq("status", "submitted")
         .order("created_at", { ascending: true })
 
       if (soal) {
-        setSoalByGuru(prev => ({ ...prev, [selectedGuru]: soal }))
+        setSoalList(soal)
       }
     }
     loadSoal()
-  }, [selectedGuru])
+  }, [selectedMapel])
 
   const handleStatusChange = async (soalId: string, newStatus: string) => {
     setSaving(true)
     
     const notes = revisionNotes[soalId] || ""
+    const validatorName = user?.nama || "Validator"
+    let fullNotes = ""
+    
+    if (newStatus === "approved") {
+      fullNotes = `[${validatorName}] Approved`
+    } else {
+      fullNotes = notes ? `[${validatorName}] ${notes}` : `[${validatorName}] Review`
+    }
+    
     const { error } = await supabase
       .from("bank_soal")
       .update({ 
         status: newStatus, 
-        revision_notes: notes,
+        revision_notes: fullNotes,
         updated_at: new Date().toISOString() 
       })
       .eq("id", soalId)
@@ -95,21 +115,23 @@ export default function ValidasiPage() {
       setToast({ message: "Error: " + error.message, type: "error" })
     } else {
       setToast({ message: "Status updated!", type: "success" })
-      setSoalByGuru(prev => ({
-        ...prev,
-        [selectedGuru]: prev[selectedGuru].map(s => 
-          s.id === soalId ? { ...s, status: newStatus, revision_notes: notes } : s
-        )
-      }))
+      setSoalList(prev => prev.map(s => 
+        s.id === soalId ? { ...s, status: newStatus, revision_notes: fullNotes } : s
+      ))
       setRevisionNotes(prev => ({ ...prev, [soalId]: "" }))
     }
+  }
+
+  const getRevisionNotes = (notes: string | null) => {
+    if (!notes) return ""
+    if (notes.includes("Approved")) return "Approved"
+    const match = notes.match(/^\[([^\]]+)\]\s*(.*)/)
+    return match ? match[2] : notes
   }
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
   }
-
-  const currentSoal = soalByGuru[selectedGuru] || []
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh)" }}>
@@ -124,135 +146,120 @@ export default function ValidasiPage() {
 
       <main className="max-w-7xl mx-auto py-8 px-4">
         <div className="rounded-lg p-6 border mb-6" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Pilih Guru</h2>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Pilih Mata Pelajaran</h2>
           
           <select
-            value={selectedGuru}
-            onChange={e => setSelectedGuru(e.target.value)}
+            value={selectedMapel}
+            onChange={e => setSelectedMapel(e.target.value)}
             className="w-full p-2 rounded border"
             style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
           >
-            {guruList.map(g => (
-              <option key={g.id} value={g.id}>{g.nama || g.email}</option>
+            <option value="">-- Pilih Mata Pelajaran --</option>
+            {mapelList.map(m => (
+              <option key={m.id} value={m.id}>{m.nama}</option>
             ))}
           </select>
 
-          <div className="mt-4 flex gap-2">
-            <div className="px-2 py-1 text-xs rounded bg-gray-200">
-              Total: {currentSoal.length}
-            </div>
-            <div className="px-2 py-1 text-xs rounded bg-yellow-500 text-white">
-              Submitted: {currentSoal.filter(s => s.status === "submitted").length}
-            </div>
-            <div className="px-2 py-1 text-xs rounded bg-red-500 text-white">
-              Revisi: {currentSoal.filter(s => s.status === "needs_revision").length}
-            </div>
-            <div className="px-2 py-1 text-xs rounded bg-green-600 text-white">
-              Approved: {currentSoal.filter(s => s.status === "approved").length}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          {currentSoal.length === 0 ? (
-            <div className="p-6 text-center" style={{ color: "var(--color-muted-foreground)" }}>
-              Belum ada soal dari guru ini.
-            </div>
-          ) : (
-            <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
-              {currentSoal.map((soal, index) => (
-                <div key={soal.id} className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex gap-2">
-                      <span className="w-8 h-8 flex-shrink-0 border rounded-lg flex items-center justify-center font-bold text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}>
-                        {index + 1}
-                      </span>
-                      <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{soal.tipe}</span>
-                      <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
-                      <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
-                      <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      {soal.status === "submitted" && (
-                        <span className="px-2 py-1 text-xs rounded bg-yellow-500 text-white">Submitted</span>
-                      )}
-                      {soal.status === "needs_revision" && (
-                        <span className="px-2 py-1 text-xs rounded bg-red-500 text-white">Revisi</span>
-                      )}
-                      {soal.status === "approved" && (
-                        <span className="px-2 py-1 text-xs rounded bg-green-600 text-white">Approved</span>
-                      )}
-                      {(!soal.status || soal.status === "draft") && (
-                        <span className="px-2 py-1 text-xs rounded bg-gray-500 text-white">Draft</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div 
-                    className="text-sm mb-2 ml-10"
-                    dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
-                  />
-
-                  {soal.pilihan && soal.pilihan.length > 0 && (
-                    <div className="ml-10 mt-2 space-y-1">
-                      {soal.pilihan.map((p: any, i: number) => (
-                        <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className="font-medium">{String.fromCharCode(65 + i)}.</span>
-                          <span>{p.teks === "benar" ? "" : p.teks}</span>
-                          {p.benar && <span className="text-green-500 text-xs ml-1">(Benar)</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="ml-10 mt-4 flex gap-2 items-start">
-                    <textarea
-                      value={revisionNotes[soal.id] || soal.revision_notes || ""}
-                      onChange={e => setRevisionNotes(prev => ({ ...prev, [soal.id]: e.target.value }))}
-                      placeholder="Catatan revisi..."
-                      className="flex-1 p-2 rounded border text-sm"
-                      style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                      rows={2}
-                    />
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleStatusChange(soal.id, "needs_revision")}
-                        disabled={saving}
-                        className="px-2 py-1 text-xs rounded bg-red-500 text-white hover:bg-red-600"
-                      >
-                        Revisi
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(soal.id, "submitted")}
-                        disabled={saving}
-                        className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600"
-                      >
-                        Pending
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(soal.id, "approved")}
-                        disabled={saving}
-                        className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700"
-                      >
-                        Approve
-                      </button>
-                    </div>
-                  </div>
-
-                  {soal.revision_notes && (
-                    <div className="ml-10 mt-2 p-2 rounded bg-red-50 border border-red-200 text-red-700 text-xs">
-                      Catatan sebelumnya: {soal.revision_notes}
-                    </div>
-                  )}
-
-                  <div className="ml-10 mt-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                    {new Date(soal.created_at).toLocaleDateString("id-ID")}
-                  </div>
-                </div>
-              ))}
+          {selectedMapel && (
+            <div className="mt-4 flex gap-2">
+              <div className="px-2 py-1 text-xs rounded bg-gray-200">
+                Total Submitted: {soalList.length}
+              </div>
             </div>
           )}
         </div>
+
+        {selectedMapel && (
+          <div className="rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            {soalList.length === 0 ? (
+              <div className="p-6 text-center" style={{ color: "var(--color-muted-foreground)" }}>
+                Belum ada soal submitted untuk mata pelajaran ini.
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
+                {soalList.map((soal, index) => (
+                  <div key={soal.id} className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex gap-2">
+                        <span className="w-8 h-8 flex-shrink-0 border rounded-lg flex items-center justify-center font-bold text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-primary)" }}>
+                          {index + 1}
+                        </span>
+                        <span className="px-2 py-1 text-xs rounded bg-primary text-primary-foreground">{soal.tipe}</span>
+                        <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
+                        <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
+                        <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        soal.status === "approved" ? "bg-green-600 text-white" :
+                        soal.status === "needs_revision" ? "bg-red-500 text-white" :
+                        "bg-yellow-500 text-white"
+                      }`}>{soal.status}</span>
+                    </div>
+
+                    <div 
+                      className="text-sm mb-2 ml-10"
+                      dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                    />
+
+                    {soal.pilihan && soal.pilihan.length > 0 && (
+                      <div className="ml-10 mt-2 space-y-1">
+                        {soal.pilihan.map((p: any, i: number) => (
+                          <div key={i} className="flex items-start gap-2 text-sm">
+                            <span className="font-medium">{String.fromCharCode(65 + i)}.</span>
+                            <span>{p.teks === "benar" ? "" : p.teks}</span>
+                            {p.benar && <span className="text-green-500 text-xs ml-1">(Benar)</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="ml-10 mt-4 flex gap-2 items-start">
+                      <textarea
+                        value={revisionNotes[soal.id] || getRevisionNotes(soal.revision_notes)}
+                        onChange={e => setRevisionNotes(prev => ({ ...prev, [soal.id]: e.target.value }))}
+                        placeholder="Catatan revisi..."
+                        className="flex-1 p-2 rounded border text-sm"
+                        style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                        rows={2}
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleStatusChange(soal.id, "needs_revision")}
+                          disabled={saving}
+                          className="px-2 py-1 text-xs rounded bg-red-500 text-white hover:bg-red-600"
+                        >
+                          Revisi
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(soal.id, "approved")}
+                          disabled={saving}
+                          className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700"
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+
+                    {soal.revision_notes && soal.status !== "approved" && (
+                      <div className="ml-10 mt-2 p-2 rounded bg-red-50 border border-red-200 text-red-700 text-xs">
+                        <strong>{soal.revision_notes.match(/^\[([^\]]+)\]/)?.[1] || "Validator"}:</strong> {getRevisionNotes(soal.revision_notes)}
+                      </div>
+                    )}
+                    {soal.revision_notes && soal.status === "approved" && (
+                      <div className="ml-10 mt-2 p-2 rounded bg-green-50 border border-green-200 text-green-700 text-xs">
+                        <strong>{soal.revision_notes.match(/^\[([^\]]+)\]/)?.[1] || "Validator"}:</strong> {getRevisionNotes(soal.revision_notes)}
+                      </div>
+                    )}
+
+                    <div className="ml-10 mt-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                      {new Date(soal.created_at).toLocaleDateString("id-ID")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {toast && (

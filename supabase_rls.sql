@@ -76,6 +76,11 @@ CREATE POLICY "Authenticated can insert bank_soal" ON bank_soal
 CREATE POLICY "Owner can update bank_soal" ON bank_soal
   FOR UPDATE USING (auth.uid() = guru_id);
 
+CREATE POLICY "Admin can update bank_soal" ON bank_soal
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'validator'))
+  );
+
 CREATE POLICY "Owner can delete bank_soal" ON bank_soal
   FOR DELETE USING (auth.uid() = guru_id);
 

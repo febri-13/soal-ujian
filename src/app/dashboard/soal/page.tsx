@@ -28,6 +28,7 @@ export default function SoaresPage() {
   const [matrixData, setMatrixData] = useState<BabMatrix[]>([])
   const [soalStats, setSoalStats] = useState<Record<string, number>>({})
   const [selectedBab, setSelectedBab] = useState<string>("")
+  const [selectedMapelId, setSelectedMapelId] = useState<string>("")
   const [selectedTipe, setSelectedTipe] = useState<string>("pilgan")
   const [selectedKesulitan, setSelectedKesulitan] = useState<string>("mudah")
   const [loading, setLoading] = useState(true)
@@ -68,6 +69,15 @@ if (!matrixRows || matrixRows.length === 0) {
 
       setMatrixData(matrixRows as BabMatrix[])
       setSelectedBab(matrixRows[0].bab_id)
+
+      const { data: patokan } = await supabase
+        .from("psat_patokan_soal")
+        .select("mapel_id")
+        .eq("profile_id", u.id)
+        .maybeSingle()
+      if (patokan?.mapel_id) {
+        setSelectedMapelId(patokan.mapel_id)
+      }
 
       const { data: bankSoal } = await supabase
         .from("bank_soal")
@@ -196,6 +206,7 @@ if (!matrixRows || matrixRows.length === 0) {
         pertanyaan: pertanyaan,
         tipe: selectedTipe,
         bab_id_text: selectedBab,
+        mata_pelajaran_id: selectedMapelId,
         level: selectedKesulitan,
         bobot: bobot,
         tingkat_kesulitan: selectedKesulitan,
@@ -223,6 +234,7 @@ if (!matrixRows || matrixRows.length === 0) {
       tipe: selectedTipe,
       guru_id: user.id,
       bab_id_text: selectedBab,
+      mata_pelajaran_id: selectedMapelId,
       level: selectedKesulitan,
       bobot: bobot,
       tingkat_kesulitan: selectedKesulitan,
@@ -557,10 +569,13 @@ if (!matrixRows || matrixRows.length === 0) {
                               </>
                             )}
                             {soal.status === "submitted" && (
-                              <span className="text-xs text-gray-400">Terkirim</span>
+                              <span className="text-xs text-yellow-600">Submitted</span>
                             )}
                             {soal.status === "approved" && (
-                              <span className="text-xs text-gray-400">Approved</span>
+                              <span className="text-xs text-green-600">Approved</span>
+                            )}
+                            {soal.status === "needs_revision" && (
+                              <span className="text-xs text-red-600">Revisi</span>
                             )}
                           </div>
                         </div>
@@ -583,8 +598,8 @@ if (!matrixRows || matrixRows.length === 0) {
                           {new Date(soal.created_at).toLocaleDateString("id-ID")}
                         </div>
                         {soal.revision_notes && (
-                          <div className="mt-2 p-2 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
-                            Catatan Revisi: {soal.revision_notes}
+                          <div className={`mt-2 p-2 rounded border text-sm ${soal.status === "approved" ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
+                            {soal.status === "approved" ? "Approved: " : "Catatan Revisi: "}{soal.revision_notes}
                           </div>
                         )}
                       </div>
