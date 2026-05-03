@@ -85,7 +85,7 @@ if (!matrixRows || matrixRows.length === 0) {
 
       const { data: allSoal } = await supabase
         .from("bank_soal")
-        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar")
+        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes")
         .eq("guru_id", u.id)
         .order("created_at", { ascending: true })
       if (allSoal) {
@@ -120,6 +120,41 @@ if (!matrixRows || matrixRows.length === 0) {
     const bab = matrixData.find(b => b.bab_id === babId)
     if (!bab?.data) return 0
     return bab.data[`${tipe}_${kesulitan}_bank`] || 0
+  }
+
+  const isAllTargetMet = () => {
+    if (matrixData.length === 0) return false
+    for (const bab of matrixData) {
+      for (const tipe of TIPE_OPTIONS) {
+        for (const kesulitan of KESULITAN_OPTIONS) {
+          const count = getSoalCount(bab.bab_id, tipe, kesulitan)
+          const target = getTargetBank(bab.bab_id, tipe, kesulitan)
+          if (count < target) return false
+        }
+      }
+    }
+    return true
+  }
+
+  const handleKirimValidator = async () => {
+    if (!user) return
+    if (!confirm("Kirim semua soal ke validator? Setelah dikirim, soal tidak bisa diedit.")) return
+    
+    setSaving(true)
+    const { error } = await supabase
+      .from("bank_soal")
+      .update({ status: "submitted", updated_at: new Date().toISOString() })
+      .eq("guru_id", user.id)
+      .eq("status", "draft")
+    
+    setSaving(false)
+    
+    if (error) {
+      setToast({ message: "Error: " + error.message, type: "error" })
+    } else {
+      setToast({ message: "Soal berhasil dikirim ke validator!", type: "success" })
+      setSoalList(soalList.map(s => ({ ...s, status: "submitted" })))
+    }
   }
 
   const resetForm = () => {
@@ -210,7 +245,7 @@ if (!matrixRows || matrixRows.length === 0) {
 
       const { data: newSoal } = await supabase
         .from("bank_soal")
-        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar")
+        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes")
         .eq("guru_id", user.id)
         .order("created_at", { ascending: true })
       if (newSoal) {
@@ -227,8 +262,18 @@ if (!matrixRows || matrixRows.length === 0) {
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh)" }}>
       <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Soal</h1>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
+            <a href="/dashboard" className="text-sm hover:underline" style={{ color: "var(--color-muted-foreground)" }}>← Dashboard</a>
+            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Soal</h1>
+          </div>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={handleKirimValidator}
+              disabled={saving || !isAllTargetMet()}
+              className={`py-2 px-4 rounded-md font-medium ${isAllTargetMet() ? "bg-green-600 text-white hover:bg-green-700" : "bg-gray-400 text-gray-200 cursor-not-allowed"}`}
+            >
+              {saving ? "Mengirim..." : "Kirim ke Validator"}
+            </button>
             <button
               onClick={() => setActiveTab("form")}
               className={`py-2 px-4 rounded-md ${activeTab === "form" ? "bg-primary text-primary-foreground" : ""}`}
@@ -449,8 +494,19 @@ if (!matrixRows || matrixRows.length === 0) {
                             <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
                             <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
                           </div>
-                          <div className="flex gap-2 items-center">
+<div className="flex gap-2 items-center">
                             <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
+                            {soal.status === "submitted" && (
+                              <span className="px-2 py-1 text-xs rounded bg-yellow-500 text-white">Submitted</span>
+                            )}
+                            {soal.status === "approved" && (
+                              <span className="px-2 py-1 text-xs rounded bg-green-600 text-white">Approved</span>
+                            )}
+                            {soal.status === "needs_revision" && (
+                              <span className="px-2 py-1 text-xs rounded bg-red-500 text-white">Revisi</span>
+                            )}
+                            {(soal.status === "draft" || soal.status === "needs_revision" || !soal.status) && (
+                              <>
                             <button
                               onClick={async () => {
                                 const { data: soalData } = await supabase
@@ -466,18 +522,18 @@ if (!matrixRows || matrixRows.length === 0) {
                                   setPertanyaan(soalData.pertanyaan)
                                   setBobot(soalData.bobot)
                                   setEditingId(soalData.id)
-                                  
-if (soalData.pilihan) {
-                                      const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
-                                      setPilihan(teksArr)
-                                      if (soalData.tipe === "pilgan") {
-                                        const benarIdx = soalData.pilihan.findIndex((p: any) => p.benar === true)
-                                        if (benarIdx >= 0) setJawabanBenar(benarIdx)
-                                      } else if (soalData.tipe === "ceklist") {
-                                        const benarIdx = soalData.pilihan.filter((p: any) => p.benar === true).map((p: any) => p.id)
-                                        setJawabanBenarCeklist(benarIdx || [])
-                                      }
+                                  setSelectedBab(soalData.bab_id_text || "")
+                                  if (soalData.pilihan) {
+                                    const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
+                                    setPilihan(teksArr)
+                                    if (soalData.tipe === "pilgan") {
+                                      const benarIdx = soalData.pilihan.findIndex((p: any) => p.benar === true)
+                                      if (benarIdx >= 0) setJawabanBenar(benarIdx)
+                                    } else if (soalData.tipe === "ceklist") {
+                                      const benarIdx = soalData.pilihan.filter((p: any) => p.benar === true).map((p: any) => p.id)
+                                      setJawabanBenarCeklist(benarIdx || [])
                                     }
+                                  }
                                   if (soalData.pilihan_gambar) {
                                     setPilihanGambar(soalData.pilihan_gambar)
                                   }
@@ -498,6 +554,14 @@ if (soalData.pilihan) {
                             >
                               Hapus
                             </button>
+                              </>
+                            )}
+                            {soal.status === "submitted" && (
+                              <span className="text-xs text-gray-400">Terkirim</span>
+                            )}
+                            {soal.status === "approved" && (
+                              <span className="text-xs text-gray-400">Approved</span>
+                            )}
                           </div>
                         </div>
                         <div 
@@ -518,6 +582,11 @@ if (soalData.pilihan) {
                         <div className="text-xs mt-2" style={{ color: "var(--color-muted-foreground)" }}>
                           {new Date(soal.created_at).toLocaleDateString("id-ID")}
                         </div>
+                        {soal.revision_notes && (
+                          <div className="mt-2 p-2 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
+                            Catatan Revisi: {soal.revision_notes}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [nama, setNama] = useState("")
   const [username, setUsername] = useState("")
+  const [role, setRole] = useState("guru")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -35,6 +36,7 @@ export default function RegisterPage() {
         email: email,
         nama: nama,
         username: username,
+        role: role,
       })
     }
 
@@ -106,6 +108,19 @@ export default function RegisterPage() {
               style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
               required minLength={6}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-3 py-2 rounded-md"
+              style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+            >
+              <option value="guru">Guru</option>
+              <option value="validator">Validator</option>
+            </select>
           </div>
 
           {error && <p style={{ color: "var(--color-destructive)" }}>{error}</p>}

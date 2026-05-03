@@ -1,0 +1,3 @@
+-- Run this in Supabase SQL Editor to add status columns
+-- ALTER TABLE "bank_soal" ADD COLUMN IF NOT EXISTS "status" VARCHAR(20) DEFAULT 'draft';
+-- ALTER TABLE "bank_soal" ADD COLUMN IF NOT EXISTS "revision_notes" TEXT;

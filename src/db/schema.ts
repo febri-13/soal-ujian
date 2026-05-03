@@ -1,6 +1,6 @@
 import { pgTable, text, uuid, boolean, timestamp, jsonb, pgEnum, integer, serial } from 'drizzle-orm/pg-core'
 
-export const userRoleEnum = pgEnum('user_role', ['guru', 'siswa', 'admin', 'admin_keuangan'])
+export const userRoleEnum = pgEnum('user_role', ['guru', 'siswa', 'admin', 'admin_keuangan', 'validator'])
 export const docStatusEnum = pgEnum('doc_status', ['belum_upload', 'under_review', 'approved', 'needs_revision'])
 
 export const profiles = pgTable('profiles', {
@@ -48,6 +48,8 @@ export const bankSoal = pgTable('bank_soal', {
   gambarUrl: text('gambar_url'),
   pilihan: jsonb('pilihan'),
   jawabanBenar: integer('jawaban_benar'),
+  status: text('status').default('draft'),
+  revisionNotes: text('revision_notes'),
   items: jsonb('items'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
