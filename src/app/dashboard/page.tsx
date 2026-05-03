@@ -18,6 +18,8 @@ export default function DashboardPage() {
   const [hasProfile, setHasProfile] = useState(false)
   const [hasMatrix, setHasMatrix] = useState(false)
   const [submittedCount, setSubmittedCount] = useState(0)
+  const [approvedCount, setApprovedCount] = useState(0)
+  const [revisionCount, setRevisionCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -81,6 +83,18 @@ export default function DashboardPage() {
         .eq("status", "submitted")
       setSubmittedCount(submittedSoal || 0)
 
+      const { count: approvedSoal } = await supabase
+        .from("bank_soal")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "approved")
+      setApprovedCount(approvedSoal || 0)
+
+      const { count: revisionSoal } = await supabase
+        .from("bank_soal")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "needs_revision")
+      setRevisionCount(revisionSoal || 0)
+
       setLoading(false)
     }
     checkAuth()
@@ -143,7 +157,7 @@ export default function DashboardPage() {
             </p>
           )}
 
-        {(isAdmin || isValidator) && submittedCount > 0 && (
+{(isAdmin || isValidator) && submittedCount > 0 && (
           <div 
             onClick={() => router.push("/dashboard/validasi")}
             className="mt-4 p-4 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
@@ -154,7 +168,30 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
-        </div>
+
+        {!isAdmin && !isValidator && (revisionCount > 0 || approvedCount > 0) && (
+          <div className="mt-4 flex gap-2 flex-wrap">
+            {revisionCount > 0 && (
+              <div 
+                onClick={() => router.push("/dashboard/soal")}
+                className="p-4 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: "#fef2f2", borderColor: "#ef4444" }}
+              >
+                <p style={{ color: "#dc2626" }}>
+                  🔴 {revisionCount} soal perlu revision
+                </p>
+              </div>
+            )}
+            {approvedCount > 0 && (
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: "#f0fdf4", borderColor: "#22c55e" }}>
+                <p className="text-green-700">
+                  🟢 {approvedCount} soal approved
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+          </div>
 
         {(isAdmin || isValidator) ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
