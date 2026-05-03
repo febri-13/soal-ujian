@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import RichTextEditor from "@/components/RichTextEditor"
+import ImageUpload from "@/components/ImageUpload"
 
 interface BabMatrix {
   bab_id: string
@@ -37,9 +38,11 @@ export default function SoaresPage() {
   const [pertanyaan, setPertanyaan] = useState("")
   const [gambarUrl, setGambarUrl] = useState("")
   const [pilihan, setPilihan] = useState<string[]>(["", "", "", ""])
+  const [pilihanGambar, setPilihanGambar] = useState<string[]>(["", "", "", ""])
   const [jawabanBenar, setJawabanBenar] = useState<number>(0)
   const [bobot, setBobot] = useState<number>(1.0)
   const [soalList, setSoalList] = useState<any[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -81,7 +84,7 @@ export default function SoaresPage() {
 
       const { data: allSoal } = await supabase
         .from("bank_soal")
-        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at")
+        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar")
         .eq("guru_id", u.id)
         .order("created_at", { ascending: false })
       if (allSoal) {
@@ -118,9 +121,27 @@ export default function SoaresPage() {
     return bab.data[`${tipe}_${kesulitan}_bank`] || 0
   }
 
+  const resetForm = () => {
+    setPertanyaan("")
+    setGambarUrl("")
+    setPilihan(["", "", "", ""])
+    setPilihanGambar(["", "", "", ""])
+    setJawabanBenar(0)
+    setBobot(getDefaultBobot(selectedTipe, selectedKesulitan))
+    setEditingId(null)
+  }
+
   const handleSaveSoal = async () => {
     if (!user || !selectedBab || !pertanyaan.trim()) {
       setToast({ message: "Pertanyaan wajib diisi", type: "error" })
+      return
+    }
+
+    const currentCount = getSoalCount(selectedBab, selectedTipe, selectedKesulitan)
+    const targetBank = getTargetBank(selectedBab, selectedTipe, selectedKesulitan)
+    
+    if (!editingId && currentCount >= targetBank) {
+      setToast({ message: `Bank soal untuk ${selectedBab} - ${selectedTipe} ${selectedKesulitan} sudah penuh (${currentCount}/${targetBank})`, type: "error" })
       return
     }
 
@@ -129,6 +150,33 @@ export default function SoaresPage() {
     const pilihanObj = selectedTipe === "pilgan" || selectedTipe === "ceklist"
       ? pilihan.map((p, i) => ({ id: i, teks: p, benar: selectedTipe === "ceklist" ? pilihan[i] === "benar" : i === jawabanBenar }))
       : null
+
+    if (editingId) {
+      const { error } = await supabase.from("bank_soal").update({
+        pertanyaan: pertanyaan,
+        tipe: selectedTipe,
+        bab_id_text: selectedBab,
+        level: selectedKesulitan,
+        bobot: bobot,
+        tingkat_kesulitan: selectedKesulitan,
+        pilihan: pilihanObj,
+        pilihan_gambar: pilihanGambar.filter(p => p),
+        jawaban_benar: selectedTipe === "pilgan" ? jawabanBenar : null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", editingId)
+
+      setSaving(false)
+
+      if (error) {
+        setToast({ message: "Error: " + error.message, type: "error" })
+      } else {
+        setToast({ message: "Soal berhasil diupdate!", type: "success" })
+        const updated = soalList.map(s => s.id === editingId ? { ...s, pertanyaan, tipe: selectedTipe, bab_id_text: selectedBab, tingkat_kesulitan: selectedKesulitan, bobot } : s)
+        setSoalList(updated)
+        resetForm()
+      }
+      return
+    }
 
     const { error } = await supabase.from("bank_soal").insert({
       pertanyaan: pertanyaan,
@@ -139,23 +187,20 @@ export default function SoaresPage() {
       bobot: bobot,
       tingkat_kesulitan: selectedKesulitan,
       pilihan: pilihanObj,
+      pilihan_gambar: pilihanGambar.filter(p => p),
       jawaban_benar: selectedTipe === "pilgan" ? jawabanBenar : null,
       gambar_url: gambarUrl || null,
     })
 
     setSaving(false)
 
-    if (error) {
-      setToast({ message: "Error: " + error.message, type: "error" })
-    } else {
-      setToast({ message: "Soal berhasil disimpan!", type: "success" })
-      setPertanyaan("")
-      setGambarUrl("")
-      setPilihan(["", "", "", ""])
-      setJawabanBenar(0)
-      setBobot(getDefaultBobot(selectedTipe, selectedKesulitan))
-      
-      const key = `${selectedBab}_${selectedTipe}_${selectedKesulitan}`
+if (error) {
+        setToast({ message: "Error: " + error.message, type: "error" })
+      } else {
+        setToast({ message: "Soal berhasil disimpan!", type: "success" })
+        resetForm()
+        
+        const key = `${selectedBab}_${selectedTipe}_${selectedKesulitan}`
       setSoalStats(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
     }
   }
@@ -325,22 +370,18 @@ export default function SoaresPage() {
                     className="flex-1 p-2 rounded border"
                     style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
                   />
+                  <ImageUpload
+                    value={pilihanGambar[i]}
+                    onChange={(url) => {
+                      const newGambar = [...pilihanGambar]
+                      newGambar[i] = url
+                      setPilihanGambar(newGambar)
+                    }}
+                  />
                 </div>
               ))}
             </div>
           )}
-
-          <div className="mb-4">
-            <label className="block text-sm mb-1" style={{ color: "var(--color-muted-foreground)" }}>URL Gambar (opsional)</label>
-            <input
-              type="text"
-              value={gambarUrl}
-              onChange={e => setGambarUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full p-2 rounded border"
-              style={{ backgroundColor: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-            />
-          </div>
 
           <div className="mb-4">
             <label className="block text-sm mb-1" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {bobot}</label>
@@ -352,7 +393,7 @@ export default function SoaresPage() {
             className="py-2 px-4 rounded-md font-medium"
             style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
           >
-            {saving ? "Menyimpan..." : "Simpan"}
+            {saving ? "Menyimpan..." : editingId ? "Update" : "Simpan"}
           </button>
         </div>
         </>
@@ -372,7 +413,51 @@ export default function SoaresPage() {
                         <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.tingkat_kesulitan}</span>
                         <span className="px-2 py-1 text-xs rounded" style={{ backgroundColor: "var(--color-accent)" }}>{soal.bab_id_text}</span>
                       </div>
-                      <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
+                        <button
+                          onClick={async () => {
+                            const { data: soalData, error } = await supabase
+                              .from("bank_soal")
+                              .select("*")
+                              .eq("id", soal.id)
+                              .single()
+                            
+                            console.log("Edit soal:", soalData, error)
+                            
+                            if (soalData) {
+                              setSelectedBab(soalData.bab_id_text)
+                              setSelectedTipe(soalData.tipe)
+                              setSelectedKesulitan(soalData.tingkat_kesulitan)
+                              setPertanyaan(soalData.pertanyaan)
+                              setBobot(soalData.bobot)
+                              setEditingId(soalData.id)
+                              
+                              if (soalData.pilihan) {
+                                const teksArr = soalData.pilihan.map((p: any) => p.teks || "")
+                                setPilihan(teksArr)
+                              }
+                              if (soalData.pilihan_gambar) {
+                                setPilihanGambar(soalData.pilihan_gambar)
+                              }
+                              setActiveTab("form")
+                            }
+                          }}
+                          className="text-blue-500 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Yakin hapus soal ini?")) return
+                            await supabase.from("bank_soal").delete().eq("id", soal.id)
+                            setSoalList(soalList.filter(s => s.id !== soal.id))
+                          }}
+                          className="text-red-500 text-sm"
+                        >
+                          Hapus
+                        </button>
+                      </div>
                     </div>
                     <div 
                       className="text-sm mb-2"
