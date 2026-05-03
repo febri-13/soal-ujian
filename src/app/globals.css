@@ -30,6 +30,11 @@ body {
   font-family: var(--font-sans);
 }
 
+input, textarea, select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 .dark {
   --color-background: oklch(15% 0.06 285);
   --color-foreground: oklch(98% 0 0);

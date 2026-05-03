@@ -70,6 +70,8 @@ export default function RegisterPage() {
               onChange={(e) => setNama(e.target.value)}
               className="w-full px-3 py-2 rounded-md"
               style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              autoComplete="name"
+              spellCheck={false}
               required
             />
           </div>
@@ -82,6 +84,8 @@ export default function RegisterPage() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 rounded-md"
               style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              autoComplete="username"
+              spellCheck={false}
               required
             />
           </div>
@@ -94,6 +98,8 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 rounded-md"
               style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              autoComplete="email"
+              spellCheck={false}
               required
             />
           </div>
@@ -106,6 +112,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 rounded-md"
               style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              autoComplete="new-password"
               required minLength={6}
             />
           </div>
