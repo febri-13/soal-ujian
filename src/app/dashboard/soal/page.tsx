@@ -129,6 +129,9 @@ export default function SoaresPage() {
     setJawabanBenar(0)
     setBobot(getDefaultBobot(selectedTipe, selectedKesulitan))
     setEditingId(null)
+    setSelectedBab(matrixData[0]?.bab_id || "")
+    setSelectedTipe("pilgan")
+    setSelectedKesulitan("mudah")
   }
 
   const handleSaveSoal = async () => {
@@ -194,13 +197,13 @@ export default function SoaresPage() {
 
     setSaving(false)
 
-if (error) {
-        setToast({ message: "Error: " + error.message, type: "error" })
-      } else {
-        setToast({ message: "Soal berhasil disimpan!", type: "success" })
-        resetForm()
-        
-        const key = `${selectedBab}_${selectedTipe}_${selectedKesulitan}`
+    if (error) {
+      setToast({ message: "Error: " + error.message, type: "error" })
+    } else {
+      setToast({ message: "Soal berhasil disimpan!", type: "success" })
+      resetForm()
+      
+      const key = `${selectedBab}_${selectedTipe}_${selectedKesulitan}`
       setSoalStats(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }))
     }
   }

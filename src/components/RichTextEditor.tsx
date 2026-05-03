@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -12,7 +13,6 @@ import {
   Image as ImageIcon,
   Upload
 } from 'lucide-react'
-import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface RichTextEditorProps {
@@ -47,7 +47,7 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
         placeholder,
       }),
     ],
-    content,
+    content: content || "",
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML())
     },
@@ -57,6 +57,12 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
       },
     },
   })
+
+  useEffect(() => {
+    if (editor && content === "") {
+      editor.commands.setContent("")
+    }
+  }, [content, editor])
 
   if (!editor) {
     return null
