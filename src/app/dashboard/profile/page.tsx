@@ -44,8 +44,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  
-  const [whatsapp, setWhatsapp] = useState("")
+
+  const [nama, setNama] = useState("")
+  const [noHp, setNoHp] = useState("")
   const [noRekening, setNoRekening] = useState("")
   const [bank, setBank] = useState("")
   const [unitSekolah, setUnitSekolah] = useState("")
@@ -64,7 +65,7 @@ export default function ProfilePage() {
         .from("mata_pelajaran")
         .select("id, nama, kode")
         .order("nama")
-      
+
       if (mapelData) {
         setMataPelajaran(mapelData)
       }
@@ -82,6 +83,9 @@ export default function ProfilePage() {
         })
       }
 
+      setNama(profileData?.nama || u.user_metadata?.nama || "")
+      setNoHp(profileData?.no_hp || u.user_metadata?.no_hp || "")
+
       const { data } = await supabase
         .from("psat_guru_data")
         .select("*")
@@ -90,7 +94,6 @@ export default function ProfilePage() {
 
       if (data) {
         setGuruData(data)
-        setWhatsapp(data.whatsapp || "")
         setNoRekening(data.no_rekening || "")
         setBank(data.bank || "")
         setUnitSekolah(data.unit_sekolah || "")
@@ -105,6 +108,11 @@ export default function ProfilePage() {
     e.preventDefault()
     setSaving(true)
 
+    await supabase
+      .from("profiles")
+      .update({ nama, no_hp: noHp })
+      .eq("id", user.id)
+
     const { data: existing } = await supabase
       .from("psat_guru_data")
       .select("id")
@@ -114,23 +122,23 @@ export default function ProfilePage() {
     if (existing) {
       await supabase
         .from("psat_guru_data")
-        .update({ 
-          whatsapp, 
-          no_rekening: noRekening, 
-          bank, 
-          unit_sekolah: unitSekolah, 
+        .update({
+          whatsapp: noHp,
+          no_rekening: noRekening,
+          bank,
+          unit_sekolah: unitSekolah,
           mapel_id: mapelId || null,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         })
         .eq("id", existing.id)
     } else {
       await supabase
         .from("psat_guru_data")
-        .insert({ 
-          profile_id: user.id, 
-          whatsapp, 
-          no_rekening: noRekening, 
-          bank, 
+        .insert({
+          profile_id: user.id,
+          whatsapp: noHp,
+          no_rekening: noRekening,
+          bank,
           unit_sekolah: unitSekolah,
           mapel_id: mapelId || null
         })
@@ -138,7 +146,7 @@ export default function ProfilePage() {
 
     setSaving(false)
     setSaved(true)
-    
+
     setTimeout(() => {
       router.push("/dashboard")
     }, 1000)
@@ -160,7 +168,7 @@ export default function ProfilePage() {
             <button onClick={() => router.push("/dashboard")} style={{ color: "var(--color-muted-foreground)" }}>
               ← Kembali
             </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Lengkapi Data Diri</h1>
+            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Profil Saya</h1>
           </div>
         </div>
       </header>
@@ -174,20 +182,46 @@ export default function ProfilePage() {
           )}
 
           <p className="mb-6" style={{ color: "var(--color-muted-foreground)" }}>
-            Silakan lengkapi data diri Anda. Data ini diperlukan untuk keperluan administrasi.
+            Lengkapi atau perbarui data diri Anda.
           </p>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor WhatsApp</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nama Lengkap</label>
               <input
                 type="text"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="0821xxxxxxx"
-                className="w-full px-3 py-2 rounded-md"
+                value={nama}
+                onChange={(e) => setNama(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border"
                 style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Email</label>
+              <input
+                type="email"
+                value={user?.email || ""}
+                readOnly
+                className="w-full px-3 py-2 rounded-md border opacity-60 cursor-not-allowed"
+                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor HP</label>
+              <input
+                type="tel"
+                value={noHp}
+                onChange={(e) => setNoHp(e.target.value)}
+                placeholder="08123456789"
+                className="w-full px-3 py-2 rounded-md border"
+                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              />
+            </div>
+
+            <div className="pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
+              <p className="text-sm font-semibold mb-3 mt-3" style={{ color: "var(--color-foreground)" }}>Data Guru</p>
             </div>
 
             <div>
@@ -195,7 +229,7 @@ export default function ProfilePage() {
               <select
                 value={unitSekolah}
                 onChange={(e) => setUnitSekolah(e.target.value)}
-                className="w-full px-3 py-2 rounded-md"
+                className="w-full px-3 py-2 rounded-md border"
                 style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 <option value="">Pilih Unit Sekolah</option>
@@ -205,12 +239,27 @@ export default function ProfilePage() {
               </select>
             </div>
 
-<div>
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Mata Pelajaran</label>
+              <select
+                value={mapelId}
+                onChange={(e) => setMapelId(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border"
+                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              >
+                <option value="">Pilih Mata Pelajaran</option>
+                {mataPelajaran.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nama}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Bank</label>
               <select
                 value={bank}
                 onChange={(e) => setBank(e.target.value)}
-                className="w-full px-3 py-2 rounded-md"
+                className="w-full px-3 py-2 rounded-md border"
                 style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 <option value="">Pilih Bank</option>
@@ -221,18 +270,14 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Mata Pelajaran</label>
-              <select
-                value={mapelId}
-                onChange={(e) => setMapelId(e.target.value)}
-                className="w-full px-3 py-2 rounded-md"
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor Rekening</label>
+              <input
+                type="text"
+                value={noRekening}
+                onChange={(e) => setNoRekening(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border"
                 style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-              >
-                <option value="">Pilih Mata Pelajaran</option>
-                {mataPelajaran.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nama}</option>
-                ))}
-              </select>
+              />
             </div>
 
             <div className="flex gap-3 pt-4">

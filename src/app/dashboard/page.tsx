@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Check, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+
+const TIPE_OPTIONS = ["pilgan", "ceklist", "essay"]
+const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
 interface User {
   id: string
@@ -22,6 +26,10 @@ export default function DashboardPage() {
   const [revisionCount, setRevisionCount] = useState(0)
   const [mapelCounts, setMapelCounts] = useState<Record<string, number>>({})
   const [mapelNames, setMapelNames] = useState<Record<string, string>>({})
+  const [guruSoalStats, setGuruSoalStats] = useState({ total: 0, submitted: 0, approved: 0, needs_revision: 0, draft: 0 })
+  const [soalCounts, setSoalCounts] = useState<Record<string, number>>({})
+  const [patokan, setPatokan] = useState<Record<string, number>>({})
+  const [targetBank, setTargetBank] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -123,6 +131,82 @@ export default function DashboardPage() {
       }
       setMapelCounts(counts)
       setMapelNames(names)
+
+      // Load mapel guru & patokan
+      const { data: guruData } = await supabase
+        .from("psat_guru_data")
+        .select("mapel_id")
+        .eq("profile_id", u.id)
+        .maybeSingle()
+
+      if (guruData?.mapel_id) {
+        const { data: patokanRows } = await supabase
+          .from("psat_patokan_soal")
+          .select("*")
+          .eq("mapel_id", guruData.mapel_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+
+        const patokanData = patokanRows?.[0] || null
+        if (patokanData) {
+          const p: Record<string, number> = {}
+          const tipes = (patokanData.tipe || "").split(",")
+          const tingkatans = (patokanData.tingkat_kesulitan || "").split(",")
+          const keluarArr = (patokanData.keluar || "").split(",")
+          const bankArr = (patokanData.bank || "").split(",")
+          let i = 0
+          tipes.forEach((tipe: string) => {
+            tingkatans.forEach((kesulitan: string) => {
+              p[`${tipe}_${kesulitan}_keluar`] = parseInt(keluarArr[i]) || 0
+              p[`${tipe}_${kesulitan}_bank`] = parseInt(bankArr[i]) || 0
+              i++
+            })
+          })
+          setPatokan(p)
+        }
+      }
+
+      // Statistik soal milik guru ini
+      const { data: guruSoal } = await supabase
+        .from("bank_soal")
+        .select("status, tipe, tingkat_kesulitan")
+        .eq("guru_id", u.id)
+
+      if (guruSoal) {
+        const stats = { total: guruSoal.length, submitted: 0, approved: 0, needs_revision: 0, draft: 0 }
+        const counts: Record<string, number> = {}
+        guruSoal.forEach(s => {
+          if (s.status === "submitted") stats.submitted++
+          else if (s.status === "approved") stats.approved++
+          else if (s.status === "needs_revision") stats.needs_revision++
+          else stats.draft++
+          if (s.tipe && s.tingkat_kesulitan) {
+            const key = `${s.tipe}_${s.tingkat_kesulitan}`
+            counts[key] = (counts[key] || 0) + 1
+          }
+        })
+        setGuruSoalStats(stats)
+        setSoalCounts(counts)
+      }
+
+      // Target bank soal dari matrix
+      const { data: matrixBabs } = await supabase
+        .from("psat_matrix_input")
+        .select("data")
+        .eq("profile_id", u.id)
+        .eq("is_submitted", true)
+
+      if (matrixBabs) {
+        let total = 0
+        matrixBabs.forEach(bab => {
+          if (bab.data) {
+            Object.keys(bab.data).forEach(key => {
+              if (key.endsWith("_bank")) total += bab.data[key] || 0
+            })
+          }
+        })
+        setTargetBank(total)
+      }
 
       setLoading(false)
     }
@@ -256,20 +340,43 @@ export default function DashboardPage() {
             </button>
 
             {isAdmin && (
-              <button
-                onClick={() => goTo("/admin/users")}
-                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                style={{ 
-                  borderColor: "var(--color-border)", 
-                  backgroundColor: "var(--color-card)" 
-                }}
-              >
-                <div className="text-2xl mb-2">👥</div>
-                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Users</h3>
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  Kelola users & roles
-                </p>
-              </button>
+              <>
+                <button
+                  onClick={() => goTo("/admin/users")}
+                  className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                >
+                  <div className="text-2xl mb-2">👥</div>
+                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Users</h3>
+                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                    Kelola users & roles
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => goTo("/dashboard/admin/matrix")}
+                  className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                >
+                  <div className="text-2xl mb-2">📊</div>
+                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Matrix Guru</h3>
+                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                    Kelola & hapus matrix guru
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => goTo("/dashboard/admin")}
+                  className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
+                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+                >
+                  <div className="text-2xl mb-2">⚙️</div>
+                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Patokan Soal</h3>
+                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                    Atur target soal per mapel
+                  </p>
+                </button>
+              </>
             )}
           </div>
         ) : (
@@ -311,17 +418,18 @@ export default function DashboardPage() {
 
               <button
                 onClick={() => goTo("/dashboard/soal", true)}
-                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                style={{ 
-                  borderColor: "var(--color-border)", 
+                className="rounded-lg p-4 border text-left transition-opacity"
+                style={{
+                  borderColor: hasMatrix ? "var(--color-border)" : "var(--color-muted)",
                   backgroundColor: "var(--color-card)",
-                  opacity: 1
+                  opacity: hasMatrix ? 1 : 0.5,
+                  cursor: hasMatrix ? "pointer" : "not-allowed",
                 }}
               >
                 <div className="text-2xl mb-2">📝</div>
-                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Soal</h3>
+                <h3 className="font-medium" style={{ color: hasMatrix ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>Soal</h3>
                 <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  Input soal ujian
+                  {hasMatrix ? "Input soal ujian" : "Selesaikan matrix dulu"}
                 </p>
               </button>
 
@@ -344,11 +452,94 @@ export default function DashboardPage() {
             {!hasMatrix && (
               <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: "#fef3c7", borderColor: "#f59e0b" }}>
                 <p style={{ color: "#92400e" }}>
-                  💡 Tips: Isi matrix terlebih dahulu untuk dapat input soal. 
+                  💡 Tips: Isi matrix terlebih dahulu untuk dapat input soal.
                   Tetapi Anda bisa upload dokumen sekarang.
                 </p>
               </div>
             )}
+
+            {/* Statistik Soal */}
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-muted-foreground)" }}>STATISTIK SOAL SAYA</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  { label: "Total", value: guruSoalStats.total, color: "var(--color-foreground)", bg: "var(--color-card)" },
+                  { label: "Draft", value: guruSoalStats.draft, color: "#6b7280", bg: "#f9fafb" },
+                  { label: "Submitted", value: guruSoalStats.submitted, color: "#b45309", bg: "#fef3c7" },
+                  { label: "Approved", value: guruSoalStats.approved, color: "#15803d", bg: "#f0fdf4" },
+                  { label: "Perlu Revisi", value: guruSoalStats.needs_revision, color: "#dc2626", bg: "#fef2f2" },
+                ].map(({ label, value, color, bg }) => (
+                  <div key={label} className="rounded-lg p-4 border text-center" style={{ backgroundColor: bg, borderColor: "var(--color-border)" }}>
+                    <div className="text-2xl font-bold" style={{ color }}>{value}</div>
+                    <div className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {targetBank > 0 && (
+                <div className="mt-3 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span style={{ color: "var(--color-foreground)" }}>Progress Bank Soal</span>
+                    <span style={{ color: "var(--color-muted-foreground)" }}>{guruSoalStats.total} / {targetBank}</span>
+                  </div>
+                  <div className="w-full rounded-full h-2" style={{ backgroundColor: "var(--color-muted)" }}>
+                    <div
+                      className="h-2 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, Math.round((guruSoalStats.total / targetBank) * 100))}%`,
+                        backgroundColor: guruSoalStats.total >= targetBank ? "#22c55e" : "#3b82f6",
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                    {guruSoalStats.total >= targetBank
+                      ? "Target bank soal tercapai"
+                      : `${targetBank - guruSoalStats.total} soal lagi untuk memenuhi target`}
+                  </p>
+                </div>
+              )}
+
+              {/* Progress per tipe × kesulitan vs patokan */}
+              {Object.keys(patokan).length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--color-muted-foreground)" }}>PROGRESS VS PATOKAN</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {TIPE_OPTIONS.map(tipe => (
+                      <div key={tipe} className="rounded-lg p-3 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+                        <div className="text-sm font-semibold capitalize mb-2" style={{ color: "var(--color-foreground)" }}>{tipe}</div>
+                        <div className="flex gap-1 mb-1">
+                          <span className="text-xs flex-1" />
+                          <span className="text-xs w-16 text-center" style={{ color: "var(--color-muted-foreground)" }}>soal keluar</span>
+                          <span className="text-xs w-16 text-center" style={{ color: "var(--color-muted-foreground)" }}>bank soal</span>
+                        </div>
+                        {KESULITAN_OPTIONS.map(kesulitan => {
+                          const dibuat = soalCounts[`${tipe}_${kesulitan}`] || 0
+                          const targetKeluar = patokan[`${tipe}_${kesulitan}_keluar`] || 0
+                          const targetBankVal = patokan[`${tipe}_${kesulitan}_bank`] || 0
+                          const okKeluar = targetKeluar > 0 && dibuat >= targetKeluar
+                          const okBank = targetBankVal > 0 && dibuat >= targetBankVal
+                          return (
+                            <div key={kesulitan} className="flex items-center gap-1 mb-1">
+                              <span className="text-xs flex-1 capitalize" style={{ color: "var(--color-muted-foreground)" }}>{kesulitan}</span>
+                              <span className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
+                                style={{ backgroundColor: targetKeluar === 0 ? "var(--color-muted)" : okKeluar ? "#f0fdf4" : "#fef2f2", color: targetKeluar === 0 ? "var(--color-muted-foreground)" : okKeluar ? "#15803d" : "#dc2626" }}>
+                                {targetKeluar > 0 && (okKeluar ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />)}
+                                {dibuat}/{targetKeluar}
+                              </span>
+                              <span className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
+                                style={{ backgroundColor: targetBankVal === 0 ? "var(--color-muted)" : okBank ? "#f0fdf4" : "#fef2f2", color: targetBankVal === 0 ? "var(--color-muted-foreground)" : okBank ? "#15803d" : "#dc2626" }}>
+                                {targetBankVal > 0 && (okBank ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />)}
+                                {dibuat}/{targetBankVal}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         )}
       </main>

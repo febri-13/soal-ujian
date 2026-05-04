@@ -1,12 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Check, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 interface Bab {
   id: string
   nama_bab: string
+  is_submitted: boolean
 }
 
 interface ToastProps {
@@ -124,6 +126,7 @@ export default function MatrixPage() {
   const [guruMapelId, setGuruMapelId] = useState<string | null>(null)
   const [babs, setBabs] = useState<Bab[]>([])
   const [matrixData, setMatrixData] = useState<Record<string, any>>({})
+  const matrixDataRef = useRef<Record<string, any>>({})
   const [patokan, setPatokan] = useState<Record<string, number>>(INITIAL_PATAKAN)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,6 +137,35 @@ export default function MatrixPage() {
   const [editingBab, setEditingBab] = useState<string | null>(null)
   const [editBabName, setEditBabName] = useState("")
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
+
+  const loadBabsFromDB = async (userId: string) => {
+    const { data: existingBabs } = await supabase
+      .from("psat_matrix_input")
+      .select("bab_id_text, data, is_submitted")
+      .eq("profile_id", userId)
+
+    if (existingBabs && existingBabs.length > 0) {
+      const dataMap: Record<string, any> = {}
+      existingBabs.forEach(b => {
+        let parsed = b.data
+        if (typeof parsed === "string") {
+          try { parsed = JSON.parse(parsed) } catch { parsed = null }
+        }
+        dataMap[b.bab_id_text] = { ...INITIAL_DATA, ...(parsed || {}) }
+      })
+      matrixDataRef.current = dataMap
+      setMatrixData(dataMap)
+      setBabs(existingBabs.map(b => ({
+        id: b.bab_id_text,
+        nama_bab: b.bab_id_text || "Bab",
+        is_submitted: b.is_submitted,
+      })))
+    } else {
+      matrixDataRef.current = {}
+      setMatrixData({})
+      setBabs([])
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -149,58 +181,35 @@ export default function MatrixPage() {
         .select("mapel_id")
         .eq("profile_id", u.id)
         .maybeSingle()
-      
+
       if (guruData?.mapel_id) {
         setGuruMapelId(guruData.mapel_id)
       }
 
-      const { data: existingBabs } = await supabase
-        .from("psat_matrix_input")
-        .select("bab_id, data, is_submitted, mapel_id")
-        .eq("profile_id", u.id)
+      await loadBabsFromDB(u.id)
 
-      if (existingBabs && existingBabs.length > 0) {
-        console.log("Loaded babs from DB:", existingBabs)
-        setBabs(existingBabs.map(b => ({ id: b.bab_id, nama_bab: b.bab_id || "Bab" })))
-        const dataMap: Record<string, any> = {}
-        existingBabs.forEach(b => {
-          console.log("Loading bab:", b.bab_id, "data:", b.data)
-          dataMap[b.bab_id] = b.data || INITIAL_DATA
-        })
-        setMatrixData(dataMap)
-      }
-
-      const { data: patokanData, error: patokanError } = await supabase
+      const { data: patokanRows } = await supabase
         .from("psat_patokan_soal")
         .select("*")
-        .eq("profile_id", u.id)
-        .maybeSingle()
+        .eq("mapel_id", guruData?.mapel_id ?? "")
+        .order("created_at", { ascending: false })
+        .limit(1)
 
-      if (patokanError) {
-        console.error("Patokan load error:", patokanError)
-      }
-
+      const patokanData = patokanRows?.[0] || null
       if (patokanData) {
         const p: Record<string, number> = {}
-        console.log("Loaded patokan:", patokanData)
-        
         const tipes = (patokanData.tipe || "").split(",")
         const tingkatans = (patokanData.tingkat_kesulitan || "").split(",")
         const keluarArr = (patokanData.keluar || "").split(",")
         const bankValues = (patokanData.bank || "").split(",")
-        
         let arrIdx = 0
         tipes.forEach((tipe: string) => {
           tingkatans.forEach((kesulitan: string) => {
-            const keluar = parseInt(keluarArr[arrIdx]) || 0
-            const bank = parseInt(bankValues[arrIdx]) || 0
-            p[`${tipe}_${kesulitan}_keluar`] = keluar
-            p[`${tipe}_${kesulitan}_bank`] = bank
+            p[`${tipe}_${kesulitan}_keluar`] = parseInt(keluarArr[arrIdx]) || 0
+            p[`${tipe}_${kesulitan}_bank`] = parseInt(bankValues[arrIdx]) || 0
             arrIdx++
           })
         })
-        
-        console.log("Parsed patokan:", p)
         setPatokan({ ...INITIAL_PATAKAN, ...p })
       }
 
@@ -208,6 +217,11 @@ export default function MatrixPage() {
     }
     load()
   }, [router])
+
+  const setMatrixDataSync = (newData: Record<string, any>) => {
+    matrixDataRef.current = newData
+    setMatrixData(newData)
+  }
 
   const calculateTotals = () => {
     const totals: Record<string, number> = {}
@@ -257,7 +271,7 @@ export default function MatrixPage() {
       .insert({
         profile_id: user.id,
         mapel_id: guruMapelId,
-        bab_id: newBabName.trim(),
+        bab_id_text: newBabName.trim(),
         data: INITIAL_DATA,
         is_submitted: false,
       })
@@ -267,20 +281,21 @@ export default function MatrixPage() {
       return
     }
 
-    setBabs([...babs, { id: newBabName.trim(), nama_bab: newBabName.trim() }])
-    setMatrixData({ ...matrixData, [newBabName.trim()]: INITIAL_DATA })
+    setBabs([...babs, { id: newBabName.trim(), nama_bab: newBabName.trim(), is_submitted: false }])
+    setMatrixDataSync({ ...matrixDataRef.current, [newBabName.trim()]: INITIAL_DATA })
     setNewBabName("")
     setIsAdding(false)
   }
 
   const handleDeleteBab = async (babId: string) => {
+    if (babs.find(b => b.id === babId)?.is_submitted) return
     if (!confirm(`Hapus "${babId}"? Data matrix akan hilang.`)) return
 
     const { error } = await supabase
       .from("psat_matrix_input")
       .delete()
       .eq("profile_id", user.id)
-      .eq("bab_id", babId)
+      .eq("bab_id_text", babId)
 
     if (error) {
       setToast({ message: "Error: " + error.message, type: "error" })
@@ -288,29 +303,30 @@ export default function MatrixPage() {
     }
 
     setBabs(babs.filter(b => b.id !== babId))
-    const newData = { ...matrixData }
+    const newData = { ...matrixDataRef.current }
     delete newData[babId]
-    setMatrixData(newData)
+    setMatrixDataSync(newData)
   }
 
   const handleRenameBab = async (oldId: string) => {
     if (!editBabName.trim() || !user) return
+    if (babs.find(b => b.id === oldId)?.is_submitted) { setEditingBab(null); return }
 
     await supabase
       .from("psat_matrix_input")
       .update({
-        bab_id: editBabName.trim(),
+        bab_id_text: editBabName.trim(),
         updated_at: new Date().toISOString()
       })
       .eq("profile_id", user.id)
-      .eq("bab_id", oldId)
+      .eq("bab_id_text", oldId)
 
-    const newData = { ...matrixData }
+    const newData = { ...matrixDataRef.current }
     newData[editBabName.trim()] = newData[oldId]
     delete newData[oldId]
 
     setBabs(babs.map(b => b.id === oldId ? { ...b, id: editBabName.trim(), nama_bab: editBabName.trim() } : b))
-    setMatrixData(newData)
+    setMatrixDataSync(newData)
     setEditingBab(null)
     setEditBabName("")
   }
@@ -318,50 +334,45 @@ export default function MatrixPage() {
   const handleFieldChange = (babId: string, field: string, value: number) => {
     if (field.endsWith("_keluar")) {
       const baseField = field.replace("_keluar", "_bank")
-      const currentBank = (matrixData[babId] as any)?.[baseField] || 0
-      
+      const currentBank = (matrixDataRef.current[babId] as any)?.[baseField] || 0
+
       if (value > currentBank) {
         setToast({ message: `Soal keluar (${value}) tidak boleh melebihi bank soal (${currentBank})`, type: "error" })
         return
       }
-      
+
       if (currentBank > 0 && value === 0) {
         setToast({ message: "Soal keluar minimal 1 jika bank soal tidak sama dengan 0", type: "error" })
         return
       }
     }
-    
-    setMatrixData({
-      ...matrixData,
+
+    setMatrixDataSync({
+      ...matrixDataRef.current,
       [babId]: {
-        ...matrixData[babId],
+        ...matrixDataRef.current[babId],
         [field]: value,
       }
     })
   }
 
   const handleSave = async (babId: string) => {
-    if (!user || !matrixData[babId]) return
+    if (!user || !matrixDataRef.current[babId]) return
 
-    console.log("Saving bab:", babId, "data:", matrixData[babId])
-    
     const { error } = await supabase
       .from("psat_matrix_input")
-      .update({ data: matrixData[babId], updated_at: new Date().toISOString() })
+      .update({ data: matrixDataRef.current[babId], updated_at: new Date().toISOString() })
       .eq("profile_id", user.id)
-      .eq("bab_id", babId)
-    
+      .eq("bab_id_text", babId)
+
     if (error) {
-      console.error("Save error:", error)
-      setToast({ message: "Error saving: " + error.message, type: "error" })
-    } else {
-      console.log("Saved successfully!")
+      setToast({ message: "Error menyimpan: " + error.message, type: "error" })
     }
   }
 
   const validateBabData = (babId: string): string[] => {
     const errors: string[] = []
-    const babData = matrixData[babId] as any
+    const babData = matrixDataRef.current[babId] as any
     
     TIPE_OPTIONS.forEach(tipe => {
       KESULITAN_OPTIONS.forEach(kesulitan => {
@@ -399,11 +410,16 @@ export default function MatrixPage() {
 
     await supabase
       .from("psat_matrix_input")
-      .update({ is_submitted: true, updated_at: new Date().toISOString() })
+      .update({
+        data: matrixDataRef.current[babId],
+        is_submitted: true,
+        updated_at: new Date().toISOString(),
+      })
       .eq("profile_id", user.id)
-      .eq("bab_id", babId)
+      .eq("bab_id_text", babId)
 
     setSaving(false)
+    await loadBabsFromDB(user.id)
     setToast({ message: `Matrix "${babId}" submitted!`, type: "success" })
   }
 
@@ -430,73 +446,18 @@ export default function MatrixPage() {
     for (const bab of babs) {
       await supabase
         .from("psat_matrix_input")
-        .update({ is_submitted: true, updated_at: new Date().toISOString() })
+        .update({
+          data: matrixDataRef.current[bab.id],
+          is_submitted: true,
+          updated_at: new Date().toISOString(),
+        })
         .eq("profile_id", user.id)
-        .eq("bab_id", bab.id)
+        .eq("bab_id_text", bab.id)
     }
 
     setSaving(false)
+    await loadBabsFromDB(user.id)
     setToast({ message: "Semua matrix submitted!", type: "success" })
-  }
-
-  const handlePatokanChange = (field: string, value: number) => {
-    setPatokan({ ...patokan, [field]: value })
-  }
-
-  const handleSavePatokan = async () => {
-    if (!user) return
-
-    const tipes = TIPE_OPTIONS.map(t => t).join(",")
-    const tingkat = KESULITAN_OPTIONS.map(k => k).join(",")
-    const keluarValues = TIPE_OPTIONS.flatMap(t => 
-      KESULITAN_OPTIONS.map(k => patokan[`${t}_${k}_keluar`])
-    ).join(",")
-    const bankValues = TIPE_OPTIONS.flatMap(t => 
-      KESULITAN_OPTIONS.map(k => patokan[`${t}_${k}_bank`])
-    ).join(",")
-
-    const { data: existing } = await supabase
-      .from("psat_patokan_soal")
-      .select("id")
-      .eq("profile_id", user.id)
-      .maybeSingle()
-
-    if (existing) {
-      const { error: updateError } = await supabase
-        .from("psat_patokan_soal")
-        .update({
-          mapel_id: guruMapelId,
-          tipe: tipes,
-          tingkat_kesulitan: tingkat,
-          keluar: keluarValues,
-          bank: bankValues,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", existing.id)
-      
-      if (updateError) {
-        setToast({ message: "Error: " + updateError.message, type: "error" })
-        return
-      }
-    } else {
-      const { error: insertError } = await supabase
-        .from("psat_patokan_soal")
-        .insert({
-          profile_id: user.id,
-          mapel_id: guruMapelId,
-          tipe: tipes,
-          tingkat_kesulitan: tingkat,
-          keluar: keluarValues,
-          bank: bankValues,
-        })
-      
-      if (insertError) {
-        setToast({ message: "Error: " + insertError.message, type: "error" })
-        return
-      }
-    }
-
-    setToast({ message: "Patokan saved!", type: "success" })
   }
 
   if (loading) {
@@ -523,7 +484,7 @@ export default function MatrixPage() {
           <div className="flex gap-2 overflow-x-auto">
             {babs.map((bab) => (
               <div key={bab.id} className="flex items-center gap-1">
-                {editingBab === bab.id ? (
+                {!bab.is_submitted && editingBab === bab.id ? (
                   <input
                     autoFocus
                     type="text"
@@ -536,21 +497,27 @@ export default function MatrixPage() {
                   />
                 ) : (
                   <span
-                    className="px-3 py-1 rounded-full text-sm font-medium cursor-pointer"
-                    style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
-                    onClick={() => { setEditingBab(bab.id); setEditBabName(bab.nama_bab) }}
+                    className="px-3 py-1 rounded-full text-sm font-medium"
+                    style={{
+                      backgroundColor: bab.is_submitted ? "#22c55e" : "var(--color-primary)",
+                      color: bab.is_submitted ? "#fff" : "var(--color-primary-foreground)",
+                      cursor: bab.is_submitted ? "default" : "pointer",
+                    }}
+                    onClick={() => { if (!bab.is_submitted) { setEditingBab(bab.id); setEditBabName(bab.nama_bab) } }}
                   >
-                    {bab.nama_bab}
+                    {bab.nama_bab} {bab.is_submitted && "✓"}
                   </span>
                 )}
-                <button
-                  onClick={() => handleDeleteBab(bab.id)}
-                  className="text-xs"
-                  style={{ color: "var(--color-destructive)" }}
-                  title="Hapus"
-                >
-                  ×
-                </button>
+                {!bab.is_submitted && (
+                  <button
+                    onClick={() => handleDeleteBab(bab.id)}
+                    className="text-xs"
+                    style={{ color: "var(--color-destructive)" }}
+                    title="Hapus"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             ))}
 
@@ -582,63 +549,67 @@ export default function MatrixPage() {
           </div>
         </div>
 
-        {/* Patokan Input */}
+        {/* Patokan — statistik dibuat/target */}
         <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Target Jumlah (Keluar & Bank)</h3>
-            <button
-              onClick={handleSavePatokan}
-              className="text-sm py-1 px-3 rounded"
-              style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
-            >
-              Simpan Target
-            </button>
+            <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Progress Soal</h3>
+            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+              dibuat / patokan
+            </span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {TIPE_OPTIONS.map(tipe => (
               <div key={tipe}>
-                <div className="text-sm font-medium mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>
+                <div className="text-sm font-semibold mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>
                   {tipe}
                 </div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs w-16" style={{ color: "var(--color-muted-foreground)" }}></span>
-                  <span className="text-xs w-14 text-center" style={{ color: "var(--color-muted-foreground)" }}>soal</span>
-                  <span className="text-xs w-14 text-center" style={{ color: "var(--color-muted-foreground)" }}>bank</span>
+                  <span className="text-xs w-16" />
+                  <span className="text-xs w-20 text-center" style={{ color: "var(--color-muted-foreground)" }}>soal keluar</span>
+                  <span className="text-xs w-20 text-center" style={{ color: "var(--color-muted-foreground)" }}>bank soal</span>
                 </div>
                 {KESULITAN_OPTIONS.map(kesulitan => {
+                  const totals = calculateTotals()
+                  const totalKeluar = totals[`${tipe}_${kesulitan}_keluar`] || 0
+                  const totalBank = totals[`${tipe}_${kesulitan}_bank`] || 0
+                  const targetKeluar = patokan[`${tipe}_${kesulitan}_keluar`] || 0
+                  const targetBank = patokan[`${tipe}_${kesulitan}_bank`] || 0
+                  const okKeluar = targetKeluar > 0 && totalKeluar >= targetKeluar
+                  const okBank = targetBank > 0 && totalBank >= targetBank
+
                   return (
                     <div key={kesulitan} className="flex items-center gap-2 mb-1">
                       <span className="text-xs capitalize w-16" style={{ color: "var(--color-muted-foreground)" }}>{kesulitan}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={patokan[`${tipe}_${kesulitan}_keluar`] || 0}
-                        onChange={(e) => handlePatokanChange(`${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
-                        className="w-14 px-2 py-1 rounded text-sm text-center"
-                        style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        value={patokan[`${tipe}_${kesulitan}_bank`] || 0}
-                        onChange={(e) => handlePatokanChange(`${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
-                        className="w-14 px-2 py-1 rounded text-sm text-center"
-                        style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                      />
+                      <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium flex items-center justify-center gap-1"
+                        style={{ backgroundColor: targetKeluar === 0 ? "var(--color-muted)" : okKeluar ? "#f0fdf4" : "#fef2f2", color: targetKeluar === 0 ? "var(--color-muted-foreground)" : okKeluar ? "#15803d" : "#dc2626" }}>
+                        {targetKeluar > 0 && (okKeluar
+                          ? <Check className="w-3 h-3 shrink-0" />
+                          : <X className="w-3 h-3 shrink-0" />
+                        )}
+                        {totalKeluar}/{targetKeluar}
+                      </span>
+                      <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium flex items-center justify-center gap-1"
+                        style={{ backgroundColor: targetBank === 0 ? "var(--color-muted)" : okBank ? "#f0fdf4" : "#fef2f2", color: targetBank === 0 ? "var(--color-muted-foreground)" : okBank ? "#15803d" : "#dc2626" }}>
+                        {targetBank > 0 && (okBank
+                          ? <Check className="w-3 h-3 shrink-0" />
+                          : <X className="w-3 h-3 shrink-0" />
+                        )}
+                        {totalBank}/{targetBank}
+                      </span>
                     </div>
                   )
                 })}
-                {babs.length > 0 && (
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-                    <span className="text-xs font-medium w-16" style={{ color: "var(--color-foreground)" }}>TOTAL</span>
-                    <span className="w-14 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                      {KESULITAN_OPTIONS.reduce((sum, k) => sum + (patokan[`${tipe}_${k}_keluar`] || 0), 0)}
-                    </span>
-                    <span className="w-14 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                      {KESULITAN_OPTIONS.reduce((sum, k) => sum + (patokan[`${tipe}_${k}_bank`] || 0), 0)}
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
+                  <span className="text-xs font-medium w-16" style={{ color: "var(--color-foreground)" }}>Total</span>
+                  <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
+                    {KESULITAN_OPTIONS.reduce((s, k) => s + (calculateTotals()[`${tipe}_${k}_keluar`] || 0), 0)}/
+                    {KESULITAN_OPTIONS.reduce((s, k) => s + (patokan[`${tipe}_${k}_keluar`] || 0), 0)}
+                  </span>
+                  <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
+                    {KESULITAN_OPTIONS.reduce((s, k) => s + (calculateTotals()[`${tipe}_${k}_bank`] || 0), 0)}/
+                    {KESULITAN_OPTIONS.reduce((s, k) => s + (patokan[`${tipe}_${k}_bank`] || 0), 0)}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -703,10 +674,11 @@ export default function MatrixPage() {
                             type="number"
                             min="0"
                             value={(matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_keluar`] || 0}
-                            onChange={(e) => handleFieldChange(bab.id, `${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
-                            onBlur={() => handleSave(bab.id)}
+                            onChange={(e) => !bab.is_submitted && handleFieldChange(bab.id, `${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
+                            onBlur={() => !bab.is_submitted && handleSave(bab.id)}
+                            disabled={bab.is_submitted}
                             className="w-full px-1 py-1 rounded text-center text-sm"
-                            style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                            style={{ backgroundColor: bab.is_submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: bab.is_submitted ? "not-allowed" : "auto" }}
                           />
                         </td>,
                         <td key={`${bab.id}-bank`} className="p-1 border" style={{ borderColor: "var(--color-border)" }}>
@@ -714,10 +686,11 @@ export default function MatrixPage() {
                             type="number"
                             min="0"
                             value={(matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_bank`] || 0}
-                            onChange={(e) => handleFieldChange(bab.id, `${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
-                            onBlur={() => handleSave(bab.id)}
+                            onChange={(e) => !bab.is_submitted && handleFieldChange(bab.id, `${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
+                            onBlur={() => !bab.is_submitted && handleSave(bab.id)}
+                            disabled={bab.is_submitted}
                             className="w-full px-1 py-1 rounded text-center text-sm"
-                            style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                            style={{ backgroundColor: bab.is_submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: bab.is_submitted ? "not-allowed" : "auto" }}
                           />
                         </td>,
                       ])}
@@ -736,15 +709,15 @@ export default function MatrixPage() {
         )}
 
         {/* Submit All */}
-        {babs.length > 0 && (
+        {babs.length > 0 && babs.some(b => !b.is_submitted) && (
           <div className="mt-4 flex justify-end gap-2">
             <button
               onClick={handleSubmitAll}
               disabled={saving}
-              className="py-2 px-4 rounded-md font-medium"
+              className="py-2 px-4 rounded-md font-medium disabled:opacity-50"
               style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
             >
-              Submit Semua
+              {saving ? "Menyimpan..." : "Submit Semua"}
             </button>
           </div>
         )}

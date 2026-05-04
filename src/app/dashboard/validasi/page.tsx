@@ -85,9 +85,9 @@ export default function ValidasiPage() {
 
       const { data: soal } = await supabase
         .from("bank_soal")
-        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,guru_id")
+        .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,revision_history,guru_id")
         .eq("mata_pelajaran_id", selectedMapel)
-        .eq("status", "submitted")
+        .in("status", ["submitted", "needs_revision", "approved"])
         .order("created_at", { ascending: true })
 
       if (soal) {
@@ -110,11 +110,17 @@ export default function ValidasiPage() {
       fullNotes = notes ? `[${validatorName}] ${notes}` : `[${validatorName}] Review`
     }
     
+    // Get current history
+    const currentSoal = soalList.find(s => s.id === soalId)
+    const currentHistory = currentSoal?.revision_history || []
+    const newHistory = [...currentHistory, fullNotes]
+    
     const { error } = await supabase
       .from("bank_soal")
       .update({ 
         status: newStatus, 
         revision_notes: fullNotes,
+        revision_history: newHistory,
         updated_at: new Date().toISOString() 
       })
       .eq("id", soalId)
@@ -126,7 +132,7 @@ export default function ValidasiPage() {
     } else {
       setToast({ message: "Status updated!", type: "success" })
       setSoalList(prev => prev.map(s => 
-        s.id === soalId ? { ...s, status: newStatus, revision_notes: fullNotes } : s
+        s.id === soalId ? { ...s, status: newStatus, revision_notes: fullNotes, revision_history: newHistory } : s
       ))
       setRevisionNotes(prev => ({ ...prev, [soalId]: "" }))
     }
@@ -259,6 +265,19 @@ export default function ValidasiPage() {
                       <div className="ml-10 mt-2 p-2 rounded bg-green-50 border border-green-200 text-green-700 text-xs">
                         <strong>{soal.revision_notes.match(/^\[([^\]]+)\]/)?.[1] || "Validator"}:</strong> {getRevisionNotes(soal.revision_notes)}
                       </div>
+                    )}
+
+                    {soal.revision_history && soal.revision_history.length > 1 && (
+                      <details className="ml-10 mt-2">
+                        <summary className="text-xs cursor-pointer text-gray-500">Lihat history ({soal.revision_history.length} catatan)</summary>
+                        <div className="mt-1 space-y-1">
+                          {soal.revision_history.map((h: string, i: number) => (
+                            <div key={i} className="text-xs p-1 rounded bg-gray-50 border">
+                              {h}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     )}
 
                     <div className="ml-10 mt-2 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
