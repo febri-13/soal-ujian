@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { BookOpen, LogIn, UserPlus, TrendingUp, CheckCircle, Clock, AlertCircle } from "lucide-react"
+import { BookOpen, LogIn, UserPlus, TrendingUp, CheckCircle, Clock, AlertCircle, Download, Eye, LayoutGrid } from "lucide-react"
 
 export const revalidate = 300
 
@@ -13,6 +13,8 @@ interface MapelProgress {
   submitted: number
   draft: number
   needs_revision: number
+  glossary_url: string | null
+  kisi_kisi_url: string | null
 }
 
 export default async function HomePage() {
@@ -31,7 +33,7 @@ export default async function HomePage() {
         className="sticky top-0 z-10 border-b"
         style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
       >
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BookOpen className="w-6 h-6" style={{ color: "var(--color-primary)" }} />
             <div>
@@ -67,7 +69,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <SummaryCard
@@ -124,30 +126,15 @@ export default async function HomePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-muted)" }}>
-                    <th className="px-3 py-2 text-left font-medium w-8" style={{ color: "var(--color-muted-foreground)" }}>
-                      No
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>
-                      Mata Pelajaran
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>
-                      Guru
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium min-w-36" style={{ color: "var(--color-muted-foreground)" }}>
-                      Progress
-                    </th>
-                    <th className="px-3 py-2 text-center font-medium" style={{ color: "#15803d" }}>
-                      Approved
-                    </th>
-                    <th className="px-3 py-2 text-center font-medium" style={{ color: "#b45309" }}>
-                      Submitted
-                    </th>
-                    <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--color-muted-foreground)" }}>
-                      Draft
-                    </th>
-                    <th className="px-3 py-2 text-center font-medium" style={{ color: "#dc2626" }}>
-                      Revisi
-                    </th>
+                    <th className="px-3 py-2 text-left font-medium w-8" style={{ color: "var(--color-muted-foreground)" }}>No</th>
+                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Mata Pelajaran</th>
+                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Guru</th>
+                    <th className="px-3 py-2 text-left font-medium min-w-36" style={{ color: "var(--color-muted-foreground)" }}>Progress</th>
+                    <th className="px-3 py-2 text-center font-medium" style={{ color: "#15803d" }}>Approved</th>
+                    <th className="px-3 py-2 text-center font-medium" style={{ color: "#b45309" }}>Submitted</th>
+                    <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--color-muted-foreground)" }}>Draft</th>
+                    <th className="px-3 py-2 text-center font-medium" style={{ color: "#dc2626" }}>Revisi</th>
+                    <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -190,10 +177,7 @@ export default async function HomePage() {
                           {row.guru_nama ?? "—"}
                         </td>
                         <td className="px-3 py-3">
-                          <div
-                            className="w-full rounded-full h-2 mb-1"
-                            style={{ backgroundColor: "var(--color-muted)" }}
-                          >
+                          <div className="w-full rounded-full h-2 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
                             <div
                               className="h-2 rounded-full transition-all"
                               style={{ width: `${pct}%`, backgroundColor: barColor }}
@@ -203,17 +187,37 @@ export default async function HomePage() {
                             {approved}/{total} ({pct}%)
                           </span>
                         </td>
-                        <td className="px-3 py-3 text-center font-medium" style={{ color: "#15803d" }}>
-                          {approved}
-                        </td>
-                        <td className="px-3 py-3 text-center font-medium" style={{ color: "#b45309" }}>
-                          {submitted}
-                        </td>
-                        <td className="px-3 py-3 text-center" style={{ color: "var(--color-muted-foreground)" }}>
-                          {draft}
-                        </td>
+                        <td className="px-3 py-3 text-center font-medium" style={{ color: "#15803d" }}>{approved}</td>
+                        <td className="px-3 py-3 text-center font-medium" style={{ color: "#b45309" }}>{submitted}</td>
+                        <td className="px-3 py-3 text-center" style={{ color: "var(--color-muted-foreground)" }}>{draft}</td>
                         <td className="px-3 py-3 text-center font-medium" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>
                           {needs_revision}
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <ActionButton
+                              href={row.glossary_url}
+                              icon={<Download className="w-3.5 h-3.5" />}
+                              label="Glossary"
+                              newTab
+                            />
+                            <ActionButton
+                              href={row.kisi_kisi_url}
+                              icon={<Download className="w-3.5 h-3.5" />}
+                              label="Kisi-kisi"
+                              newTab
+                            />
+                            <ActionButton
+                              href={`/soal/${row.mapel_id}`}
+                              icon={<Eye className="w-3.5 h-3.5" />}
+                              label="Soal"
+                            />
+                            <ActionButton
+                              href={`/matrix/${row.mapel_id}`}
+                              icon={<LayoutGrid className="w-3.5 h-3.5" />}
+                              label="Matrix"
+                            />
+                          </div>
                         </td>
                       </tr>
                     )
@@ -229,6 +233,56 @@ export default async function HomePage() {
         © 2026 PSAT SMP Al Abidin
       </footer>
     </div>
+  )
+}
+
+function ActionButton({
+  href,
+  icon,
+  label,
+  newTab,
+}: {
+  href: string | null | undefined
+  icon: React.ReactNode
+  label: string
+  newTab?: boolean
+}) {
+  const className = "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border"
+  if (!href) {
+    return (
+      <span
+        className={className}
+        style={{
+          backgroundColor: "var(--color-muted)",
+          borderColor: "var(--color-border)",
+          color: "var(--color-muted-foreground)",
+          opacity: 0.4,
+          cursor: "not-allowed",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {icon}
+        {label}
+      </span>
+    )
+  }
+  return (
+    <a
+      href={href}
+      target={newTab ? "_blank" : undefined}
+      rel={newTab ? "noopener noreferrer" : undefined}
+      className={className}
+      style={{
+        backgroundColor: "var(--color-muted)",
+        borderColor: "var(--color-border)",
+        color: "var(--color-foreground)",
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {icon}
+      {label}
+    </a>
   )
 }
 
