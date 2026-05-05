@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { normalizePhone, isValidPhone } from "@/lib/phone"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
-  const [noHp, setNoHp] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -17,20 +18,8 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    const normalized = normalizePhone(noHp)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (!isValidPhone(normalized)) {
-      setError("Format nomor HP tidak valid. Contoh: 081234567890")
-      setLoading(false)
-      return
-    }
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: normalized,
-    })
-
-    // Audit log (best-effort, jangan blocking kalau gagal)
     void supabase.from("login_log").insert({
       email,
       success: !signInError,
@@ -38,7 +27,7 @@ export default function LoginPage() {
     })
 
     if (signInError) {
-      setError("Email atau nomor HP salah.")
+      setError("Email atau password salah.")
       setLoading(false)
       return
     }
@@ -67,17 +56,26 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor HP</label>
-            <input
-              type="tel"
-              value={noHp}
-              onChange={(e) => setNoHp(e.target.value)}
-              placeholder="08123456789"
-              className="w-full px-3 py-2 rounded-md border"
-              style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-              autoComplete="tel"
-              required
-            />
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 pr-9 rounded-md border"
+                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2"
+                style={{ color: "var(--color-muted-foreground)" }}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-sm" style={{ color: "var(--color-destructive)" }}>{error}</p>}
@@ -91,11 +89,6 @@ export default function LoginPage() {
             {loading ? "Memuat..." : "Login"}
           </button>
         </form>
-
-        <p className="mt-4 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-          Belum punya akun?{" "}
-          <a href="/register" style={{ color: "var(--color-primary)" }}>Daftar</a>
-        </p>
       </div>
     </div>
   )

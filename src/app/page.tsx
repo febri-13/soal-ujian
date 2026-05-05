@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { BookOpen, LogIn, UserPlus, TrendingUp, CheckCircle, Clock, AlertCircle, Download, Eye, LayoutGrid } from "lucide-react"
+import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, LayoutGrid } from "lucide-react"
 
 export const revalidate = 300
 
@@ -44,27 +44,6 @@ export default async function HomePage() {
                 Progress Upload Soal Ujian
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border"
-              style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-            >
-              <LogIn className="w-4 h-4" />
-              Login
-            </a>
-            <a
-              href="/register"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-primary-foreground)",
-              }}
-            >
-              <UserPlus className="w-4 h-4" />
-              Daftar
-            </a>
           </div>
         </div>
       </header>
@@ -206,11 +185,6 @@ export default async function HomePage() {
                               icon={<Download className="w-3.5 h-3.5" />}
                               label="Kisi-kisi"
                               newTab
-                            />
-                            <ActionButton
-                              href={`/soal/${row.mapel_id}`}
-                              icon={<Eye className="w-3.5 h-3.5" />}
-                              label="Soal"
                             />
                             <ActionButton
                               href={`/matrix/${row.mapel_id}`}
