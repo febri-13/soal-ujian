@@ -8,7 +8,7 @@ interface MatrixRow {
   data: Record<string, number>
 }
 
-const TIPE_OPTIONS = ["pilgan", "ceklist", "essay"]
+const TIPE_OPTIONS = ["pilgan", "ceklist", "essay", "isian_singkat"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
 export default async function PublikMatrixPage({ params }: { params: Promise<{ mapelId: string }> }) {

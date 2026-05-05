@@ -13,13 +13,14 @@ interface BabMatrix {
   data: Record<string, number>
 }
 
-const TIPE_OPTIONS = ["pilgan", "ceklist", "essay"]
+const TIPE_OPTIONS = ["pilgan", "ceklist", "essay", "isian_singkat"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
 const BOBOT_DEFAULT: Record<string, Record<string, number>> = {
-  pilgan: { mudah: 1.0, sedang: 1.5, sulit: 2.0 },
-  ceklist: { mudah: 1.5, sedang: 2.0, sulit: 2.5 },
-  essay:   { mudah: 2.0, sedang: 3.0, sulit: 4.0 },
+  pilgan:        { mudah: 1.0, sedang: 1.5, sulit: 2.0 },
+  ceklist:       { mudah: 1.5, sedang: 2.0, sulit: 2.5 },
+  essay:         { mudah: 2.0, sedang: 3.0, sulit: 4.0 },
+  isian_singkat: { mudah: 1.0, sedang: 1.5, sulit: 2.0 },
 }
 
 export default function SoalPage() {

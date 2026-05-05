@@ -15,6 +15,7 @@ const TIPE_LABEL: Record<string, string> = {
   pilgan: "Pilihan Ganda",
   ceklist: "Ceklist",
   essay: "Essay",
+  isian_singkat: "Isian Singkat",
 }
 
 const KESULITAN_COLOR: Record<string, { bg: string; text: string }> = {

@@ -94,6 +94,12 @@ const INITIAL_DATA = {
   essay_sedang_bank: 0,
   essay_sulit_keluar: 0,
   essay_sulit_bank: 0,
+  isian_singkat_mudah_keluar: 0,
+  isian_singkat_mudah_bank: 0,
+  isian_singkat_sedang_keluar: 0,
+  isian_singkat_sedang_bank: 0,
+  isian_singkat_sulit_keluar: 0,
+  isian_singkat_sulit_bank: 0,
 }
 
 const INITIAL_PATAKAN = {
@@ -115,9 +121,15 @@ const INITIAL_PATAKAN = {
   essay_sedang_bank: 0,
   essay_sulit_keluar: 0,
   essay_sulit_bank: 0,
+  isian_singkat_mudah_keluar: 0,
+  isian_singkat_mudah_bank: 0,
+  isian_singkat_sedang_keluar: 0,
+  isian_singkat_sedang_bank: 0,
+  isian_singkat_sulit_keluar: 0,
+  isian_singkat_sulit_bank: 0,
 }
 
-const TIPE_OPTIONS = ["pilgan", "ceklist", "essay"]
+const TIPE_OPTIONS = ["pilgan", "ceklist", "essay", "isian_singkat"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
 export default function MatrixPage() {
