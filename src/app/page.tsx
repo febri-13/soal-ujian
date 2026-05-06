@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabase"
-import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, LayoutGrid, LogIn, FileEdit } from "lucide-react"
+import {
+  BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle,
+  Download, LayoutGrid, LogIn, FileEdit,
+} from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 
 export const revalidate = 300
@@ -32,18 +35,21 @@ export default async function HomePage() {
   const totalRevision  = rows.reduce((s, r) => s + Number(r.needs_revision), 0)
 
   return (
-    <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
+    <div className="gradient-bg min-h-screen flex flex-col">
+
       {/* Header */}
-      <header
-        className="sticky top-0 z-10 border-b"
-        style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
-      >
+      <header className="sticky top-0 z-10 border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <BookOpen className="w-6 h-6 shrink-0" style={{ color: "var(--color-primary)" }} />
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: "var(--color-primary)" }}
+            >
+              <BookOpen className="w-4 h-4 text-white" />
+            </div>
             <div className="min-w-0">
-              <h1 className="text-base font-bold leading-tight truncate" style={{ color: "var(--color-foreground)" }}>
-                PSAT SMP Al Abidin
+              <h1 className="text-sm md:text-base font-bold leading-tight truncate" style={{ color: "var(--color-foreground)" }}>
+                Portal Validasi Soal PSAT Al Abidin
               </h1>
               <p className="text-xs hidden sm:block" style={{ color: "var(--color-muted-foreground)" }}>
                 Progress Upload Soal Ujian
@@ -54,13 +60,8 @@ export default async function HomePage() {
             <ThemeToggle />
             <a
               href="/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border"
-              style={{
-                backgroundColor: "var(--color-primary)",
-                borderColor: "var(--color-primary)",
-                color: "#ffffff",
-                textDecoration: "none",
-              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
+              style={{ backgroundColor: "var(--color-primary)", color: "white", textDecoration: "none" }}
             >
               <LogIn className="w-4 h-4" />
               <span className="hidden sm:inline">Login</span>
@@ -69,297 +70,314 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <SummaryCard
-            icon={<TrendingUp className="w-5 h-5" />}
-            label="Total Soal"
-            value={totalSoal}
-            color="var(--color-foreground)"
-            bg="var(--color-card)"
-          />
-          <SummaryCard
-            icon={<FileEdit className="w-5 h-5" />}
-            label="Draft"
-            value={totalDraft}
-            color="#6b7280"
-            bg="var(--color-muted)"
-          />
-          <SummaryCard
-            icon={<CheckCircle className="w-5 h-5" />}
-            label="Approved"
-            value={totalApproved}
-            color="#15803d"
-            bg="#f0fdf4"
-          />
-          <SummaryCard
-            icon={<Clock className="w-5 h-5" />}
-            label="Menunggu"
-            value={totalSubmitted}
-            color="#b45309"
-            bg="#fef3c7"
-          />
-          <SummaryCard
-            icon={<AlertCircle className="w-5 h-5" />}
-            label="Perlu Revisi"
-            value={totalRevision}
-            color="#dc2626"
-            bg="#fef2f2"
-          />
-        </div>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-5">
 
-        {/* Progress Table */}
-        <div
-          className="rounded-lg border overflow-hidden"
-          style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-        >
-          <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
-            <h2 className="font-semibold text-sm" style={{ color: "var(--color-foreground)" }}>
-              Progress Per Akun Guru
-            </h2>
-          </div>
-
-          {error ? (
-            <div className="p-6 text-center text-sm rounded-b-lg" style={{ color: "#dc2626", backgroundColor: "#fef2f2" }}>
-              Gagal memuat data. Silakan coba lagi.
+            {/* Summary stat cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <StatCard
+                icon={<TrendingUp className="w-5 h-5" />}
+                label="Total Soal"
+                value={totalSoal}
+                gradient="linear-gradient(135deg, #6366f1, #8b5cf6)"
+              />
+              <StatCard
+                icon={<FileEdit className="w-5 h-5" />}
+                label="Draft"
+                value={totalDraft}
+                gradient="linear-gradient(135deg, #64748b, #94a3b8)"
+              />
+              <StatCard
+                icon={<CheckCircle className="w-5 h-5" />}
+                label="Approved"
+                value={totalApproved}
+                gradient="linear-gradient(135deg, #059669, #34d399)"
+              />
+              <StatCard
+                icon={<Clock className="w-5 h-5" />}
+                label="Menunggu"
+                value={totalSubmitted}
+                gradient="linear-gradient(135deg, #d97706, #fbbf24)"
+              />
+              <StatCard
+                icon={<AlertCircle className="w-5 h-5" />}
+                label="Perlu Revisi"
+                value={totalRevision}
+                gradient="linear-gradient(135deg, #dc2626, #f87171)"
+              />
             </div>
-          ) : rows.length === 0 ? (
-            <div className="p-6 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-              Belum ada data tersedia.
-            </div>
-          ) : (
-            <>
-              {/* Mobile cards */}
-              <div className="block md:hidden divide-y" style={{ borderColor: "var(--color-border)" }}>
-                {rows.map((row, i) => {
-                  const total = Number(row.total)
-                  const approved = Number(row.approved)
-                  const submitted = Number(row.submitted)
-                  const draft = Number(row.draft)
-                  const needs_revision = Number(row.needs_revision)
-                  const patokan = Number(row.patokan_bank_total)
-                  const pct = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
-                  const barColor = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
 
-                  return (
-                    <div key={row.profile_id} className="p-4 space-y-3">
-                      {/* Mapel + Kelas */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>{i + 1}.</span>
-                            <span className="font-semibold text-sm" style={{ color: "var(--color-foreground)" }}>
-                              {row.mapel_nama}
-                            </span>
-                            {row.mapel_kode && (
+            {/* Progress table card */}
+            <div
+              className="rounded-2xl border overflow-hidden card-shadow"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
+            >
+              <div
+                className="px-5 py-4 border-b flex items-center justify-between"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <h2 className="font-semibold" style={{ color: "var(--color-foreground)" }}>
+                  Progress Per Akun Guru
+                </h2>
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full font-medium"
+                  style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                >
+                  {rows.length} akun
+                </span>
+              </div>
+
+              {error ? (
+                <div className="p-8 text-center text-sm" style={{ color: "#dc2626" }}>
+                  Gagal memuat data. Silakan coba lagi.
+                </div>
+              ) : rows.length === 0 ? (
+                <div className="p-8 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                  Belum ada data tersedia.
+                </div>
+              ) : (
+                <>
+                  {/* Mobile: card list */}
+                  <div className="block md:hidden divide-y" style={{ borderColor: "var(--color-border)" }}>
+                    {rows.map((row, i) => {
+                      const total        = Number(row.total)
+                      const approved     = Number(row.approved)
+                      const submitted    = Number(row.submitted)
+                      const draft        = Number(row.draft)
+                      const needs_revision = Number(row.needs_revision)
+                      const patokan      = Number(row.patokan_bank_total)
+                      const pct          = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
+                      const barColor     = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+
+                      return (
+                        <div key={row.profile_id} className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>{i + 1}.</span>
+                                <span className="font-semibold text-sm" style={{ color: "var(--color-foreground)" }}>
+                                  {row.mapel_nama}
+                                </span>
+                                {row.mapel_kode && (
+                                  <span
+                                    className="text-xs px-1.5 py-0.5 rounded"
+                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                                  >
+                                    {row.mapel_kode}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
+                                {row.guru_nama ?? "—"}
+                              </p>
+                            </div>
+                            {row.guru_kelas && (
                               <span
-                                className="text-xs px-1.5 py-0.5 rounded"
-                                style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                                className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+                                style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
                               >
-                                {row.mapel_kode}
+                                Kls {row.guru_kelas}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
-                            {row.guru_nama ?? "—"}
-                          </p>
-                        </div>
-                        {row.guru_kelas && (
-                          <span
-                            className="text-xs px-2 py-0.5 rounded font-medium shrink-0"
-                            style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
-                          >
-                            Kls {row.guru_kelas}
-                          </span>
-                        )}
-                      </div>
 
-                      {/* Progress bar */}
-                      <div>
-                        <div className="w-full rounded-full h-2 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
-                          <div
-                            className="h-2 rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: barColor }}
-                          />
-                        </div>
-                        <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                          {total}/{patokan} soal ({pct}%)
-                        </span>
-                      </div>
-
-                      {/* Stats */}
-                      <div className="grid grid-cols-4 gap-1 text-center">
-                        <div>
-                          <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>Draft</p>
-                          <p className="text-sm font-medium" style={{ color: "var(--color-muted-foreground)" }}>{draft}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs" style={{ color: "#b45309" }}>Submit</p>
-                          <p className="text-sm font-medium" style={{ color: "#b45309" }}>{submitted}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs" style={{ color: "#15803d" }}>Approved</p>
-                          <p className="text-sm font-medium" style={{ color: "#15803d" }}>{approved}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs" style={{ color: "#dc2626" }}>Revisi</p>
-                          <p className="text-sm font-medium" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>{needs_revision}</p>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <ActionButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} label="Glossary" newTab />
-                        <ActionButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} label="Kisi-kisi" newTab />
-                        <ActionButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Desktop table */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-muted)" }}>
-                      <th className="px-3 py-2 text-left font-medium w-8" style={{ color: "var(--color-muted-foreground)" }}>No</th>
-                      <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Mata Pelajaran</th>
-                      <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Guru</th>
-                      <th className="px-3 py-2 text-center font-medium w-16" style={{ color: "var(--color-muted-foreground)" }}>Kelas</th>
-                      <th className="px-3 py-2 text-left font-medium min-w-36" style={{ color: "var(--color-muted-foreground)" }}>Progress</th>
-                      <th className="px-3 py-2 text-center font-medium" style={{ color: "#15803d" }}>Approved</th>
-                      <th className="px-3 py-2 text-center font-medium" style={{ color: "#b45309" }}>Submitted</th>
-                      <th className="px-3 py-2 text-center font-medium" style={{ color: "var(--color-muted-foreground)" }}>Draft</th>
-                      <th className="px-3 py-2 text-center font-medium" style={{ color: "#dc2626" }}>Revisi</th>
-                      <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, i) => {
-                      const total = Number(row.total)
-                      const approved = Number(row.approved)
-                      const submitted = Number(row.submitted)
-                      const draft = Number(row.draft)
-                      const needs_revision = Number(row.needs_revision)
-                      const patokan = Number(row.patokan_bank_total)
-                      const pct = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
-                      const barColor = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
-
-                      return (
-                        <tr
-                          key={row.profile_id}
-                          style={{
-                            borderBottom: i < rows.length - 1 ? "1px solid var(--color-border)" : undefined,
-                          }}
-                        >
-                          <td className="px-3 py-3 text-center" style={{ color: "var(--color-muted-foreground)" }}>
-                            {i + 1}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className="font-medium" style={{ color: "var(--color-foreground)" }}>
-                              {row.mapel_nama}
-                            </span>
-                            {row.mapel_kode && (
-                              <span
-                                className="ml-1.5 text-xs px-1.5 py-0.5 rounded"
-                                style={{
-                                  backgroundColor: "var(--color-muted)",
-                                  color: "var(--color-muted-foreground)",
-                                }}
-                              >
-                                {row.mapel_kode}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
-                            {row.guru_nama ?? "—"}
-                          </td>
-                          <td className="px-3 py-3 text-center">
-                            {row.guru_kelas ? (
-                              <span
-                                className="text-xs px-2 py-0.5 rounded font-medium"
-                                style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
-                              >
-                                {row.guru_kelas}
-                              </span>
-                            ) : (
-                              <span style={{ color: "var(--color-muted-foreground)" }}>—</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="w-full rounded-full h-2 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
+                          <div>
+                            <div className="w-full rounded-full h-1.5 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
                               <div
-                                className="h-2 rounded-full transition-all"
+                                className="h-1.5 rounded-full transition-all"
                                 style={{ width: `${pct}%`, backgroundColor: barColor }}
                               />
                             </div>
                             <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                              {total}/{patokan} ({pct}%)
+                              {total}/{patokan} soal ({pct}%)
                             </span>
-                          </td>
-                          <td className="px-3 py-3 text-center font-medium" style={{ color: "#15803d" }}>{approved}</td>
-                          <td className="px-3 py-3 text-center font-medium" style={{ color: "#b45309" }}>{submitted}</td>
-                          <td className="px-3 py-3 text-center" style={{ color: "var(--color-muted-foreground)" }}>{draft}</td>
-                          <td className="px-3 py-3 text-center font-medium" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>
-                            {needs_revision}
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <ActionButton
-                                href={row.glossary_url}
-                                icon={<Download className="w-3.5 h-3.5" />}
-                                label="Glossary"
-                                newTab
-                              />
-                              <ActionButton
-                                href={row.kisi_kisi_url}
-                                icon={<Download className="w-3.5 h-3.5" />}
-                                label="Kisi-kisi"
-                                newTab
-                              />
-                              <ActionButton
-                                href={`/matrix/${row.mapel_id}`}
-                                icon={<LayoutGrid className="w-3.5 h-3.5" />}
-                                label="Matrix"
-                              />
-                            </div>
-                          </td>
-                        </tr>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-1 text-center">
+                            {[
+                              { label: "Draft",    value: draft,          color: "var(--color-muted-foreground)" },
+                              { label: "Submit",   value: submitted,      color: "#b45309" },
+                              { label: "Approved", value: approved,       color: "#15803d" },
+                              { label: "Revisi",   value: needs_revision, color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" },
+                            ].map(({ label, value, color }) => (
+                              <div key={label}>
+                                <p className="text-xs" style={{ color }}>{label}</p>
+                                <p className="text-sm font-semibold" style={{ color }}>{value}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <ActionButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} label="Glossary" newTab />
+                            <ActionButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} label="Kisi-kisi" newTab />
+                            <ActionButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
+                          </div>
+                        </div>
                       )
                     })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+                  </div>
+
+                  {/* Desktop: table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-muted)" }}>
+                          {[
+                            { label: "No",            cls: "w-10 text-center" },
+                            { label: "Mata Pelajaran", cls: "" },
+                            { label: "Guru",           cls: "" },
+                            { label: "Kelas",          cls: "w-16 text-center" },
+                            { label: "Progress",       cls: "min-w-40" },
+                          ].map(({ label, cls }) => (
+                            <th key={label} className={`px-4 py-3 text-left font-medium text-xs uppercase tracking-wide ${cls}`} style={{ color: "var(--color-muted-foreground)" }}>
+                              {label}
+                            </th>
+                          ))}
+                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "#15803d" }}>Approved</th>
+                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "#b45309" }}>Submit</th>
+                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Draft</th>
+                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "#dc2626" }}>Revisi</th>
+                          <th className="px-4 py-3 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, i) => {
+                          const total          = Number(row.total)
+                          const approved       = Number(row.approved)
+                          const submitted      = Number(row.submitted)
+                          const draft          = Number(row.draft)
+                          const needs_revision = Number(row.needs_revision)
+                          const patokan        = Number(row.patokan_bank_total)
+                          const pct            = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
+                          const barColor       = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+
+                          return (
+                            <tr
+                              key={row.profile_id}
+                              style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--color-border)" : undefined }}
+                            >
+                              <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                                {i + 1}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="font-medium" style={{ color: "var(--color-foreground)" }}>
+                                  {row.mapel_nama}
+                                </span>
+                                {row.mapel_kode && (
+                                  <span
+                                    className="ml-1.5 text-xs px-1.5 py-0.5 rounded"
+                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                                  >
+                                    {row.mapel_kode}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
+                                {row.guru_nama ?? "—"}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {row.guru_kelas ? (
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
+                                  >
+                                    {row.guru_kelas}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "var(--color-muted-foreground)" }}>—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="w-full rounded-full h-1.5 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
+                                  <div
+                                    className="h-1.5 rounded-full transition-all"
+                                    style={{ width: `${pct}%`, backgroundColor: barColor }}
+                                  />
+                                </div>
+                                <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
+                                  {total}/{patokan} ({pct}%)
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-semibold text-sm" style={{ color: "#15803d" }}>{approved}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-sm" style={{ color: "#b45309" }}>{submitted}</td>
+                              <td className="px-4 py-3 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>{draft}</td>
+                              <td className="px-4 py-3 text-center font-semibold text-sm" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>
+                                {needs_revision}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-1.5">
+                                  <ActionButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} label="Glossary" newTab />
+                                  <ActionButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} label="Kisi-kisi" newTab />
+                                  <ActionButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
       </main>
 
-      <footer className="text-center py-6 text-xs mt-4" style={{ color: "var(--color-muted-foreground)" }}>
+      <footer className="text-center py-4 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
         © 2026 PSAT SMP Al Abidin
       </footer>
     </div>
   )
 }
 
+function StatCard({
+  icon, label, value, gradient,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: number
+  gradient: string
+}) {
+  return (
+    <div
+      className="rounded-2xl p-4 card-shadow relative overflow-hidden"
+      style={{ background: gradient }}
+    >
+      {/* Dekorasi lingkaran di pojok kanan atas */}
+      <div
+        className="absolute -right-3 -top-3 w-16 h-16 rounded-full"
+        style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+      />
+      <div
+        className="absolute -right-1 -top-5 w-10 h-10 rounded-full"
+        style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+      />
+      <div className="relative">
+        <div className="mb-3 opacity-90" style={{ color: "white" }}>
+          {icon}
+        </div>
+        <p className="text-3xl font-bold text-white leading-none mb-1.5">
+          {value}
+        </p>
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.75)" }}>
+          {label}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function ActionButton({
-  href,
-  icon,
-  label,
-  newTab,
+  href, icon, label, newTab,
 }: {
   href: string | null | undefined
   icon: React.ReactNode
   label: string
   newTab?: boolean
 }) {
-  const className = "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border"
+  const cls = "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border"
   if (!href) {
     return (
       <span
-        className={className}
+        className={cls}
         style={{
           backgroundColor: "var(--color-muted)",
           borderColor: "var(--color-border)",
@@ -369,8 +387,7 @@ function ActionButton({
           whiteSpace: "nowrap",
         }}
       >
-        {icon}
-        {label}
+        {icon}{label}
       </span>
     )
   }
@@ -379,7 +396,7 @@ function ActionButton({
       href={href}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={className}
+      className={cls}
       style={{
         backgroundColor: "var(--color-muted)",
         borderColor: "var(--color-border)",
@@ -388,37 +405,7 @@ function ActionButton({
         whiteSpace: "nowrap",
       }}
     >
-      {icon}
-      {label}
+      {icon}{label}
     </a>
-  )
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  color,
-  bg,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  color: string
-  bg: string
-}) {
-  return (
-    <div
-      className="rounded-lg border p-3 md:p-4"
-      style={{ backgroundColor: bg, borderColor: "var(--color-border)" }}
-    >
-      <div className="flex items-center gap-2 mb-1" style={{ color }}>
-        {icon}
-        <span className="text-xs font-medium">{label}</span>
-      </div>
-      <p className="text-2xl font-bold" style={{ color }}>
-        {value}
-      </p>
-    </div>
   )
 }

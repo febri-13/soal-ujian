@@ -83,6 +83,19 @@ input, textarea, select {
   font-size: 0.85em;
 }
 
+.gradient-bg {
+  background: linear-gradient(135deg, #ecfdf9 0%, #eff6ff 60%, #f5f3ff 100%);
+}
+.dark .gradient-bg {
+  background: linear-gradient(135deg, #071a16 0%, #0d1020 60%, #120d1c 100%);
+}
+.card-shadow {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+}
+.dark .card-shadow {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+}
+
 .dark {
   --color-background: oklch(15% 0.06 285);
   --color-foreground: oklch(98% 0 0);
