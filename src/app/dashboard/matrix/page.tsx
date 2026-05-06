@@ -268,8 +268,8 @@ export default function MatrixPage() {
                   const ab = totals[`${tipe}_${k}_bank`] || 0
                   const tk = patokan[`${tipe}_${k}_keluar`] || 0
                   const tb = patokan[`${tipe}_${k}_bank`] || 0
-                  const okK = tk > 0 && ak >= tk
-                  const okB = tb > 0 && ab >= tb
+                  const okK = tk > 0 && ak === tk
+                  const okB = tb > 0 && ab === tb
                   return (
                     <div key={k} className="flex items-center gap-1 mb-1">
                       <span className="text-xs capitalize w-14" style={{ color: "var(--color-muted-foreground)" }}>{k}</span>
