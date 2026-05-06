@@ -217,26 +217,15 @@ export default async function HomePage() {
                   </div>
 
                   {/* Desktop: table */}
-                  <div className="hidden md:block overflow-x-auto">
+                  <div className="hidden md:block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-muted)" }}>
-                          {[
-                            { label: "No",            cls: "w-10 text-center" },
-                            { label: "Mata Pelajaran", cls: "" },
-                            { label: "Guru",           cls: "" },
-                            { label: "Kelas",          cls: "w-16 text-center" },
-                            { label: "Progress",       cls: "min-w-40" },
-                          ].map(({ label, cls }) => (
-                            <th key={label} className={`px-4 py-3 text-left font-medium text-xs uppercase tracking-wide ${cls}`} style={{ color: "var(--color-muted-foreground)" }}>
-                              {label}
-                            </th>
-                          ))}
-                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "#15803d" }}>Approved</th>
-                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "#b45309" }}>Submit</th>
-                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Draft</th>
-                          <th className="px-4 py-3 text-center font-medium text-xs uppercase tracking-wide" style={{ color: "#dc2626" }}>Revisi</th>
-                          <th className="px-4 py-3 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Mata Pelajaran</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Guru</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide w-48" style={{ color: "var(--color-muted-foreground)" }}>Progress</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Status</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -255,9 +244,7 @@ export default async function HomePage() {
                               key={row.profile_id}
                               style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--color-border)" : undefined }}
                             >
-                              <td className="px-4 py-3 text-center text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                                {i + 1}
-                              </td>
+                              {/* Mapel */}
                               <td className="px-4 py-3">
                                 <span className="font-medium" style={{ color: "var(--color-foreground)" }}>
                                   {row.mapel_nama}
@@ -271,21 +258,23 @@ export default async function HomePage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-sm" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
-                                {row.guru_nama ?? "—"}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {row.guru_kelas ? (
+
+                              {/* Guru + Kelas */}
+                              <td className="px-4 py-3">
+                                <span className="text-sm" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
+                                  {row.guru_nama ?? "—"}
+                                </span>
+                                {row.guru_kelas && (
                                   <span
-                                    className="text-xs px-2 py-0.5 rounded-full font-medium"
-                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
+                                    className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
                                   >
-                                    {row.guru_kelas}
+                                    Kls {row.guru_kelas}
                                   </span>
-                                ) : (
-                                  <span style={{ color: "var(--color-muted-foreground)" }}>—</span>
                                 )}
                               </td>
+
+                              {/* Progress */}
                               <td className="px-4 py-3">
                                 <div className="w-full rounded-full h-1.5 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
                                   <div
@@ -297,17 +286,25 @@ export default async function HomePage() {
                                   {total}/{patokan} ({pct}%)
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-center font-semibold text-sm" style={{ color: "#15803d" }}>{approved}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-sm" style={{ color: "#b45309" }}>{submitted}</td>
-                              <td className="px-4 py-3 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>{draft}</td>
-                              <td className="px-4 py-3 text-center font-semibold text-sm" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>
-                                {needs_revision}
-                              </td>
+
+                              {/* Status: 4 baris */}
                               <td className="px-4 py-3">
-                                <div className="flex items-center gap-1.5">
-                                  <ActionButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} label="Glossary" newTab />
-                                  <ActionButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} label="Kisi-kisi" newTab />
-                                  <ActionButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
+                                <div className="flex flex-col gap-0.5 text-xs">
+                                  <span className="font-medium" style={{ color: "#15803d" }}>✓ {approved} approved</span>
+                                  <span className="font-medium" style={{ color: "#b45309" }}>⏳ {submitted} submitted</span>
+                                  <span style={{ color: "var(--color-muted-foreground)" }}>· {draft} draft</span>
+                                  <span className="font-medium" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>
+                                    ! {needs_revision} revisi
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Aksi: icon only */}
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-1">
+                                  <IconButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} title="Download Glossary" newTab />
+                                  <IconButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} title="Download Kisi-kisi" newTab />
+                                  <IconButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} title="Lihat Matrix" />
                                 </div>
                               </td>
                             </tr>
@@ -406,6 +403,51 @@ function ActionButton({
       }}
     >
       {icon}{label}
+    </a>
+  )
+}
+
+function IconButton({
+  href, icon, title, newTab,
+}: {
+  href: string | null | undefined
+  icon: React.ReactNode
+  title: string
+  newTab?: boolean
+}) {
+  const cls = "flex items-center justify-center w-7 h-7 rounded-lg border"
+  if (!href) {
+    return (
+      <span
+        className={cls}
+        title={title}
+        style={{
+          backgroundColor: "var(--color-muted)",
+          borderColor: "var(--color-border)",
+          color: "var(--color-muted-foreground)",
+          opacity: 0.35,
+          cursor: "not-allowed",
+        }}
+      >
+        {icon}
+      </span>
+    )
+  }
+  return (
+    <a
+      href={href}
+      target={newTab ? "_blank" : undefined}
+      rel={newTab ? "noopener noreferrer" : undefined}
+      className={cls}
+      title={title}
+      style={{
+        backgroundColor: "var(--color-muted)",
+        borderColor: "var(--color-border)",
+        color: "var(--color-foreground)",
+        textDecoration: "none",
+      }}
+    >
+      {icon}
     </a>
   )
 }
