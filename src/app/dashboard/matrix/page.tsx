@@ -358,21 +358,24 @@ export default function MatrixPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="text-sm border-collapse w-full" style={{ minWidth: "700px" }}>
+            <table className="text-sm border-collapse w-full" style={{ minWidth: `${260 + babs.length * 160}px` }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--color-muted)" }}>
-                  <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Bab</th>
+                  <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Tipe</th>
                   <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Tingkat</th>
-                  {TIPE_OPTIONS.map(tipe => (
-                    <th key={tipe} className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>
-                      {TIPE_LABELS[tipe]}
+                  {babs.map(bab => (
+                    <th key={bab.id} className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {bab.is_submitted && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#22c55e" }} />}
+                        {bab.nama_bab}
+                      </div>
                     </th>
                   ))}
                   <th className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>Total</th>
                 </tr>
                 <tr style={{ backgroundColor: "var(--color-muted)" }}>
-                  {TIPE_OPTIONS.map(tipe => (
-                    <React.Fragment key={tipe}>
+                  {babs.map(bab => (
+                    <React.Fragment key={bab.id}>
                       <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
                       <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
                     </React.Fragment>
@@ -382,90 +385,119 @@ export default function MatrixPage() {
                 </tr>
               </thead>
               <tbody>
-                {babs.map((bab, bi) => {
-                  const p = matrixData[bab.id] || INITIAL_DATA
-                  const submitted = bab.is_submitted
-                  const rowBg = bi % 2 === 0 ? "var(--color-card)" : "var(--color-muted)"
-                  const totalBg = submitted ? "#f0fdf4" : bi % 2 === 0 ? "#f0fdf4" : "#dcfce7"
-
+                {TIPE_OPTIONS.map((tipe, ti) => {
+                  const rowBg = ti % 2 === 0 ? "var(--color-card)" : "var(--color-muted)"
+                  const totalBg = ti % 2 === 0 ? "#f0fdf4" : "#dcfce7"
                   return (
-                    <React.Fragment key={bab.id}>
+                    <React.Fragment key={tipe}>
                       {KESULITAN_OPTIONS.map((k, ki) => {
-                        const rowSoal = TIPE_OPTIONS.reduce((s, t) => s + (p[`${t}_${k}_keluar`] || 0), 0)
-                        const rowBank = TIPE_OPTIONS.reduce((s, t) => s + (p[`${t}_${k}_bank`] || 0), 0)
+                        const rowSoal = babs.reduce((s, bab) => s + ((matrixData[bab.id] || INITIAL_DATA)[`${tipe}_${k}_keluar`] || 0), 0)
+                        const rowBank = babs.reduce((s, bab) => s + ((matrixData[bab.id] || INITIAL_DATA)[`${tipe}_${k}_bank`] || 0), 0)
                         return (
-                          <tr key={`${bab.id}-${k}`} style={{ backgroundColor: rowBg }}>
+                          <tr key={`${tipe}-${k}`} style={{ backgroundColor: rowBg }}>
                             {ki === 0 && (
                               <td
                                 className="border px-3 py-2 font-medium"
                                 style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", verticalAlign: "middle" }}
                                 rowSpan={KESULITAN_OPTIONS.length + 1}
                               >
-                                <div className="flex items-center gap-1.5">
-                                  {submitted && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#22c55e" }} />}
-                                  {bab.nama_bab}
-                                </div>
+                                {TIPE_LABELS[tipe]}
                               </td>
                             )}
                             <td className="border px-3 py-1.5 capitalize text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
                               {k}
                             </td>
-                            {TIPE_OPTIONS.map(tipe => (
-                              <React.Fragment key={tipe}>
-                                <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
-                                  <input
-                                    type="number" min="0"
-                                    value={p[`${tipe}_${k}_keluar`] || 0}
-                                    onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_keluar`, parseInt(e.target.value) || 0)}
-                                    onBlur={() => !submitted && handleSave(bab.id)}
-                                    disabled={submitted}
-                                    className="w-14 px-1 py-0.5 rounded text-xs text-center border"
-                                    style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
-                                  />
-                                </td>
-                                <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
-                                  <input
-                                    type="number" min="0"
-                                    value={p[`${tipe}_${k}_bank`] || 0}
-                                    onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_bank`, parseInt(e.target.value) || 0)}
-                                    onBlur={() => !submitted && handleSave(bab.id)}
-                                    disabled={submitted}
-                                    className="w-14 px-1 py-0.5 rounded text-xs text-center border"
-                                    style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
-                                  />
-                                </td>
-                              </React.Fragment>
-                            ))}
+                            {babs.map(bab => {
+                              const p = matrixData[bab.id] || INITIAL_DATA
+                              const submitted = bab.is_submitted
+                              return (
+                                <React.Fragment key={bab.id}>
+                                  <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
+                                    <input
+                                      type="number" min="0"
+                                      value={p[`${tipe}_${k}_keluar`] || 0}
+                                      onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_keluar`, parseInt(e.target.value) || 0)}
+                                      onBlur={() => !submitted && handleSave(bab.id)}
+                                      disabled={submitted}
+                                      className="w-14 px-1 py-0.5 rounded text-xs text-center border"
+                                      style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
+                                    />
+                                  </td>
+                                  <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
+                                    <input
+                                      type="number" min="0"
+                                      value={p[`${tipe}_${k}_bank`] || 0}
+                                      onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_bank`, parseInt(e.target.value) || 0)}
+                                      onBlur={() => !submitted && handleSave(bab.id)}
+                                      disabled={submitted}
+                                      className="w-14 px-1 py-0.5 rounded text-xs text-center border"
+                                      style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
+                                    />
+                                  </td>
+                                </React.Fragment>
+                              )
+                            })}
                             <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#15803d" }}>{rowSoal}</td>
                             <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#b45309" }}>{rowBank}</td>
                           </tr>
                         )
                       })}
 
-                      {/* Baris total per bab */}
+                      {/* Baris total per tipe */}
                       <tr style={{ backgroundColor: totalBg, borderBottom: "2px solid var(--color-border)" }}>
                         <td className="border px-3 py-1.5 text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>Total</td>
-                        {TIPE_OPTIONS.map(tipe => {
+                        {babs.map(bab => {
+                          const p = matrixData[bab.id] || INITIAL_DATA
                           const colSoal = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_keluar`] || 0), 0)
                           const colBank = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_bank`] || 0), 0)
                           return (
-                            <React.Fragment key={tipe}>
+                            <React.Fragment key={bab.id}>
                               <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{colSoal}</td>
                               <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{colBank}</td>
                             </React.Fragment>
                           )
                         })}
                         <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>
-                          {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_keluar`] || 0), 0), 0)}
+                          {babs.reduce((s, bab) => {
+                            const p = matrixData[bab.id] || INITIAL_DATA
+                            return s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${tipe}_${k}_keluar`] || 0), 0)
+                          }, 0)}
                         </td>
                         <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>
-                          {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_bank`] || 0), 0), 0)}
+                          {babs.reduce((s, bab) => {
+                            const p = matrixData[bab.id] || INITIAL_DATA
+                            return s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${tipe}_${k}_bank`] || 0), 0)
+                          }, 0)}
                         </td>
                       </tr>
                     </React.Fragment>
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr style={{ backgroundColor: "#dbeafe", borderTop: "3px solid var(--color-border)" }}>
+                  <td colSpan={2} className="border px-3 py-2 text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>
+                    Grand Total
+                  </td>
+                  {babs.map(bab => {
+                    const p = matrixData[bab.id] || INITIAL_DATA
+                    const grandSoal = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_keluar`] || 0), 0), 0)
+                    const grandBank = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_bank`] || 0), 0), 0)
+                    return (
+                      <React.Fragment key={bab.id}>
+                        <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{grandSoal}</td>
+                        <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{grandBank}</td>
+                      </React.Fragment>
+                    )
+                  })}
+                  <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>
+                    {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (totals[`${t}_${k}_keluar`] || 0), 0), 0)}
+                  </td>
+                  <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>
+                    {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (totals[`${t}_${k}_bank`] || 0), 0), 0)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
