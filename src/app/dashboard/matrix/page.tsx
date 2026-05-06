@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, X } from "lucide-react"
+import { Check, Pencil, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 
@@ -47,7 +47,7 @@ export default function MatrixPage() {
     setToast({ message, type })
   }
 
-  const loadBabsFromDB = async (userId: string) => {
+  const loadBabsFromDB = async (userId: string, mapelId: string | null = null) => {
     const { data } = await supabase
       .from("psat_matrix_input")
       .select("bab_id_text, data, is_submitted")
@@ -64,9 +64,14 @@ export default function MatrixPage() {
       setMatrixData(dataMap)
       setBabs(data.map(b => ({ id: b.bab_id_text, nama_bab: b.bab_id_text, is_submitted: b.is_submitted })))
     } else {
-      matrixDataRef.current = {}
-      setMatrixData({})
-      setBabs([])
+      const defaultName = "Bab 1"
+      await supabase.from("psat_matrix_input").insert({
+        profile_id: userId, mapel_id: mapelId,
+        bab_id_text: defaultName, data: { ...INITIAL_DATA }, is_submitted: false,
+      })
+      matrixDataRef.current = { [defaultName]: { ...INITIAL_DATA } }
+      setMatrixData({ [defaultName]: { ...INITIAL_DATA } })
+      setBabs([{ id: defaultName, nama_bab: defaultName, is_submitted: false }])
     }
   }
 
@@ -84,7 +89,7 @@ export default function MatrixPage() {
 
       const mapelId = guruData?.mapel_id ?? null
       setGuruMapelId(mapelId)
-      await loadBabsFromDB(u.id)
+      await loadBabsFromDB(u.id, mapelId)
 
       if (mapelId) {
         const { data: patokanRows } = await supabase
@@ -261,7 +266,7 @@ export default function MatrixPage() {
                 />
               ) : (
                 <span
-                  className="px-3 py-1 rounded-full text-sm font-medium"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
                   style={{
                     backgroundColor: bab.is_submitted ? "#22c55e" : "var(--color-primary)",
                     color: "#fff",
@@ -269,7 +274,11 @@ export default function MatrixPage() {
                   }}
                   onClick={() => { if (!bab.is_submitted) { setEditingBab(bab.id); setEditBabName(bab.nama_bab) } }}
                 >
-                  {bab.nama_bab} {bab.is_submitted && "✓"}
+                  {bab.is_submitted
+                    ? <Check className="w-3.5 h-3.5 shrink-0" />
+                    : <Pencil className="w-3 h-3 shrink-0 opacity-70" />
+                  }
+                  {bab.nama_bab}
                 </span>
               )}
               {!bab.is_submitted && (
