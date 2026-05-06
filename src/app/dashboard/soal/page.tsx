@@ -650,10 +650,36 @@ export default function SoalPage() {
                           {soal.status === "needs_revision" && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white">Revisi</span>}
                         </div>
                         <div
-                          className="text-sm line-clamp-2"
+                          className="text-sm"
                           style={{ color: "var(--color-foreground)" }}
                           dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
                         />
+                        {soal.pilihan && soal.pilihan.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }) => (
+                              <div
+                                key={p.id}
+                                className="flex items-start gap-1.5 text-xs px-2 py-1 rounded"
+                                style={{
+                                  backgroundColor: p.benar ? "#f0fdf4" : "var(--color-muted)",
+                                  border: p.benar ? "1px solid #bbf7d0" : "1px solid transparent",
+                                }}
+                              >
+                                <span className="font-semibold flex-shrink-0 mt-0.5" style={{ color: p.benar ? "#15803d" : "var(--color-muted-foreground)" }}>
+                                  {String.fromCharCode(65 + p.id)}.
+                                </span>
+                                <div
+                                  className="flex-1 min-w-0"
+                                  style={{ color: p.benar ? "#15803d" : "var(--color-foreground)" }}
+                                  dangerouslySetInnerHTML={{ __html: p.teks }}
+                                />
+                                {p.benar && (
+                                  <Check className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "#15803d" }} />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {soal.revision_notes && (
                           <div className="mt-1.5 text-xs p-2 rounded" style={{ backgroundColor: "#fef2f2", color: "#dc2626" }}>
                             Catatan revisi: {soal.revision_notes}
