@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import Toast from "@/components/Toast"
 
 interface Bab {
   id: string
@@ -11,167 +12,57 @@ interface Bab {
   is_submitted: boolean
 }
 
-interface ToastProps {
-  message: string
-  type?: "success" | "error" | "info"
-  onClose: () => void
+const TIPE_OPTIONS = ["pilgan", "ceklist", "isian_singkat", "essay"]
+const TIPE_LABELS: Record<string, string> = {
+  pilgan: "Pilgan",
+  ceklist: "Ceklist",
+  isian_singkat: "Isian Singkat",
+  essay: "Essay",
 }
-
-function Toast({ message, type = "success", onClose }: ToastProps) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000)
-    return () => clearTimeout(timer)
-  }, [onClose])
-
-  const bgColor = type === "success" ? "#22c55e" : type === "error" ? "#ef4444" : "#3b82f6"
-  
-  return (
-    <div 
-      className="fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg text-white z-50"
-      style={{ backgroundColor: bgColor }}
-    >
-      {message}
-    </div>
-  )
-}
-
-interface PatokanInputProps {
-  tipe: string
-  kesulitan: string
-  patokan: Record<string, number>
-  onChange: (field: string, value: number) => void
-  total: { keluar: number; bank: number }
-  showStats: boolean
-}
-
-function PatokanInputWithStats({ tipe, kesulitan, patokan, onChange, total, showStats }: PatokanInputProps) {
-  const fieldKeluar = `${tipe}_${kesulitan}_keluar`
-  const fieldBank = `${tipe}_${kesulitan}_bank`
-  
-  return (
-    <>
-      <input
-        type="number"
-        min="0"
-        value={patokan[fieldKeluar] || 0}
-        onChange={(e) => onChange(fieldKeluar, parseInt(e.target.value) || 0)}
-        className="w-14 px-2 py-1 rounded text-sm text-center"
-        style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-      />
-      <input
-        type="number"
-        min="0"
-        value={patokan[fieldBank] || 0}
-        onChange={(e) => onChange(fieldBank, parseInt(e.target.value) || 0)}
-        className="w-14 px-2 py-1 rounded text-sm text-center"
-        style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-      />
-      {showStats && (
-        <span className="ml-2 text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-          {total.keluar}/{total.bank}
-        </span>
-      )}
-    </>
-  )
-}
-
-const INITIAL_DATA = {
-  pilgan_mudah_keluar: 0,
-  pilgan_mudah_bank: 0,
-  pilgan_sedang_keluar: 0,
-  pilgan_sedang_bank: 0,
-  pilgan_sulit_keluar: 0,
-  pilgan_sulit_bank: 0,
-  ceklist_mudah_keluar: 0,
-  ceklist_mudah_bank: 0,
-  ceklist_sedang_keluar: 0,
-  ceklist_sedang_bank: 0,
-  ceklist_sulit_keluar: 0,
-  ceklist_sulit_bank: 0,
-  essay_mudah_keluar: 0,
-  essay_mudah_bank: 0,
-  essay_sedang_keluar: 0,
-  essay_sedang_bank: 0,
-  essay_sulit_keluar: 0,
-  essay_sulit_bank: 0,
-  isian_singkat_mudah_keluar: 0,
-  isian_singkat_mudah_bank: 0,
-  isian_singkat_sedang_keluar: 0,
-  isian_singkat_sedang_bank: 0,
-  isian_singkat_sulit_keluar: 0,
-  isian_singkat_sulit_bank: 0,
-}
-
-const INITIAL_PATAKAN = {
-  pilgan_mudah_keluar: 0,
-  pilgan_mudah_bank: 0,
-  pilgan_sedang_keluar: 0,
-  pilgan_sedang_bank: 0,
-  pilgan_sulit_keluar: 0,
-  pilgan_sulit_bank: 0,
-  ceklist_mudah_keluar: 0,
-  ceklist_mudah_bank: 0,
-  ceklist_sedang_keluar: 0,
-  ceklist_sedang_bank: 0,
-  ceklist_sulit_keluar: 0,
-  ceklist_sulit_bank: 0,
-  essay_mudah_keluar: 0,
-  essay_mudah_bank: 0,
-  essay_sedang_keluar: 0,
-  essay_sedang_bank: 0,
-  essay_sulit_keluar: 0,
-  essay_sulit_bank: 0,
-  isian_singkat_mudah_keluar: 0,
-  isian_singkat_mudah_bank: 0,
-  isian_singkat_sedang_keluar: 0,
-  isian_singkat_sedang_bank: 0,
-  isian_singkat_sulit_keluar: 0,
-  isian_singkat_sulit_bank: 0,
-}
-
-const TIPE_OPTIONS = ["pilgan", "ceklist", "essay", "isian_singkat"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
+
+const INITIAL_DATA: Record<string, number> = {}
+TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
+  INITIAL_DATA[`${t}_${k}_keluar`] = 0
+  INITIAL_DATA[`${t}_${k}_bank`] = 0
+}))
 
 export default function MatrixPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [guruMapelId, setGuruMapelId] = useState<string | null>(null)
   const [babs, setBabs] = useState<Bab[]>([])
-  const [matrixData, setMatrixData] = useState<Record<string, any>>({})
-  const matrixDataRef = useRef<Record<string, any>>({})
-  const [patokan, setPatokan] = useState<Record<string, number>>(INITIAL_PATAKAN)
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [matrixData, setMatrixData] = useState<Record<string, Record<string, number>>>({})
+  const matrixDataRef = useRef<Record<string, Record<string, number>>>({})
+  const [patokan, setPatokan] = useState<Record<string, number>>({ ...INITIAL_DATA })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-
   const [isAdding, setIsAdding] = useState(false)
   const [newBabName, setNewBabName] = useState("")
   const [editingBab, setEditingBab] = useState<string | null>(null)
   const [editBabName, setEditBabName] = useState("")
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type })
+  }
+
   const loadBabsFromDB = async (userId: string) => {
-    const { data: existingBabs } = await supabase
+    const { data } = await supabase
       .from("psat_matrix_input")
       .select("bab_id_text, data, is_submitted")
       .eq("profile_id", userId)
 
-    if (existingBabs && existingBabs.length > 0) {
-      const dataMap: Record<string, any> = {}
-      existingBabs.forEach(b => {
+    if (data && data.length > 0) {
+      const dataMap: Record<string, Record<string, number>> = {}
+      data.forEach(b => {
         let parsed = b.data
-        if (typeof parsed === "string") {
-          try { parsed = JSON.parse(parsed) } catch { parsed = null }
-        }
+        if (typeof parsed === "string") { try { parsed = JSON.parse(parsed) } catch { parsed = null } }
         dataMap[b.bab_id_text] = { ...INITIAL_DATA, ...(parsed || {}) }
       })
       matrixDataRef.current = dataMap
       setMatrixData(dataMap)
-      setBabs(existingBabs.map(b => ({
-        id: b.bab_id_text,
-        nama_bab: b.bab_id_text || "Bab",
-        is_submitted: b.is_submitted,
-      })))
+      setBabs(data.map(b => ({ id: b.bab_id_text, nama_bab: b.bab_id_text, is_submitted: b.is_submitted })))
     } else {
       matrixDataRef.current = {}
       setMatrixData({})
@@ -182,10 +73,7 @@ export default function MatrixPage() {
   useEffect(() => {
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser()
-      if (!u) {
-        router.push("/login")
-        return
-      }
+      if (!u) { router.push("/login"); return }
       setUser(u)
 
       const { data: guruData } = await supabase
@@ -194,107 +82,75 @@ export default function MatrixPage() {
         .eq("profile_id", u.id)
         .maybeSingle()
 
-      if (guruData?.mapel_id) {
-        setGuruMapelId(guruData.mapel_id)
-      }
-
+      const mapelId = guruData?.mapel_id ?? null
+      setGuruMapelId(mapelId)
       await loadBabsFromDB(u.id)
 
-      const { data: patokanRows } = await supabase
-        .from("psat_patokan_soal")
-        .select("*")
-        .eq("mapel_id", guruData?.mapel_id ?? "")
-        .order("created_at", { ascending: false })
-        .limit(1)
+      if (mapelId) {
+        const { data: patokanRows } = await supabase
+          .from("psat_patokan_soal")
+          .select("*")
+          .eq("mapel_id", mapelId)
+          .order("created_at", { ascending: false })
+          .limit(1)
 
-      const patokanData = patokanRows?.[0] || null
-      if (patokanData) {
-        const p: Record<string, number> = {}
-        const tipes = (patokanData.tipe || "").split(",")
-        const tingkatans = (patokanData.tingkat_kesulitan || "").split(",")
-        const keluarArr = (patokanData.keluar || "").split(",")
-        const bankValues = (patokanData.bank || "").split(",")
-        let arrIdx = 0
-        tipes.forEach((tipe: string) => {
-          tingkatans.forEach((kesulitan: string) => {
-            p[`${tipe}_${kesulitan}_keluar`] = parseInt(keluarArr[arrIdx]) || 0
-            p[`${tipe}_${kesulitan}_bank`] = parseInt(bankValues[arrIdx]) || 0
-            arrIdx++
-          })
-        })
-        setPatokan({ ...INITIAL_PATAKAN, ...p })
+        const pd = patokanRows?.[0]
+        if (pd) {
+          const p: Record<string, number> = {}
+          const tipes = (pd.tipe || "").split(",")
+          const tingkatans = (pd.tingkat_kesulitan || "").split(",")
+          const keluarArr = (pd.keluar || "").split(",")
+          const bankArr = (pd.bank || "").split(",")
+          let i = 0
+          tipes.forEach((t: string) => tingkatans.forEach((k: string) => {
+            p[`${t}_${k}_keluar`] = parseInt(keluarArr[i]) || 0
+            p[`${t}_${k}_bank`] = parseInt(bankArr[i]) || 0
+            i++
+          }))
+          setPatokan({ ...INITIAL_DATA, ...p })
+        }
       }
-
       setLoading(false)
     }
     load()
   }, [router])
 
-  const setMatrixDataSync = (newData: Record<string, any>) => {
+  const setMatrixDataSync = (newData: Record<string, Record<string, number>>) => {
     matrixDataRef.current = newData
     setMatrixData(newData)
   }
 
-  const calculateTotals = () => {
+  const getTotals = () => {
     const totals: Record<string, number> = {}
-    TIPE_OPTIONS.forEach(tipe => {
-      KESULITAN_OPTIONS.forEach(kesulitan => {
-        let totalKeluar = 0
-        let totalBank = 0
-        Object.values(matrixData).forEach((data: any) => {
-          totalKeluar += data?.[`${tipe}_${kesulitan}_keluar`] || 0
-          totalBank += data?.[`${tipe}_${kesulitan}_bank`] || 0
-        })
-        totals[`${tipe}_${kesulitan}_keluar`] = totalKeluar
-        totals[`${tipe}_${kesulitan}_bank`] = totalBank
-      })
-    })
+    TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
+      totals[`${t}_${k}_keluar`] = Object.values(matrixDataRef.current).reduce((s, d) => s + (d?.[`${t}_${k}_keluar`] || 0), 0)
+      totals[`${t}_${k}_bank`] = Object.values(matrixDataRef.current).reduce((s, d) => s + (d?.[`${t}_${k}_bank`] || 0), 0)
+    }))
     return totals
   }
 
-  const validateMatrix = (): string[] => {
+  const validateAll = (): string[] => {
     const errors: string[] = []
-    const totals = calculateTotals()
-
-    TIPE_OPTIONS.forEach(tipe => {
-      KESULITAN_OPTIONS.forEach(kesulitan => {
-        const fieldKeluar = `${tipe}_${kesulitan}_keluar`
-        const fieldBank = `${tipe}_${kesulitan}_bank`
-        const targetKeluar = patokan[fieldKeluar] || 0
-        const targetBank = patokan[fieldBank] || 0
-        const totalKeluar = totals[fieldKeluar]
-        const totalBank = totals[fieldBank]
-        if (targetKeluar > 0 && totalKeluar !== targetKeluar) {
-          errors.push(`${tipe} ${kesulitan} keluar: target ${targetKeluar}, actual ${totalKeluar}`)
-        }
-        if (targetBank > 0 && totalBank !== targetBank) {
-          errors.push(`${tipe} ${kesulitan} bank: target ${targetBank}, actual ${totalBank}`)
-        }
-      })
-    })
+    const totals = getTotals()
+    TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
+      const tk = `${t}_${k}_keluar`, tb = `${t}_${k}_bank`
+      if (patokan[tk] > 0 && totals[tk] !== patokan[tk])
+        errors.push(`${TIPE_LABELS[t]} ${k} soal keluar: target ${patokan[tk]}, aktual ${totals[tk]}`)
+      if (patokan[tb] > 0 && totals[tb] !== patokan[tb])
+        errors.push(`${TIPE_LABELS[t]} ${k} bank: target ${patokan[tb]}, aktual ${totals[tb]}`)
+    }))
     return errors
   }
 
   const handleAddBab = async () => {
     if (!newBabName.trim() || !user) return
-
-    const { error } = await supabase
-      .from("psat_matrix_input")
-      .insert({
-        profile_id: user.id,
-        mapel_id: guruMapelId,
-        bab_id_text: newBabName.trim(),
-        data: INITIAL_DATA,
-        is_submitted: false,
-      })
-
-    if (error) {
-      setToast({ message: "Error: " + error.message, type: "error" })
-      return
-    }
-
-    setBabs([...babs, { id: newBabName.trim(), nama_bab: newBabName.trim(), is_submitted: false }])
-    setMatrixDataSync({ ...matrixDataRef.current, [newBabName.trim()]: INITIAL_DATA })
+    const { error } = await supabase.from("psat_matrix_input").insert({
+      profile_id: user.id, mapel_id: guruMapelId,
+      bab_id_text: newBabName.trim(), data: { ...INITIAL_DATA }, is_submitted: false,
+    })
+    if (error) { showToast("Error: " + error.message, "error"); return }
+    setBabs(prev => [...prev, { id: newBabName.trim(), nama_bab: newBabName.trim(), is_submitted: false }])
+    setMatrixDataSync({ ...matrixDataRef.current, [newBabName.trim()]: { ...INITIAL_DATA } })
     setNewBabName("")
     setIsAdding(false)
   }
@@ -302,42 +158,26 @@ export default function MatrixPage() {
   const handleDeleteBab = async (babId: string) => {
     if (babs.find(b => b.id === babId)?.is_submitted) return
     if (!confirm(`Hapus "${babId}"? Data matrix akan hilang.`)) return
-
-    const { error } = await supabase
-      .from("psat_matrix_input")
-      .delete()
-      .eq("profile_id", user.id)
-      .eq("bab_id_text", babId)
-
-    if (error) {
-      setToast({ message: "Error: " + error.message, type: "error" })
-      return
-    }
-
-    setBabs(babs.filter(b => b.id !== babId))
+    const { error } = await supabase.from("psat_matrix_input").delete()
+      .eq("profile_id", user.id).eq("bab_id_text", babId)
+    if (error) { showToast("Error: " + error.message, "error"); return }
+    setBabs(prev => prev.filter(b => b.id !== babId))
     const newData = { ...matrixDataRef.current }
     delete newData[babId]
     setMatrixDataSync(newData)
   }
 
   const handleRenameBab = async (oldId: string) => {
-    if (!editBabName.trim() || !user) return
-    if (babs.find(b => b.id === oldId)?.is_submitted) { setEditingBab(null); return }
-
-    await supabase
-      .from("psat_matrix_input")
-      .update({
-        bab_id_text: editBabName.trim(),
-        updated_at: new Date().toISOString()
-      })
-      .eq("profile_id", user.id)
-      .eq("bab_id_text", oldId)
-
+    if (!editBabName.trim() || !user || babs.find(b => b.id === oldId)?.is_submitted) {
+      setEditingBab(null); return
+    }
+    await supabase.from("psat_matrix_input")
+      .update({ bab_id_text: editBabName.trim(), updated_at: new Date().toISOString() })
+      .eq("profile_id", user.id).eq("bab_id_text", oldId)
     const newData = { ...matrixDataRef.current }
     newData[editBabName.trim()] = newData[oldId]
     delete newData[oldId]
-
-    setBabs(babs.map(b => b.id === oldId ? { ...b, id: editBabName.trim(), nama_bab: editBabName.trim() } : b))
+    setBabs(prev => prev.map(b => b.id === oldId ? { ...b, id: editBabName.trim(), nama_bab: editBabName.trim() } : b))
     setMatrixDataSync(newData)
     setEditingBab(null)
     setEditBabName("")
@@ -345,403 +185,284 @@ export default function MatrixPage() {
 
   const handleFieldChange = (babId: string, field: string, value: number) => {
     if (field.endsWith("_keluar")) {
-      const baseField = field.replace("_keluar", "_bank")
-      const currentBank = (matrixDataRef.current[babId] as any)?.[baseField] || 0
-
-      if (value > currentBank) {
-        setToast({ message: `Soal keluar (${value}) tidak boleh melebihi bank soal (${currentBank})`, type: "error" })
-        return
-      }
-
-      if (currentBank > 0 && value === 0) {
-        setToast({ message: "Soal keluar minimal 1 jika bank soal tidak sama dengan 0", type: "error" })
-        return
-      }
+      const bankField = field.replace("_keluar", "_bank")
+      const currentBank = matrixDataRef.current[babId]?.[bankField] || 0
+      if (value > currentBank) { showToast(`Soal keluar (${value}) tidak boleh melebihi bank soal (${currentBank})`, "error"); return }
+      if (currentBank > 0 && value === 0) { showToast("Soal keluar minimal 1 jika bank soal > 0", "error"); return }
     }
-
     setMatrixDataSync({
       ...matrixDataRef.current,
-      [babId]: {
-        ...matrixDataRef.current[babId],
-        [field]: value,
-      }
+      [babId]: { ...matrixDataRef.current[babId], [field]: value },
     })
   }
 
   const handleSave = async (babId: string) => {
     if (!user || !matrixDataRef.current[babId]) return
-
-    const { error } = await supabase
-      .from("psat_matrix_input")
+    await supabase.from("psat_matrix_input")
       .update({ data: matrixDataRef.current[babId], updated_at: new Date().toISOString() })
-      .eq("profile_id", user.id)
-      .eq("bab_id_text", babId)
-
-    if (error) {
-      setToast({ message: "Error menyimpan: " + error.message, type: "error" })
-    }
-  }
-
-  const validateBabData = (babId: string): string[] => {
-    const errors: string[] = []
-    const babData = matrixDataRef.current[babId] as any
-    
-    TIPE_OPTIONS.forEach(tipe => {
-      KESULITAN_OPTIONS.forEach(kesulitan => {
-        const keluar = babData?.[`${tipe}_${kesulitan}_keluar`] || 0
-        const bank = babData?.[`${tipe}_${kesulitan}_bank`] || 0
-        
-        if (bank > 0 && keluar === 0) {
-          errors.push(`${babId}: ${tipe} ${kesulitan} harus minimal 1 jika bank > 0`)
-        }
-        if (keluar > bank) {
-          errors.push(`${babId}: ${tipe} ${kesulitan} keluar (${keluar}) > bank (${bank})`)
-        }
-      })
-    })
-    return errors
-  }
-
-  const handleSubmit = async (babId: string) => {
-    if (!user) return
-    
-    const babErrors = validateBabData(babId)
-    if (babErrors.length > 0) {
-      setToast({ message: "Error: " + babErrors.join(", "), type: "error" })
-      return
-    }
-    
-    const errors = validateMatrix()
-    if (errors.length > 0) {
-      setValidationErrors(errors)
-      setToast({ message: "Belum sesuai patokan! " + errors.join(", "), type: "error" })
-      return
-    }
-
-    setSaving(true)
-
-    await supabase
-      .from("psat_matrix_input")
-      .update({
-        data: matrixDataRef.current[babId],
-        is_submitted: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("profile_id", user.id)
-      .eq("bab_id_text", babId)
-
-    setSaving(false)
-    await loadBabsFromDB(user.id)
-    setToast({ message: `Matrix "${babId}" submitted!`, type: "success" })
+      .eq("profile_id", user.id).eq("bab_id_text", babId)
   }
 
   const handleSubmitAll = async () => {
     if (!user) return
-
-    for (const bab of babs) {
-      const babErrors = validateBabData(bab.id)
-      if (babErrors.length > 0) {
-        setToast({ message: `Error di ${bab.id}: ` + babErrors.join(", "), type: "error" })
-        return
-      }
-    }
-
-    const errors = validateMatrix()
-    if (errors.length > 0) {
-      setValidationErrors(errors)
-      setToast({ message: "Belum sesuai patokan! " + errors.join(", "), type: "error" })
-      return
-    }
-
+    const errors = validateAll()
+    if (errors.length > 0) { showToast("Belum sesuai patokan: " + errors[0], "error"); return }
     setSaving(true)
-
-    for (const bab of babs) {
-      await supabase
-        .from("psat_matrix_input")
-        .update({
-          data: matrixDataRef.current[bab.id],
-          is_submitted: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("profile_id", user.id)
-        .eq("bab_id_text", bab.id)
+    for (const bab of babs.filter(b => !b.is_submitted)) {
+      await supabase.from("psat_matrix_input")
+        .update({ data: matrixDataRef.current[bab.id], is_submitted: true, updated_at: new Date().toISOString() })
+        .eq("profile_id", user.id).eq("bab_id_text", bab.id)
     }
-
     setSaving(false)
     await loadBabsFromDB(user.id)
-    setToast({ message: "Semua matrix submitted!", type: "success" })
+    showToast("Semua matrix berhasil disubmit!", "success")
   }
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
+
+  const totals = getTotals()
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
       <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-        <div className="max-w-7xl mx-auto py-4 px-4">
-          <div className="flex items-center justify-between">
+        <div className="max-w-full mx-auto py-4 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button onClick={() => router.push("/dashboard")} style={{ color: "var(--color-muted-foreground)" }}>
               ← Kembali
             </button>
             <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Matrix</h1>
-            <div></div>
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto py-8 px-4">
-        {/* Header Tambah Bab */}
-        <div className="mb-4 flex justify-between items-center">
-          <div className="flex gap-2 overflow-x-auto">
-            {babs.map((bab) => (
-              <div key={bab.id} className="flex items-center gap-1">
-                {!bab.is_submitted && editingBab === bab.id ? (
-                  <input
-                    autoFocus
-                    type="text"
-                    value={editBabName}
-                    onChange={(e) => setEditBabName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleRenameBab(bab.id)}
-                    onBlur={() => handleRenameBab(bab.id)}
-                    className="px-2 py-1 rounded text-sm w-24"
-                    style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                  />
-                ) : (
-                  <span
-                    className="px-3 py-1 rounded-full text-sm font-medium"
-                    style={{
-                      backgroundColor: bab.is_submitted ? "#22c55e" : "var(--color-primary)",
-                      color: bab.is_submitted ? "#fff" : "var(--color-primary-foreground)",
-                      cursor: bab.is_submitted ? "default" : "pointer",
-                    }}
-                    onClick={() => { if (!bab.is_submitted) { setEditingBab(bab.id); setEditBabName(bab.nama_bab) } }}
-                  >
-                    {bab.nama_bab} {bab.is_submitted && "✓"}
-                  </span>
-                )}
-                {!bab.is_submitted && (
-                  <button
-                    onClick={() => handleDeleteBab(bab.id)}
-                    className="text-xs"
-                    style={{ color: "var(--color-destructive)" }}
-                    title="Hapus"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
-
-            {isAdding ? (
-              <div className="flex items-center gap-1">
-                <input
-                  autoFocus
-                  type="text"
-                  value={newBabName}
-                  onChange={(e) => setNewBabName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddBab()}
-                  onBlur={() => { if (!newBabName) setIsAdding(false) }}
-                  placeholder="Nama bab..."
-                  className="px-2 py-1 rounded text-sm w-24"
-                  style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                />
-                <button onClick={handleAddBab} className="text-sm" style={{ color: "var(--color-primary)" }}>✓</button>
-                <button onClick={() => { setIsAdding(false); setNewBabName("") }} className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>×</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsAdding(true)}
-                className="px-3 py-1 rounded-full text-sm border"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
-              >
-                + Tambah
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Patokan — statistik dibuat/target */}
-        <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Progress Soal</h3>
-            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-              dibuat / patokan
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {TIPE_OPTIONS.map(tipe => (
-              <div key={tipe}>
-                <div className="text-sm font-semibold mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>
-                  {tipe}
-                </div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs w-16" />
-                  <span className="text-xs w-20 text-center" style={{ color: "var(--color-muted-foreground)" }}>soal keluar</span>
-                  <span className="text-xs w-20 text-center" style={{ color: "var(--color-muted-foreground)" }}>bank soal</span>
-                </div>
-                {KESULITAN_OPTIONS.map(kesulitan => {
-                  const totals = calculateTotals()
-                  const totalKeluar = totals[`${tipe}_${kesulitan}_keluar`] || 0
-                  const totalBank = totals[`${tipe}_${kesulitan}_bank`] || 0
-                  const targetKeluar = patokan[`${tipe}_${kesulitan}_keluar`] || 0
-                  const targetBank = patokan[`${tipe}_${kesulitan}_bank`] || 0
-                  const okKeluar = targetKeluar > 0 && totalKeluar >= targetKeluar
-                  const okBank = targetBank > 0 && totalBank >= targetBank
-
-                  return (
-                    <div key={kesulitan} className="flex items-center gap-2 mb-1">
-                      <span className="text-xs capitalize w-16" style={{ color: "var(--color-muted-foreground)" }}>{kesulitan}</span>
-                      <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium flex items-center justify-center gap-1"
-                        style={{ backgroundColor: targetKeluar === 0 ? "var(--color-muted)" : okKeluar ? "#f0fdf4" : "#fef2f2", color: targetKeluar === 0 ? "var(--color-muted-foreground)" : okKeluar ? "#15803d" : "#dc2626" }}>
-                        {targetKeluar > 0 && (okKeluar
-                          ? <Check className="w-3 h-3 shrink-0" />
-                          : <X className="w-3 h-3 shrink-0" />
-                        )}
-                        {totalKeluar}/{targetKeluar}
-                      </span>
-                      <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium flex items-center justify-center gap-1"
-                        style={{ backgroundColor: targetBank === 0 ? "var(--color-muted)" : okBank ? "#f0fdf4" : "#fef2f2", color: targetBank === 0 ? "var(--color-muted-foreground)" : okBank ? "#15803d" : "#dc2626" }}>
-                        {targetBank > 0 && (okBank
-                          ? <Check className="w-3 h-3 shrink-0" />
-                          : <X className="w-3 h-3 shrink-0" />
-                        )}
-                        {totalBank}/{targetBank}
-                      </span>
-                    </div>
-                  )
-                })}
-                <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: "var(--color-border)" }}>
-                  <span className="text-xs font-medium w-16" style={{ color: "var(--color-foreground)" }}>Total</span>
-                  <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                    {KESULITAN_OPTIONS.reduce((s, k) => s + (calculateTotals()[`${tipe}_${k}_keluar`] || 0), 0)}/
-                    {KESULITAN_OPTIONS.reduce((s, k) => s + (patokan[`${tipe}_${k}_keluar`] || 0), 0)}
-                  </span>
-                  <span className="w-20 px-2 py-1 rounded text-sm text-center font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                    {KESULITAN_OPTIONS.reduce((s, k) => s + (calculateTotals()[`${tipe}_${k}_bank`] || 0), 0)}/
-                    {KESULITAN_OPTIONS.reduce((s, k) => s + (patokan[`${tipe}_${k}_bank`] || 0), 0)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Table Matrix */}
-        {babs.length === 0 ? (
-          <div className="rounded-lg p-8 border text-center" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <p style={{ color: "var(--color-muted-foreground)" }}>
-              Klik "+ Tambah" untuk menambah bab/chapter.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="p-2 text-center border" rowSpan={2} style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-foreground)" }}>
-                    Tipe
-                  </th>
-                  <th className="p-2 text-center border" rowSpan={2} style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-foreground)" }}>
-                    Tingkat
-                  </th>
-                  {babs.map((bab) => (
-                    <th key={bab.id} className="p-2 text-center border" colSpan={2} style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-foreground)" }}>
-                      {bab.nama_bab}
-                    </th>
-                  ))}
-                </tr>
-                <tr>
-                  {babs.flatMap((bab) => [
-                    <th key={`${bab.id}-soal`} className="p-1 text-center border text-xs" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                      soal
-                    </th>,
-<th key={`${bab.id}-bank`} className="p-1 text-center border text-xs" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                      bank
-                    </th>,
-                  ])}
-                  <th key="total-soal" className="p-1 text-center border text-xs font-medium w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                    Total
-                  </th>
-                  <th key="total-bank" className="p-1 text-center border text-xs font-medium w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                    
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {TIPE_OPTIONS.map(tipe => (
-                  KESULITAN_OPTIONS.map((kesulitan, idx) => (
-                    <tr key={`${tipe}-${kesulitan}`}>
-                      {idx === 0 && (
-                        <td rowSpan={3} className="p-2 border font-medium text-center" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-foreground)" }}>
-                          {tipe.toUpperCase()}
-                        </td>
-                      )}
-                      <td className="p-2 border text-center capitalize" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)", color: "var(--color-foreground)" }}>
-                        {kesulitan}
-                      </td>
-{babs.flatMap((bab) => [
-                        <td key={`${bab.id}-keluar`} className="p-1 border" style={{ borderColor: "var(--color-border)" }}>
-                          <input
-                            type="number"
-                            min="0"
-                            value={(matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_keluar`] || 0}
-                            onChange={(e) => !bab.is_submitted && handleFieldChange(bab.id, `${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
-                            onBlur={() => !bab.is_submitted && handleSave(bab.id)}
-                            disabled={bab.is_submitted}
-                            className="w-full px-1 py-1 rounded text-center text-sm"
-                            style={{ backgroundColor: bab.is_submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: bab.is_submitted ? "not-allowed" : "auto" }}
-                          />
-                        </td>,
-                        <td key={`${bab.id}-bank`} className="p-1 border" style={{ borderColor: "var(--color-border)" }}>
-                          <input
-                            type="number"
-                            min="0"
-                            value={(matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_bank`] || 0}
-                            onChange={(e) => !bab.is_submitted && handleFieldChange(bab.id, `${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
-                            onBlur={() => !bab.is_submitted && handleSave(bab.id)}
-                            disabled={bab.is_submitted}
-                            className="w-full px-1 py-1 rounded text-center text-sm"
-                            style={{ backgroundColor: bab.is_submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: bab.is_submitted ? "not-allowed" : "auto" }}
-                          />
-                        </td>,
-                      ])}
-                      <td key="total-keluar" className="p-1 border text-center font-medium text-sm w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                        {babs.reduce((sum, bab) => sum + ((matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_keluar`] || 0), 0)}
-                      </td>
-                      <td key="total-bank" className="p-1 border text-center font-medium text-sm w-20" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}>
-                        {babs.reduce((sum, bab) => sum + ((matrixData[bab.id] as any)?.[`${tipe}_${kesulitan}_bank`] || 0), 0)}
-                      </td>
-                    </tr>
-                  ))
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Submit All */}
-        {babs.length > 0 && babs.some(b => !b.is_submitted) && (
-          <div className="mt-4 flex justify-end gap-2">
+          {babs.some(b => !b.is_submitted) && (
             <button
               onClick={handleSubmitAll}
               disabled={saving}
-              className="py-2 px-4 rounded-md font-medium disabled:opacity-50"
+              className="py-2 px-5 rounded-md font-medium text-sm disabled:opacity-50"
               style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
             >
               {saving ? "Menyimpan..." : "Submit Semua"}
             </button>
+          )}
+        </div>
+      </header>
+
+      <main className="px-4 py-6">
+        {/* Manajemen Bab */}
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
+          {babs.map(bab => (
+            <div key={bab.id} className="flex items-center gap-1">
+              {!bab.is_submitted && editingBab === bab.id ? (
+                <input
+                  autoFocus type="text" value={editBabName}
+                  onChange={e => setEditBabName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleRenameBab(bab.id)}
+                  onBlur={() => handleRenameBab(bab.id)}
+                  className="px-2 py-1 rounded text-sm w-28 border"
+                  style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                />
+              ) : (
+                <span
+                  className="px-3 py-1 rounded-full text-sm font-medium"
+                  style={{
+                    backgroundColor: bab.is_submitted ? "#22c55e" : "var(--color-primary)",
+                    color: "#fff",
+                    cursor: bab.is_submitted ? "default" : "pointer",
+                  }}
+                  onClick={() => { if (!bab.is_submitted) { setEditingBab(bab.id); setEditBabName(bab.nama_bab) } }}
+                >
+                  {bab.nama_bab} {bab.is_submitted && "✓"}
+                </span>
+              )}
+              {!bab.is_submitted && (
+                <button onClick={() => handleDeleteBab(bab.id)} className="text-sm w-4" style={{ color: "var(--color-destructive)" }}>×</button>
+              )}
+            </div>
+          ))}
+          {isAdding ? (
+            <div className="flex items-center gap-1">
+              <input
+                autoFocus type="text" value={newBabName}
+                onChange={e => setNewBabName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleAddBab()}
+                onBlur={() => { if (!newBabName) setIsAdding(false) }}
+                placeholder="Nama bab..."
+                className="px-2 py-1 rounded text-sm w-28 border"
+                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              />
+              <button onClick={handleAddBab} style={{ color: "var(--color-primary)" }}>✓</button>
+              <button onClick={() => { setIsAdding(false); setNewBabName("") }} style={{ color: "var(--color-muted-foreground)" }}>×</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="px-3 py-1 rounded-full text-sm border"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+            >
+              + Tambah Bab
+            </button>
+          )}
+        </div>
+
+        {/* Progress vs Patokan */}
+        <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>Progress vs Patokan</h3>
+            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+              aktual / target
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {TIPE_OPTIONS.map(tipe => (
+              <div key={tipe}>
+                <div className="text-xs font-semibold mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>{TIPE_LABELS[tipe]}</div>
+                {KESULITAN_OPTIONS.map(k => {
+                  const ak = totals[`${tipe}_${k}_keluar`] || 0
+                  const ab = totals[`${tipe}_${k}_bank`] || 0
+                  const tk = patokan[`${tipe}_${k}_keluar`] || 0
+                  const tb = patokan[`${tipe}_${k}_bank`] || 0
+                  const okK = tk > 0 && ak >= tk
+                  const okB = tb > 0 && ab >= tb
+                  return (
+                    <div key={k} className="flex items-center gap-1 mb-1">
+                      <span className="text-xs capitalize w-14" style={{ color: "var(--color-muted-foreground)" }}>{k}</span>
+                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
+                        style={{ backgroundColor: tk === 0 ? "var(--color-muted)" : okK ? "#f0fdf4" : "#fef2f2", color: tk === 0 ? "var(--color-muted-foreground)" : okK ? "#15803d" : "#dc2626" }}>
+                        {tk > 0 && (okK ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
+                        {ak}/{tk}
+                      </span>
+                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
+                        style={{ backgroundColor: tb === 0 ? "var(--color-muted)" : okB ? "#f0fdf4" : "#fef2f2", color: tb === 0 ? "var(--color-muted-foreground)" : okB ? "#15803d" : "#dc2626" }}>
+                        {tb > 0 && (okB ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
+                        {ab}/{tb}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tabel Matrix */}
+        {babs.length === 0 ? (
+          <div className="rounded-lg p-8 border text-center" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <p style={{ color: "var(--color-muted-foreground)" }}>Klik "+ Tambah Bab" untuk menambah bab/chapter.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="text-sm border-collapse w-full" style={{ minWidth: "700px" }}>
+              <thead>
+                <tr style={{ backgroundColor: "var(--color-muted)" }}>
+                  <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Bab</th>
+                  <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Tingkat</th>
+                  {TIPE_OPTIONS.map(tipe => (
+                    <th key={tipe} className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>
+                      {TIPE_LABELS[tipe]}
+                    </th>
+                  ))}
+                  <th className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>Total</th>
+                </tr>
+                <tr style={{ backgroundColor: "var(--color-muted)" }}>
+                  {TIPE_OPTIONS.map(tipe => (
+                    <React.Fragment key={tipe}>
+                      <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
+                      <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
+                    </React.Fragment>
+                  ))}
+                  <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
+                  <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
+                </tr>
+              </thead>
+              <tbody>
+                {babs.map((bab, bi) => {
+                  const p = matrixData[bab.id] || INITIAL_DATA
+                  const submitted = bab.is_submitted
+                  const rowBg = bi % 2 === 0 ? "var(--color-card)" : "var(--color-muted)"
+                  const totalBg = submitted ? "#f0fdf4" : bi % 2 === 0 ? "#f0fdf4" : "#dcfce7"
+
+                  return (
+                    <React.Fragment key={bab.id}>
+                      {KESULITAN_OPTIONS.map((k, ki) => {
+                        const rowSoal = TIPE_OPTIONS.reduce((s, t) => s + (p[`${t}_${k}_keluar`] || 0), 0)
+                        const rowBank = TIPE_OPTIONS.reduce((s, t) => s + (p[`${t}_${k}_bank`] || 0), 0)
+                        return (
+                          <tr key={`${bab.id}-${k}`} style={{ backgroundColor: rowBg }}>
+                            {ki === 0 && (
+                              <td
+                                className="border px-3 py-2 font-medium"
+                                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", verticalAlign: "middle" }}
+                                rowSpan={KESULITAN_OPTIONS.length + 1}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  {submitted && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#22c55e" }} />}
+                                  {bab.nama_bab}
+                                </div>
+                              </td>
+                            )}
+                            <td className="border px-3 py-1.5 capitalize text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
+                              {k}
+                            </td>
+                            {TIPE_OPTIONS.map(tipe => (
+                              <React.Fragment key={tipe}>
+                                <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
+                                  <input
+                                    type="number" min="0"
+                                    value={p[`${tipe}_${k}_keluar`] || 0}
+                                    onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_keluar`, parseInt(e.target.value) || 0)}
+                                    onBlur={() => !submitted && handleSave(bab.id)}
+                                    disabled={submitted}
+                                    className="w-14 px-1 py-0.5 rounded text-xs text-center border"
+                                    style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
+                                  />
+                                </td>
+                                <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
+                                  <input
+                                    type="number" min="0"
+                                    value={p[`${tipe}_${k}_bank`] || 0}
+                                    onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_bank`, parseInt(e.target.value) || 0)}
+                                    onBlur={() => !submitted && handleSave(bab.id)}
+                                    disabled={submitted}
+                                    className="w-14 px-1 py-0.5 rounded text-xs text-center border"
+                                    style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
+                                  />
+                                </td>
+                              </React.Fragment>
+                            ))}
+                            <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#15803d" }}>{rowSoal}</td>
+                            <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#b45309" }}>{rowBank}</td>
+                          </tr>
+                        )
+                      })}
+
+                      {/* Baris total per bab */}
+                      <tr style={{ backgroundColor: totalBg, borderBottom: "2px solid var(--color-border)" }}>
+                        <td className="border px-3 py-1.5 text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>Total</td>
+                        {TIPE_OPTIONS.map(tipe => {
+                          const colSoal = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_keluar`] || 0), 0)
+                          const colBank = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_bank`] || 0), 0)
+                          return (
+                            <React.Fragment key={tipe}>
+                              <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{colSoal}</td>
+                              <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{colBank}</td>
+                            </React.Fragment>
+                          )
+                        })}
+                        <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>
+                          {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_keluar`] || 0), 0), 0)}
+                        </td>
+                        <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>
+                          {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_bank`] || 0), 0), 0)}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-
-        {toast && (
-          <Toast 
-            message={toast.message} 
-            type={toast.type} 
-            onClose={() => setToast(null)} 
-          />
-        )}
       </main>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }
