@@ -44,12 +44,14 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
 
   const [nama, setNama] = useState("")
   const [noHp, setNoHp] = useState("")
   const [noRekening, setNoRekening] = useState("")
   const [bank, setBank] = useState("")
   const [unitSekolah, setUnitSekolah] = useState("")
+  const [kelas, setKelas] = useState("")
   const [mapelId, setMapelId] = useState("")
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export default function ProfilePage() {
 
       setNama(profileData?.nama || u.user_metadata?.nama || "")
       setNoHp(profileData?.no_hp || u.user_metadata?.no_hp || "")
+      setKelas(profileData?.kelas || "")
 
       const { data } = await supabase
         .from("psat_guru_data")
@@ -107,20 +110,34 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setSaveError("")
 
-    await supabase
+    if (!nama.trim() || !noHp.trim() || !unitSekolah || !kelas || !mapelId || !bank || !noRekening.trim()) {
+      setSaveError("Semua field wajib diisi sebelum menyimpan.")
+      setSaving(false)
+      return
+    }
+
+    const { error: profileError } = await supabase
       .from("profiles")
-      .update({ nama, no_hp: noHp })
+      .update({ nama, no_hp: noHp, kelas })
       .eq("id", user.id)
+
+    if (profileError) {
+      setSaveError("Gagal simpan profil: " + profileError.message)
+      setSaving(false)
+      return
+    }
 
     const { data: existing } = await supabase
       .from("psat_guru_data")
       .select("id")
       .eq("profile_id", user.id)
-      .single()
+      .maybeSingle()
 
+    let guruError
     if (existing) {
-      await supabase
+      const { error } = await supabase
         .from("psat_guru_data")
         .update({
           whatsapp: noHp,
@@ -131,8 +148,9 @@ export default function ProfilePage() {
           updated_at: new Date().toISOString()
         })
         .eq("id", existing.id)
+      guruError = error
     } else {
-      await supabase
+      const { error } = await supabase
         .from("psat_guru_data")
         .insert({
           profile_id: user.id,
@@ -142,11 +160,17 @@ export default function ProfilePage() {
           unit_sekolah: unitSekolah,
           mapel_id: mapelId || null
         })
+      guruError = error
     }
 
     setSaving(false)
-    setSaved(true)
 
+    if (guruError) {
+      setSaveError("Gagal simpan data guru: " + guruError.message)
+      return
+    }
+
+    setSaved(true)
     setTimeout(() => {
       router.push("/dashboard")
     }, 1000)
@@ -178,6 +202,11 @@ export default function ProfilePage() {
           {saved && (
             <div className="mb-4 p-3 rounded bg-green-100 border border-green-400" style={{ color: "#166534" }}>
               ✓ Data berhasil disimpan!
+            </div>
+          )}
+          {saveError && (
+            <div className="mb-4 p-3 rounded border text-sm" style={{ backgroundColor: "#fef2f2", borderColor: "#ef4444", color: "#dc2626" }}>
+              {saveError}
             </div>
           )}
 
@@ -236,6 +265,21 @@ export default function ProfilePage() {
                 {UNIT_OPTIONS.map((unit) => (
                   <option key={unit} value={unit}>{unit}</option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Kelas</label>
+              <select
+                value={kelas}
+                onChange={(e) => setKelas(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border"
+                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+              >
+                <option value="">Pilih Kelas</option>
+                <option value="7">Kelas 7</option>
+                <option value="8">Kelas 8</option>
+                <option value="9">Kelas 9</option>
               </select>
             </div>
 

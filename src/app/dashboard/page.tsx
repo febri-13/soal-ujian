@@ -218,7 +218,11 @@ export default function DashboardPage() {
     router.push("/login")
   }
 
-  const goTo = (path: string, requireMatrix?: boolean) => {
+  const goTo = (path: string, requireProfile?: boolean, requireMatrix?: boolean) => {
+    if (requireProfile && !hasProfile) {
+      alert("Lengkapi data diri terlebih dahulu sebelum mengisi matrix!")
+      return
+    }
     if (requireMatrix && !hasMatrix) {
       alert("Selesaikan matrix terlebih dahulu sebelum input soal!")
       return
@@ -400,24 +404,26 @@ export default function DashboardPage() {
               </button>
 
               <button
-                onClick={() => goTo("/dashboard/matrix")}
-                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                style={{ 
-                  borderColor: hasMatrix ? "#22c55e" : "var(--color-border)", 
-                  backgroundColor: "var(--color-card)" 
+                onClick={() => goTo("/dashboard/matrix", true)}
+                className="rounded-lg p-4 border text-left transition-opacity"
+                style={{
+                  borderColor: hasMatrix ? "#22c55e" : "var(--color-border)",
+                  backgroundColor: "var(--color-card)",
+                  opacity: hasProfile ? 1 : 0.5,
+                  cursor: hasProfile ? "pointer" : "not-allowed",
                 }}
               >
                 <div className="text-2xl mb-2">📊</div>
-                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>
+                <h3 className="font-medium" style={{ color: hasProfile ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
                   Matrix {hasMatrix && "✓"}
                 </h3>
                 <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  Pemetaan jumlah soal
+                  {hasProfile ? "Pemetaan jumlah soal" : "Lengkapi data diri dulu"}
                 </p>
               </button>
 
               <button
-                onClick={() => goTo("/dashboard/soal", true)}
+                onClick={() => goTo("/dashboard/soal", false, true)}
                 className="rounded-lg p-4 border text-left transition-opacity"
                 style={{
                   borderColor: hasMatrix ? "var(--color-border)" : "var(--color-muted)",
