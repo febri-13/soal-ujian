@@ -538,40 +538,44 @@ export default function SoalPage() {
                   <div>
                     <label className="block text-xs mb-2" style={{ color: "var(--color-muted-foreground)" }}>Pilihan Jawaban</label>
                     {pilihan.map((p, i) => (
-                      <div key={i} className="flex items-center gap-2 mb-2">
-                        {selectedTipe === "pilgan" ? (
-                          <input
-                            type="radio"
-                            name="jawabanBenar"
-                            checked={jawabanBenar === i}
-                            onChange={() => setJawabanBenar(i)}
-                          />
-                        ) : (
-                          <input
-                            type="checkbox"
-                            checked={jawabanBenarCeklist.includes(i)}
-                            onChange={e => setJawabanBenarCeklist(
-                              e.target.checked
-                                ? [...jawabanBenarCeklist, i]
-                                : jawabanBenarCeklist.filter(x => x !== i)
-                            )}
-                          />
-                        )}
-                        <span className="w-5 text-sm font-medium" style={{ color: "var(--color-muted-foreground)" }}>
+                      <div key={i} className="flex items-start gap-2 mb-3">
+                        <div className="mt-2">
+                          {selectedTipe === "pilgan" ? (
+                            <input
+                              type="radio"
+                              name="jawabanBenar"
+                              checked={jawabanBenar === i}
+                              onChange={() => setJawabanBenar(i)}
+                            />
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={jawabanBenarCeklist.includes(i)}
+                              onChange={e => setJawabanBenarCeklist(
+                                e.target.checked
+                                  ? [...jawabanBenarCeklist, i]
+                                  : jawabanBenarCeklist.filter(x => x !== i)
+                              )}
+                            />
+                          )}
+                        </div>
+                        <span className="mt-2.5 w-5 text-sm font-medium flex-shrink-0" style={{ color: "var(--color-muted-foreground)" }}>
                           {String.fromCharCode(65 + i)}.
                         </span>
-                        <input
-                          type="text"
-                          value={p}
-                          onChange={e => { const n = [...pilihan]; n[i] = e.target.value; setPilihan(n) }}
-                          placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
-                          className="flex-1 p-2 rounded border text-sm"
-                          style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                        />
-                        <ImageUpload
-                          value={pilihanGambar[i]}
-                          onChange={url => { const n = [...pilihanGambar]; n[i] = url; setPilihanGambar(n) }}
-                        />
+                        <div className="flex-1 min-w-0">
+                          <RichTextEditor
+                            mini
+                            content={p}
+                            onChange={html => { const n = [...pilihan]; n[i] = html; setPilihan(n) }}
+                            placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
+                          />
+                        </div>
+                        <div className="mt-1.5">
+                          <ImageUpload
+                            value={pilihanGambar[i]}
+                            onChange={url => { const n = [...pilihanGambar]; n[i] = url; setPilihanGambar(n) }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>

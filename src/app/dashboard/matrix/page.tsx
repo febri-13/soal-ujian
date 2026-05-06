@@ -2,9 +2,11 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, Pencil, X } from "lucide-react"
+import { Check, CircleHelp, Pencil, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
+import { driver } from "driver.js"
+import "driver.js/dist/driver.css"
 
 interface Bab {
   id: string
@@ -45,6 +47,56 @@ export default function MatrixPage() {
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type })
+  }
+
+  const startTour = () => {
+    const driverObj = driver({
+      showProgress: true,
+      nextBtnText: "Lanjut →",
+      prevBtnText: "← Kembali",
+      doneBtnText: "Selesai",
+      steps: [
+        {
+          element: "#tour-progress",
+          popover: {
+            title: "Progress vs Patokan",
+            description: "Perbandingan jumlah soal aktual vs target dari admin. Hijau = tepat sesuai target, Merah = kurang atau melebihi target.",
+          },
+        },
+        {
+          element: "#tour-bab-pills",
+          popover: {
+            title: "Daftar Bab",
+            description: "Setiap pill adalah satu bab. Klik pill untuk rename nama bab. Tombol × untuk menghapus bab yang belum disubmit.",
+          },
+        },
+        {
+          element: "#tour-tambah-bab",
+          popover: {
+            title: "Tambah Bab",
+            description: "Klik untuk menambah bab baru. Ketik nama bab lalu tekan Enter atau klik ✓ untuk menyimpan.",
+            side: "bottom",
+          },
+        },
+        {
+          element: "#tour-matrix-table",
+          popover: {
+            title: "Tabel Input Matrix",
+            description: "Isi jumlah soal di kolom setiap bab. 'Soal' = jumlah soal yang keluar di ujian, 'Bank' = total soal yang disiapkan. Data tersimpan otomatis saat berpindah kolom.",
+            side: "top",
+          },
+        },
+        {
+          element: "#tour-submit",
+          popover: {
+            title: "Submit Matrix",
+            description: "Setelah semua angka sesuai patokan (semua indikator hijau), klik Submit Semua. Setelah submit, matrix terkunci dan kamu bisa mulai input soal.",
+            side: "bottom",
+          },
+        },
+      ],
+    })
+    driverObj.drive()
   }
 
   const loadBabsFromDB = async (userId: string, mapelId: string | null = null) => {
@@ -116,6 +168,10 @@ export default function MatrixPage() {
         }
       }
       setLoading(false)
+      if (!localStorage.getItem("matrix_tour_done")) {
+        localStorage.setItem("matrix_tour_done", "1")
+        setTimeout(() => startTour(), 300)
+      }
     }
     load()
   }, [router])
@@ -237,22 +293,32 @@ export default function MatrixPage() {
             </button>
             <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Matrix</h1>
           </div>
-          {babs.some(b => !b.is_submitted) && (
+          <div id="tour-submit" className="flex items-center gap-2">
             <button
-              onClick={handleSubmitAll}
-              disabled={saving}
-              className="py-2 px-5 rounded-md font-medium text-sm disabled:opacity-50"
-              style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
+              onClick={startTour}
+              title="Tutorial"
+              className="p-1.5 rounded-md"
+              style={{ color: "var(--color-muted-foreground)" }}
             >
-              {saving ? "Menyimpan..." : "Submit Semua"}
+              <CircleHelp className="w-5 h-5" />
             </button>
-          )}
+            {babs.some(b => !b.is_submitted) && (
+              <button
+                onClick={handleSubmitAll}
+                disabled={saving}
+                className="py-2 px-5 rounded-md font-medium text-sm disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
+              >
+                {saving ? "Menyimpan..." : "Submit Semua"}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="px-4 py-6">
         {/* Progress vs Patokan */}
-        <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+        <div id="tour-progress" className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>Progress vs Patokan</h3>
             <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
@@ -292,7 +358,7 @@ export default function MatrixPage() {
         </div>
 
         {/* Manajemen Bab */}
-        <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <div id="tour-bab-pills" className="mb-4 flex items-center gap-2 flex-wrap">
           {babs.map(bab => (
             <div key={bab.id} className="flex items-center gap-1">
               {!bab.is_submitted && editingBab === bab.id ? (
@@ -326,7 +392,7 @@ export default function MatrixPage() {
               )}
             </div>
           ))}
-          {isAdding ? (
+          {!babs.every(b => b.is_submitted) && (isAdding ? (
             <div className="flex items-center gap-1">
               <input
                 autoFocus type="text" value={newBabName}
@@ -342,13 +408,14 @@ export default function MatrixPage() {
             </div>
           ) : (
             <button
+              id="tour-tambah-bab"
               onClick={() => setIsAdding(true)}
               className="px-3 py-1 rounded-full text-sm border"
               style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
             >
               + Tambah Bab
             </button>
-          )}
+          ))}
         </div>
 
         {/* Tabel Matrix */}
@@ -357,7 +424,7 @@ export default function MatrixPage() {
             <p style={{ color: "var(--color-muted-foreground)" }}>Klik "+ Tambah Bab" untuk menambah bab/chapter.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div id="tour-matrix-table" className="overflow-x-auto">
             <table className="text-sm border-collapse w-full" style={{ minWidth: `${260 + babs.length * 160}px` }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--color-muted)" }}>
