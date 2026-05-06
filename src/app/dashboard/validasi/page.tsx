@@ -212,8 +212,8 @@ export default function ValidasiPage() {
                       }`}>{soal.status}</span>
                     </div>
 
-                    <div 
-                      className="text-sm mb-2 ml-10"
+                    <div
+                      className="text-sm mb-2 ml-10 rich-html"
                       dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
                     />
 

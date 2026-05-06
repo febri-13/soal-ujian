@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, LayoutGrid, LogIn } from "lucide-react"
+import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, LayoutGrid, LogIn, FileEdit } from "lucide-react"
 
 export const revalidate = 300
 
@@ -15,6 +15,7 @@ interface GuruProgress {
   submitted: number
   draft: number
   needs_revision: number
+  patokan_bank_total: number
   glossary_url: string | null
   kisi_kisi_url: string | null
 }
@@ -24,6 +25,7 @@ export default async function HomePage() {
   const rows: GuruProgress[] = (data as GuruProgress[]) ?? []
 
   const totalSoal      = rows.reduce((s, r) => s + Number(r.total), 0)
+  const totalDraft     = rows.reduce((s, r) => s + Number(r.draft), 0)
   const totalApproved  = rows.reduce((s, r) => s + Number(r.approved), 0)
   const totalSubmitted = rows.reduce((s, r) => s + Number(r.submitted), 0)
   const totalRevision  = rows.reduce((s, r) => s + Number(r.needs_revision), 0)
@@ -65,13 +67,20 @@ export default async function HomePage() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
           <SummaryCard
             icon={<TrendingUp className="w-5 h-5" />}
             label="Total Soal"
             value={totalSoal}
             color="var(--color-foreground)"
             bg="var(--color-card)"
+          />
+          <SummaryCard
+            icon={<FileEdit className="w-5 h-5" />}
+            label="Draft"
+            value={totalDraft}
+            color="#6b7280"
+            bg="var(--color-muted)"
           />
           <SummaryCard
             icon={<CheckCircle className="w-5 h-5" />}
@@ -139,7 +148,8 @@ export default async function HomePage() {
                     const submitted = Number(row.submitted)
                     const draft = Number(row.draft)
                     const needs_revision = Number(row.needs_revision)
-                    const pct = total > 0 ? Math.round((approved / total) * 100) : 0
+                    const patokan = Number(row.patokan_bank_total)
+                    const pct = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
                     const barColor = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
 
                     return (
@@ -191,7 +201,7 @@ export default async function HomePage() {
                             />
                           </div>
                           <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                            {approved}/{total} ({pct}%)
+                            {total}/{patokan} ({pct}%)
                           </span>
                         </td>
                         <td className="px-3 py-3 text-center font-medium" style={{ color: "#15803d" }}>{approved}</td>

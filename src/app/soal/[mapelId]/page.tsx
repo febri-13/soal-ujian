@@ -108,7 +108,7 @@ export default async function PublikSoalPage({ params }: { params: Promise<{ map
                         </span>
                         <div className="flex-1 min-w-0">
                           <div
-                            className="text-sm mb-1.5 leading-relaxed"
+                            className="text-sm mb-1.5 leading-relaxed rich-html"
                             style={{ color: "var(--color-foreground)" }}
                             dangerouslySetInnerHTML={{ __html: s.pertanyaan }}
                           />

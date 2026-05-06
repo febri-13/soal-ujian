@@ -650,7 +650,7 @@ export default function SoalPage() {
                           {soal.status === "needs_revision" && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white">Revisi</span>}
                         </div>
                         <div
-                          className="text-sm"
+                          className="text-sm rich-html"
                           style={{ color: "var(--color-foreground)" }}
                           dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
                         />
@@ -669,7 +669,7 @@ export default function SoalPage() {
                                   {String.fromCharCode(65 + p.id)}.
                                 </span>
                                 <div
-                                  className="flex-1 min-w-0"
+                                  className="flex-1 min-w-0 rich-html"
                                   style={{ color: p.benar ? "#15803d" : "var(--color-foreground)" }}
                                   dangerouslySetInnerHTML={{ __html: p.teks }}
                                 />
