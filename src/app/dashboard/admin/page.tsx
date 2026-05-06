@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 
@@ -172,7 +172,7 @@ export default function AdminPage() {
       </header>
 
       <main className="px-4 py-6 overflow-x-auto">
-        <table className="text-sm border-collapse w-full" style={{ minWidth: "900px" }}>
+        <table className="text-sm border-collapse w-full" style={{ minWidth: "1000px" }}>
           <thead>
             <tr style={{ backgroundColor: "var(--color-muted)" }}>
               <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>
@@ -182,84 +182,114 @@ export default function AdminPage() {
                 Tingkat
               </th>
               {TIPE_OPTIONS.map(tipe => (
-                <th
-                  key={tipe}
-                  className="border px-3 py-2 text-center font-medium"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                  colSpan={2}
-                >
+                <th key={tipe} className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>
                   {TIPE_LABELS[tipe]}
                 </th>
               ))}
+              <th className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>
+                Total
+              </th>
             </tr>
             <tr style={{ backgroundColor: "var(--color-muted)" }}>
               {TIPE_OPTIONS.map(tipe => (
-                <>
-                  <th key={`${tipe}-soal`} className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
-                  <th key={`${tipe}-bank`} className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
-                </>
+                <React.Fragment key={tipe}>
+                  <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
+                  <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
+                </React.Fragment>
               ))}
+              <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
+              <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
             </tr>
           </thead>
           <tbody>
-            {mataPelajaran.map((mapel, mi) => (
-              <>
-                {KESULITAN_OPTIONS.map((kesulitan, ki) => {
-                  const p = patokanMap[mapel.id] || buildEmpty()
-                  return (
-                    <tr
-                      key={`${mapel.id}-${kesulitan}`}
-                      style={{
-                        backgroundColor: mi % 2 === 0 ? "var(--color-card)" : "var(--color-muted)",
-                        borderBottom: ki === KESULITAN_OPTIONS.length - 1 ? "2px solid var(--color-border)" : undefined,
-                      }}
-                    >
-                      {ki === 0 && (
-                        <td
-                          className="border px-3 py-2 font-medium"
-                          style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", verticalAlign: "middle" }}
-                          rowSpan={KESULITAN_OPTIONS.length}
-                        >
-                          {mapel.nama}
-                          {mapel.kode && (
-                            <span className="ml-1.5 text-xs px-1 py-0.5 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-                              {mapel.kode}
-                            </span>
-                          )}
+            {mataPelajaran.map((mapel, mi) => {
+              const p = patokanMap[mapel.id] || buildEmpty()
+              const rowBg = mi % 2 === 0 ? "var(--color-card)" : "var(--color-muted)"
+              const totalBg = mi % 2 === 0 ? "#f0fdf4" : "#dcfce7"
+
+              return (
+                <React.Fragment key={mapel.id}>
+                  {KESULITAN_OPTIONS.map((kesulitan, ki) => {
+                    const rowSoal = TIPE_OPTIONS.reduce((s, t) => s + (p[`${t}_${kesulitan}_keluar`] || 0), 0)
+                    const rowBank = TIPE_OPTIONS.reduce((s, t) => s + (p[`${t}_${kesulitan}_bank`] || 0), 0)
+                    return (
+                      <tr key={`${mapel.id}-${kesulitan}`} style={{ backgroundColor: rowBg }}>
+                        {ki === 0 && (
+                          <td
+                            className="border px-3 py-2 font-medium"
+                            style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", verticalAlign: "middle" }}
+                            rowSpan={KESULITAN_OPTIONS.length + 1}
+                          >
+                            {mapel.nama}
+                            {mapel.kode && (
+                              <span className="ml-1.5 text-xs px-1 py-0.5 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+                                {mapel.kode}
+                              </span>
+                            )}
+                          </td>
+                        )}
+                        <td className="border px-3 py-1.5 capitalize text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
+                          {kesulitan}
                         </td>
-                      )}
-                      <td className="border px-3 py-1.5 capitalize text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
-                        {kesulitan}
-                      </td>
-                      {TIPE_OPTIONS.map(tipe => (
-                        <>
-                          <td key={`${tipe}-soal`} className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
-                            <input
-                              type="number"
-                              min="0"
-                              value={p[`${tipe}_${kesulitan}_keluar`] || 0}
-                              onChange={e => handleChange(mapel.id, `${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
-                              className="w-14 px-1 py-0.5 rounded text-xs text-center border"
-                              style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                            />
-                          </td>
-                          <td key={`${tipe}-bank`} className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
-                            <input
-                              type="number"
-                              min="0"
-                              value={p[`${tipe}_${kesulitan}_bank`] || 0}
-                              onChange={e => handleChange(mapel.id, `${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
-                              className="w-14 px-1 py-0.5 rounded text-xs text-center border"
-                              style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                            />
-                          </td>
-                        </>
-                      ))}
-                    </tr>
-                  )
-                })}
-              </>
-            ))}
+                        {TIPE_OPTIONS.map(tipe => (
+                          <React.Fragment key={tipe}>
+                            <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
+                              <input
+                                type="number"
+                                min="0"
+                                value={p[`${tipe}_${kesulitan}_keluar`] || 0}
+                                onChange={e => handleChange(mapel.id, `${tipe}_${kesulitan}_keluar`, parseInt(e.target.value) || 0)}
+                                className="w-14 px-1 py-0.5 rounded text-xs text-center border"
+                                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                              />
+                            </td>
+                            <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
+                              <input
+                                type="number"
+                                min="0"
+                                value={p[`${tipe}_${kesulitan}_bank`] || 0}
+                                onChange={e => handleChange(mapel.id, `${tipe}_${kesulitan}_bank`, parseInt(e.target.value) || 0)}
+                                className="w-14 px-1 py-0.5 rounded text-xs text-center border"
+                                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                              />
+                            </td>
+                          </React.Fragment>
+                        ))}
+                        <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#15803d" }}>
+                          {rowSoal}
+                        </td>
+                        <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#b45309" }}>
+                          {rowBank}
+                        </td>
+                      </tr>
+                    )
+                  })}
+
+                  {/* Baris total per mapel */}
+                  <tr style={{ backgroundColor: totalBg, borderBottom: "2px solid var(--color-border)" }}>
+                    <td className="border px-3 py-1.5 text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>
+                      Total
+                    </td>
+                    {TIPE_OPTIONS.map(tipe => {
+                      const colSoal = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_keluar`] || 0), 0)
+                      const colBank = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_bank`] || 0), 0)
+                      return (
+                        <React.Fragment key={tipe}>
+                          <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{colSoal}</td>
+                          <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{colBank}</td>
+                        </React.Fragment>
+                      )
+                    })}
+                    <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>
+                      {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_keluar`] || 0), 0), 0)}
+                    </td>
+                    <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>
+                      {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_bank`] || 0), 0), 0)}
+                    </td>
+                  </tr>
+                </React.Fragment>
+              )
+            })}
           </tbody>
         </table>
       </main>
