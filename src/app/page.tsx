@@ -3,11 +3,13 @@ import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, Layout
 
 export const revalidate = 300
 
-interface MapelProgress {
+interface GuruProgress {
+  profile_id: string
+  guru_nama: string | null
+  guru_kelas: string | null
   mapel_id: string
   mapel_nama: string
   mapel_kode: string | null
-  guru_nama: string | null
   total: number
   approved: number
   submitted: number
@@ -18,8 +20,8 @@ interface MapelProgress {
 }
 
 export default async function HomePage() {
-  const { data, error } = await supabase.rpc("get_public_mapel_progress")
-  const rows: MapelProgress[] = (data as MapelProgress[]) ?? []
+  const { data, error } = await supabase.rpc("get_public_guru_progress")
+  const rows: GuruProgress[] = (data as GuruProgress[]) ?? []
 
   const totalSoal      = rows.reduce((s, r) => s + Number(r.total), 0)
   const totalApproved  = rows.reduce((s, r) => s + Number(r.approved), 0)
@@ -101,7 +103,7 @@ export default async function HomePage() {
         >
           <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
             <h2 className="font-semibold text-sm" style={{ color: "var(--color-foreground)" }}>
-              Progress Per Mata Pelajaran
+              Progress Per Akun Guru
             </h2>
           </div>
 
@@ -121,6 +123,7 @@ export default async function HomePage() {
                     <th className="px-3 py-2 text-left font-medium w-8" style={{ color: "var(--color-muted-foreground)" }}>No</th>
                     <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Mata Pelajaran</th>
                     <th className="px-3 py-2 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Guru</th>
+                    <th className="px-3 py-2 text-center font-medium w-16" style={{ color: "var(--color-muted-foreground)" }}>Kelas</th>
                     <th className="px-3 py-2 text-left font-medium min-w-36" style={{ color: "var(--color-muted-foreground)" }}>Progress</th>
                     <th className="px-3 py-2 text-center font-medium" style={{ color: "#15803d" }}>Approved</th>
                     <th className="px-3 py-2 text-center font-medium" style={{ color: "#b45309" }}>Submitted</th>
@@ -141,7 +144,7 @@ export default async function HomePage() {
 
                     return (
                       <tr
-                        key={row.mapel_id}
+                        key={row.profile_id}
                         style={{
                           borderBottom: i < rows.length - 1 ? "1px solid var(--color-border)" : undefined,
                         }}
@@ -167,6 +170,18 @@ export default async function HomePage() {
                         </td>
                         <td className="px-3 py-3" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
                           {row.guru_nama ?? "—"}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {row.guru_kelas ? (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded font-medium"
+                              style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
+                            >
+                              {row.guru_kelas}
+                            </span>
+                          ) : (
+                            <span style={{ color: "var(--color-muted-foreground)" }}>—</span>
+                          )}
                         </td>
                         <td className="px-3 py-3">
                           <div className="w-full rounded-full h-2 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
