@@ -45,6 +45,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
+  const [errors, setErrors] = useState<Record<string, boolean>>({})
 
   const [nama, setNama] = useState("")
   const [noHp, setNoHp] = useState("")
@@ -111,8 +112,19 @@ export default function ProfilePage() {
     e.preventDefault()
     setSaving(true)
 
-    if (!nama.trim() || !noHp.trim() || !unitSekolah || !kelas || !mapelId || !bank || !noRekening.trim()) {
-      setToast({ message: "Semua field wajib diisi sebelum menyimpan.", type: "error" })
+    const fieldErrors = {
+      nama: !nama.trim(),
+      noHp: !noHp.trim(),
+      unitSekolah: !unitSekolah,
+      kelas: !kelas,
+      mapelId: !mapelId,
+      bank: !bank,
+      noRekening: !noRekening.trim(),
+    }
+    setErrors(fieldErrors)
+
+    if (Object.values(fieldErrors).some(Boolean)) {
+      setToast({ message: "Lengkapi semua field yang ditandai merah.", type: "error" })
       setSaving(false)
       return
     }
@@ -205,13 +217,13 @@ export default function ProfilePage() {
 
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nama Lengkap</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.nama ? "#dc2626" : "var(--color-foreground)" }}>Nama Lengkap</label>
               <input
                 type="text"
                 value={nama}
-                onChange={(e) => setNama(e.target.value)}
+                onChange={(e) => { setNama(e.target.value); setErrors(p => ({ ...p, nama: false })) }}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.nama ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               />
             </div>
 
@@ -227,14 +239,14 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor HP</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.noHp ? "#dc2626" : "var(--color-foreground)" }}>Nomor HP</label>
               <input
                 type="tel"
                 value={noHp}
-                onChange={(e) => setNoHp(e.target.value)}
+                onChange={(e) => { setNoHp(e.target.value); setErrors(p => ({ ...p, noHp: false })) }}
                 placeholder="08123456789"
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.noHp ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               />
             </div>
 
@@ -243,12 +255,12 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Unit Sekolah</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.unitSekolah ? "#dc2626" : "var(--color-foreground)" }}>Unit Sekolah</label>
               <select
                 value={unitSekolah}
-                onChange={(e) => setUnitSekolah(e.target.value)}
+                onChange={(e) => { setUnitSekolah(e.target.value); setErrors(p => ({ ...p, unitSekolah: false })) }}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.unitSekolah ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 <option value="">Pilih Unit Sekolah</option>
                 {UNIT_OPTIONS.map((unit) => (
@@ -258,12 +270,12 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Kelas</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.kelas ? "#dc2626" : "var(--color-foreground)" }}>Kelas</label>
               <select
                 value={kelas}
-                onChange={(e) => setKelas(e.target.value)}
+                onChange={(e) => { setKelas(e.target.value); setErrors(p => ({ ...p, kelas: false })) }}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.kelas ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 <option value="">Pilih Kelas</option>
                 <option value="7">Kelas 7</option>
@@ -273,12 +285,12 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Mata Pelajaran</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.mapelId ? "#dc2626" : "var(--color-foreground)" }}>Mata Pelajaran</label>
               <select
                 value={mapelId}
-                onChange={(e) => setMapelId(e.target.value)}
+                onChange={(e) => { setMapelId(e.target.value); setErrors(p => ({ ...p, mapelId: false })) }}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.mapelId ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 <option value="">Pilih Mata Pelajaran</option>
                 {mataPelajaran.map((m) => (
@@ -288,12 +300,12 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Bank</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.bank ? "#dc2626" : "var(--color-foreground)" }}>Bank</label>
               <select
                 value={bank}
-                onChange={(e) => setBank(e.target.value)}
+                onChange={(e) => { setBank(e.target.value); setErrors(p => ({ ...p, bank: false })) }}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.bank ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 <option value="">Pilih Bank</option>
                 {BANK_OPTIONS.map((b) => (
@@ -303,13 +315,13 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>Nomor Rekening</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: errors.noRekening ? "#dc2626" : "var(--color-foreground)" }}>Nomor Rekening</label>
               <input
                 type="text"
                 value={noRekening}
-                onChange={(e) => setNoRekening(e.target.value)}
+                onChange={(e) => { setNoRekening(e.target.value); setErrors(p => ({ ...p, noRekening: false })) }}
                 className="w-full px-3 py-2 rounded-md border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                style={{ backgroundColor: "var(--color-input)", borderColor: errors.noRekening ? "#dc2626" : "var(--color-border)", color: "var(--color-foreground)" }}
               />
             </div>
 
