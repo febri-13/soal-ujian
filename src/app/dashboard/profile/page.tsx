@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import Toast from "@/components/Toast"
 
 interface PsatGuruData {
   id: string
@@ -43,8 +44,7 @@ export default function ProfilePage() {
   const [mataPelajaran, setMataPelajaran] = useState<MataPelajaran[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState("")
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
   const [nama, setNama] = useState("")
   const [noHp, setNoHp] = useState("")
@@ -110,10 +110,9 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setSaveError("")
 
     if (!nama.trim() || !noHp.trim() || !unitSekolah || !kelas || !mapelId || !bank || !noRekening.trim()) {
-      setSaveError("Semua field wajib diisi sebelum menyimpan.")
+      setToast({ message: "Semua field wajib diisi sebelum menyimpan.", type: "error" })
       setSaving(false)
       return
     }
@@ -124,7 +123,7 @@ export default function ProfilePage() {
       .eq("id", user.id)
 
     if (profileError) {
-      setSaveError("Gagal simpan profil: " + profileError.message)
+      setToast({ message: "Gagal simpan profil: " + profileError.message, type: "error" })
       setSaving(false)
       return
     }
@@ -166,14 +165,14 @@ export default function ProfilePage() {
     setSaving(false)
 
     if (guruError) {
-      setSaveError("Gagal simpan data guru: " + guruError.message)
+      setToast({ message: "Gagal simpan data guru: " + guruError.message, type: "error" })
       return
     }
 
-    setSaved(true)
+    setToast({ message: "Data berhasil disimpan!", type: "success" })
     setTimeout(() => {
       router.push("/dashboard")
-    }, 1000)
+    }, 1500)
   }
 
   const handleSkip = () => {
@@ -199,16 +198,6 @@ export default function ProfilePage() {
 
       <main className="max-w-2xl mx-auto py-8 px-4">
         <div className="rounded-lg p-6 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          {saved && (
-            <div className="mb-4 p-3 rounded bg-green-100 border border-green-400" style={{ color: "#166534" }}>
-              ✓ Data berhasil disimpan!
-            </div>
-          )}
-          {saveError && (
-            <div className="mb-4 p-3 rounded border text-sm" style={{ backgroundColor: "#fef2f2", borderColor: "#ef4444", color: "#dc2626" }}>
-              {saveError}
-            </div>
-          )}
 
           <p className="mb-6" style={{ color: "var(--color-muted-foreground)" }}>
             Lengkapi atau perbarui data diri Anda.
@@ -345,6 +334,10 @@ export default function ProfilePage() {
           </form>
         </div>
       </main>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
     </div>
   )
 }
