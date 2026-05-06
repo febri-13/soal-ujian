@@ -291,6 +291,38 @@ export default function AdminPage() {
               )
             })}
           </tbody>
+          <tfoot>
+            {(() => {
+              const grand: Record<string, number> = {}
+              Object.values(patokanMap).forEach(p => {
+                TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
+                  grand[`${t}_${k}_keluar`] = (grand[`${t}_${k}_keluar`] || 0) + (p[`${t}_${k}_keluar`] || 0)
+                  grand[`${t}_${k}_bank`]   = (grand[`${t}_${k}_bank`]   || 0) + (p[`${t}_${k}_bank`]   || 0)
+                }))
+              })
+              const grandTotalSoal = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (grand[`${t}_${k}_keluar`] || 0), 0), 0)
+              const grandTotalBank = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (grand[`${t}_${k}_bank`]   || 0), 0), 0)
+              return (
+                <tr style={{ backgroundColor: "#dbeafe", borderTop: "3px solid var(--color-border)" }}>
+                  <td colSpan={2} className="border px-3 py-2 text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>
+                    Grand Total
+                  </td>
+                  {TIPE_OPTIONS.map(tipe => {
+                    const colSoal = KESULITAN_OPTIONS.reduce((s, k) => s + (grand[`${tipe}_${k}_keluar`] || 0), 0)
+                    const colBank = KESULITAN_OPTIONS.reduce((s, k) => s + (grand[`${tipe}_${k}_bank`]   || 0), 0)
+                    return (
+                      <React.Fragment key={tipe}>
+                        <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{colSoal}</td>
+                        <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{colBank}</td>
+                      </React.Fragment>
+                    )
+                  })}
+                  <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{grandTotalSoal}</td>
+                  <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{grandTotalBank}</td>
+                </tr>
+              )
+            })()}
+          </tfoot>
         </table>
       </main>
 

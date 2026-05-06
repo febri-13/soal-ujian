@@ -346,14 +346,14 @@ export default function DashboardPage() {
             {isAdmin && (
               <>
                 <button
-                  onClick={() => goTo("/admin/users")}
+                  onClick={() => goTo("/dashboard/admin")}
                   className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
                 >
-                  <div className="text-2xl mb-2">👥</div>
-                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Users</h3>
+                  <div className="text-2xl mb-2">⚙️</div>
+                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Patokan Soal</h3>
                   <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                    Kelola users & roles
+                    Atur target soal per mapel
                   </p>
                 </button>
 
@@ -370,14 +370,14 @@ export default function DashboardPage() {
                 </button>
 
                 <button
-                  onClick={() => goTo("/dashboard/admin")}
+                  onClick={() => goTo("/admin/users")}
                   className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
                 >
-                  <div className="text-2xl mb-2">⚙️</div>
-                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Patokan Soal</h3>
+                  <div className="text-2xl mb-2">👥</div>
+                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Users</h3>
                   <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                    Atur target soal per mapel
+                    Kelola users & roles
                   </p>
                 </button>
               </>

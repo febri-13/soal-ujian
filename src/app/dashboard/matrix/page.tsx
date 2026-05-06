@@ -251,6 +251,46 @@ export default function MatrixPage() {
       </header>
 
       <main className="px-4 py-6">
+        {/* Progress vs Patokan */}
+        <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>Progress vs Patokan</h3>
+            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+              aktual / target
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {TIPE_OPTIONS.map(tipe => (
+              <div key={tipe}>
+                <div className="text-xs font-semibold mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>{TIPE_LABELS[tipe]}</div>
+                {KESULITAN_OPTIONS.map(k => {
+                  const ak = totals[`${tipe}_${k}_keluar`] || 0
+                  const ab = totals[`${tipe}_${k}_bank`] || 0
+                  const tk = patokan[`${tipe}_${k}_keluar`] || 0
+                  const tb = patokan[`${tipe}_${k}_bank`] || 0
+                  const okK = tk > 0 && ak >= tk
+                  const okB = tb > 0 && ab >= tb
+                  return (
+                    <div key={k} className="flex items-center gap-1 mb-1">
+                      <span className="text-xs capitalize w-14" style={{ color: "var(--color-muted-foreground)" }}>{k}</span>
+                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
+                        style={{ backgroundColor: tk === 0 ? "var(--color-muted)" : okK ? "#f0fdf4" : "#fef2f2", color: tk === 0 ? "var(--color-muted-foreground)" : okK ? "#15803d" : "#dc2626" }}>
+                        {tk > 0 && (okK ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
+                        {ak}/{tk}
+                      </span>
+                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
+                        style={{ backgroundColor: tb === 0 ? "var(--color-muted)" : okB ? "#f0fdf4" : "#fef2f2", color: tb === 0 ? "var(--color-muted-foreground)" : okB ? "#15803d" : "#dc2626" }}>
+                        {tb > 0 && (okB ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
+                        {ab}/{tb}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Manajemen Bab */}
         <div className="mb-4 flex items-center gap-2 flex-wrap">
           {babs.map(bab => (
@@ -309,46 +349,6 @@ export default function MatrixPage() {
               + Tambah Bab
             </button>
           )}
-        </div>
-
-        {/* Progress vs Patokan */}
-        <div className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>Progress vs Patokan</h3>
-            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-              aktual / target
-            </span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {TIPE_OPTIONS.map(tipe => (
-              <div key={tipe}>
-                <div className="text-xs font-semibold mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>{TIPE_LABELS[tipe]}</div>
-                {KESULITAN_OPTIONS.map(k => {
-                  const ak = totals[`${tipe}_${k}_keluar`] || 0
-                  const ab = totals[`${tipe}_${k}_bank`] || 0
-                  const tk = patokan[`${tipe}_${k}_keluar`] || 0
-                  const tb = patokan[`${tipe}_${k}_bank`] || 0
-                  const okK = tk > 0 && ak >= tk
-                  const okB = tb > 0 && ab >= tb
-                  return (
-                    <div key={k} className="flex items-center gap-1 mb-1">
-                      <span className="text-xs capitalize w-14" style={{ color: "var(--color-muted-foreground)" }}>{k}</span>
-                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
-                        style={{ backgroundColor: tk === 0 ? "var(--color-muted)" : okK ? "#f0fdf4" : "#fef2f2", color: tk === 0 ? "var(--color-muted-foreground)" : okK ? "#15803d" : "#dc2626" }}>
-                        {tk > 0 && (okK ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
-                        {ak}/{tk}
-                      </span>
-                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
-                        style={{ backgroundColor: tb === 0 ? "var(--color-muted)" : okB ? "#f0fdf4" : "#fef2f2", color: tb === 0 ? "var(--color-muted-foreground)" : okB ? "#15803d" : "#dc2626" }}>
-                        {tb > 0 && (okB ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
-                        {ab}/{tb}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Tabel Matrix */}
