@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, LayoutGrid } from "lucide-react"
+import { BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle, Download, LayoutGrid, LogIn } from "lucide-react"
 
 export const revalidate = 300
 
@@ -45,6 +45,19 @@ export default async function HomePage() {
               </p>
             </div>
           </div>
+          <a
+            href="/login"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border"
+            style={{
+              backgroundColor: "var(--color-primary)",
+              borderColor: "var(--color-primary)",
+              color: "#ffffff",
+              textDecoration: "none",
+            }}
+          >
+            <LogIn className="w-4 h-4" />
+            Login
+          </a>
         </div>
       </header>
 
