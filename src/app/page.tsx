@@ -146,8 +146,9 @@ export default async function HomePage() {
                       const draft        = Number(row.draft)
                       const needs_revision = Number(row.needs_revision)
                       const patokan      = Number(row.patokan_bank_total)
-                      const pct          = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
-                      const barColor     = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+                      const hasPatokan   = patokan > 0
+                      const pct          = hasPatokan ? Math.min(100, Math.round((total / patokan) * 100)) : 0
+                      const barColor     = !hasPatokan ? "var(--color-muted-foreground)" : pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
 
                       return (
                         <div key={row.profile_id} className="p-4 space-y-3">
@@ -192,7 +193,7 @@ export default async function HomePage() {
                               />
                             </div>
                             <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                              {total}/{patokan} soal ({pct}%)
+                              {hasPatokan ? `${total}/${patokan} soal (${pct}%)` : `${total}/— (patokan belum diset)`}
                             </span>
                           </div>
 
@@ -240,8 +241,9 @@ export default async function HomePage() {
                           const draft          = Number(row.draft)
                           const needs_revision = Number(row.needs_revision)
                           const patokan        = Number(row.patokan_bank_total)
-                          const pct            = patokan > 0 ? Math.min(100, Math.round((total / patokan) * 100)) : 0
-                          const barColor       = pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+                          const hasPatokan     = patokan > 0
+                          const pct            = hasPatokan ? Math.min(100, Math.round((total / patokan) * 100)) : 0
+                          const barColor       = !hasPatokan ? "var(--color-muted-foreground)" : pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
 
                           return (
                             <tr
@@ -294,7 +296,7 @@ export default async function HomePage() {
                                   />
                                 </div>
                                 <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                                  {total}/{patokan} ({pct}%)
+                                  {hasPatokan ? `${total}/${patokan} (${pct}%)` : `${total}/— belum diset`}
                                 </span>
                               </td>
 
