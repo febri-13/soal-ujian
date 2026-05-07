@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [hasProfile, setHasProfile] = useState(false)
+  const [hasValidatorProfile, setHasValidatorProfile] = useState(false)
   const [hasMatrix, setHasMatrix] = useState(false)
   const [submittedCount, setSubmittedCount] = useState(0)
   const [approvedCount, setApprovedCount] = useState(0)
@@ -79,6 +80,12 @@ export default function DashboardPage() {
         .select("id")
         .eq("profile_id", u.id)
       setHasProfile(!!profile && profile.length > 0)
+
+      // Cek profil validator: nama tidak boleh masih placeholder (= userId)
+      const vRole = fullProfile?.role || "guru"
+      if (vRole === "validator" || vRole === "admin") {
+        setHasValidatorProfile(!!fullProfile?.nama && fullProfile.nama !== u.id)
+      }
 
       const { data: matrix } = await supabase
         .from("psat_matrix_input")
@@ -218,9 +225,9 @@ export default function DashboardPage() {
     router.push("/login")
   }
 
-  const goTo = (path: string, requireProfile?: boolean, requireMatrix?: boolean) => {
-    if (requireProfile && !hasProfile) {
-      alert("Lengkapi data diri terlebih dahulu sebelum mengisi matrix!")
+  const goTo = (path: string, blocked?: boolean, requireMatrix?: boolean) => {
+    if (blocked) {
+      alert("Lengkapi data diri terlebih dahulu!")
       return
     }
     if (requireMatrix && !hasMatrix) {
@@ -271,6 +278,11 @@ export default function DashboardPage() {
           {!isAdmin && !isValidator && !hasProfile && (
             <p className="text-sm mt-2" style={{ color: "var(--color-destructive)" }}>
               ⚠️ Silakan lengkapi data diri terlebih dahulu
+            </p>
+          )}
+          {isValidator && !hasValidatorProfile && (
+            <p className="text-sm mt-2" style={{ color: "var(--color-destructive)" }}>
+              ⚠️ Silakan lengkapi data diri sebelum mulai validasi
             </p>
           )}
 
@@ -328,18 +340,40 @@ export default function DashboardPage() {
 
         {(isAdmin || isValidator) ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Tombol Profil untuk validator */}
+            {isValidator && (
+              <button
+                onClick={() => goTo("/dashboard/profile")}
+                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
+                style={{
+                  borderColor: hasValidatorProfile ? "#22c55e" : "var(--color-border)",
+                  backgroundColor: "var(--color-card)",
+                }}
+              >
+                <div className="text-2xl mb-2">👤</div>
+                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>
+                  Profil {hasValidatorProfile && "✓"}
+                </h3>
+                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                  {hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu"}
+                </p>
+              </button>
+            )}
+
             <button
-              onClick={() => goTo("/dashboard/validasi")}
-              className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-              style={{ 
-                borderColor: "var(--color-border)", 
-                backgroundColor: "var(--color-card)" 
+              onClick={() => goTo("/dashboard/validasi", !isAdmin && !hasValidatorProfile)}
+              className="rounded-lg p-4 border text-left transition-opacity"
+              style={{
+                borderColor: "var(--color-border)",
+                backgroundColor: "var(--color-card)",
+                opacity: isAdmin || hasValidatorProfile ? 1 : 0.5,
+                cursor: isAdmin || hasValidatorProfile ? "pointer" : "not-allowed",
               }}
             >
               <div className="text-2xl mb-2">✅</div>
               <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Validasi</h3>
               <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                Review & approve soal
+                {isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu"}
               </p>
             </button>
 
@@ -404,7 +438,7 @@ export default function DashboardPage() {
               </button>
 
               <button
-                onClick={() => goTo("/dashboard/matrix", true)}
+                onClick={() => goTo("/dashboard/matrix", !hasProfile)}
                 className="rounded-lg p-4 border text-left transition-opacity"
                 style={{
                   borderColor: hasMatrix ? "#22c55e" : "var(--color-border)",
