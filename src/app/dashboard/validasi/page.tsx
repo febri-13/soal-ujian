@@ -44,6 +44,13 @@ export default function ValidasiPage() {
         return
       }
 
+      // Cek profil sudah diisi (nama tidak boleh masih placeholder = userId)
+      if (!profile.nama || profile.nama === u.id) {
+        setToast({ message: "Lengkapi data diri terlebih dahulu", type: "info" })
+        setTimeout(() => router.push("/dashboard/profile"), 1500)
+        return
+      }
+
       setUser({ ...u, nama: profile.nama })
 
       // Load semua mapel + hitung soal per status
