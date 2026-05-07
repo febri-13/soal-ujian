@@ -11,6 +11,7 @@ interface GuruProgress {
   profile_id: string
   guru_nama: string | null
   guru_kelas: string | null
+  guru_unit_sekolah: string | null
   mapel_id: string
   mapel_nama: string
   mapel_kode: string | null
@@ -168,6 +169,9 @@ export default async function HomePage() {
                               </div>
                               <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
                                 {row.guru_nama ?? "—"}
+                                {row.guru_unit_sekolah && (
+                                  <span> · {row.guru_unit_sekolah}</span>
+                                )}
                               </p>
                             </div>
                             {row.guru_kelas && (
@@ -259,18 +263,25 @@ export default async function HomePage() {
                                 )}
                               </td>
 
-                              {/* Guru + Kelas */}
+                              {/* Guru + Kelas + Unit Sekolah */}
                               <td className="px-4 py-3">
-                                <span className="text-sm" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
-                                  {row.guru_nama ?? "—"}
-                                </span>
-                                {row.guru_kelas && (
-                                  <span
-                                    className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
-                                  >
-                                    Kls {row.guru_kelas}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-sm" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
+                                    {row.guru_nama ?? "—"}
                                   </span>
+                                  {row.guru_kelas && (
+                                    <span
+                                      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                      style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                                    >
+                                      Kls {row.guru_kelas}
+                                    </span>
+                                  )}
+                                </div>
+                                {row.guru_unit_sekolah && (
+                                  <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
+                                    {row.guru_unit_sekolah}
+                                  </p>
                                 )}
                               </td>
 
