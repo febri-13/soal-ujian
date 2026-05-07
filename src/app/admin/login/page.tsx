@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import ThemeToggle from "@/components/ThemeToggle"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -32,6 +33,9 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--color-background)" }}>
+      <div className="fixed top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md p-8 rounded-lg shadow-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
         <h1 className="text-2xl font-bold text-center mb-2" style={{ color: "var(--color-foreground)" }}>Login Admin</h1>
         <p className="text-center text-sm mb-6" style={{ color: "var(--color-muted-foreground)" }}>Panel Administrasi PSAT</p>

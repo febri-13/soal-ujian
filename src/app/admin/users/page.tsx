@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import { UserPlus, X, Eye, EyeOff, Trash2, Pencil } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 
 const ROLE_OPTIONS = ["guru", "validator", "admin", "admin_keuangan"]
 
@@ -315,6 +316,7 @@ export default function UsersAdminPage() {
             <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Kelola Users</h1>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {selectedIds.size > 0 && (
               <button
                 onClick={() => handleDelete([...selectedIds])}
