@@ -34,7 +34,7 @@ export default function ValidasiPage() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, nama")
+        .select("role, nama, no_hp")
         .eq("id", u.id)
         .single()
 
@@ -44,9 +44,22 @@ export default function ValidasiPage() {
         return
       }
 
-      // Cek profil sudah diisi (nama tidak boleh masih placeholder = userId)
-      if (!profile.nama || profile.nama === u.id) {
-        setToast({ message: "Lengkapi data diri terlebih dahulu", type: "info" })
+      // Cek semua field wajib profil terisi
+      const { data: guruData } = await supabase
+        .from("psat_guru_data")
+        .select("bank, no_rekening, unit_sekolah")
+        .eq("profile_id", u.id)
+        .maybeSingle()
+
+      const missingFields: string[] = []
+      if (!profile.nama || profile.nama === u.id) missingFields.push("Nama")
+      if (!profile.no_hp) missingFields.push("No HP")
+      if (!guruData?.unit_sekolah) missingFields.push("Unit Sekolah")
+      if (!guruData?.bank) missingFields.push("Bank")
+      if (!guruData?.no_rekening) missingFields.push("No Rekening")
+
+      if (missingFields.length > 0) {
+        setToast({ message: `Lengkapi profil dulu: ${missingFields.join(", ")}`, type: "info" })
         setTimeout(() => router.push("/dashboard/profile"), 1500)
         return
       }

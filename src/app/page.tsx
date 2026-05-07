@@ -21,6 +21,7 @@ interface GuruProgress {
   draft: number
   needs_revision: number
   patokan_bank_total: number
+  has_matrix: boolean
   glossary_url: string | null
   kisi_kisi_url: string | null
 }
@@ -214,7 +215,7 @@ export default async function HomePage() {
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <ActionButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} label="Glossary" newTab />
                             <ActionButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} label="Kisi-kisi" newTab />
-                            <ActionButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
+                            <ActionButton href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
                           </div>
                         </div>
                       )
@@ -317,7 +318,7 @@ export default async function HomePage() {
                                 <div className="flex items-center gap-1">
                                   <IconButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} title="Download Glossary" newTab />
                                   <IconButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} title="Download Kisi-kisi" newTab />
-                                  <IconButton href={`/matrix/${row.mapel_id}`} icon={<LayoutGrid className="w-3.5 h-3.5" />} title="Lihat Matrix" />
+                                  <IconButton href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} icon={<LayoutGrid className="w-3.5 h-3.5" />} title="Lihat Matrix" />
                                 </div>
                               </td>
                             </tr>

@@ -133,11 +133,32 @@ export default function MatrixPage() {
       if (!u) { router.push("/login"); return }
       setUser(u)
 
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("nama, no_hp, kelas")
+        .eq("id", u.id)
+        .maybeSingle()
+
       const { data: guruData } = await supabase
         .from("psat_guru_data")
-        .select("mapel_id")
+        .select("mapel_id, bank, no_rekening, unit_sekolah")
         .eq("profile_id", u.id)
         .maybeSingle()
+
+      const missing: string[] = []
+      if (!profileData?.nama || profileData.nama === u.id) missing.push("Nama")
+      if (!profileData?.no_hp) missing.push("No HP")
+      if (!profileData?.kelas) missing.push("Kelas")
+      if (!guruData?.unit_sekolah) missing.push("Unit Sekolah")
+      if (!guruData?.mapel_id) missing.push("Mata Pelajaran")
+      if (!guruData?.bank) missing.push("Bank")
+      if (!guruData?.no_rekening) missing.push("No Rekening")
+
+      if (missing.length > 0) {
+        showToast(`Lengkapi profil dulu: ${missing.join(", ")}`, "info")
+        setTimeout(() => router.push("/dashboard/profile"), 1500)
+        return
+      }
 
       const mapelId = guruData?.mapel_id ?? null
       setGuruMapelId(mapelId)

@@ -63,7 +63,7 @@ export default function DashboardPage() {
 
       const { data: fullProfile } = await supabase
         .from("profiles")
-        .select("nama, role")
+        .select("nama, role, no_hp, kelas")
         .eq("id", u.id)
         .maybeSingle()
 
@@ -75,16 +75,35 @@ export default function DashboardPage() {
         role: fullProfile?.role || "guru",
       })
 
-      const { data: profile } = await supabase
+      const { data: guruData } = await supabase
         .from("psat_guru_data")
-        .select("id")
+        .select("bank, no_rekening, unit_sekolah, mapel_id")
         .eq("profile_id", u.id)
-      setHasProfile(!!profile && profile.length > 0)
+        .maybeSingle()
+      const namaOk = !!fullProfile?.nama && fullProfile.nama !== u.id
+      const profileComplete = namaOk &&
+        !!fullProfile?.no_hp &&
+        !!fullProfile?.kelas &&
+        !!guruData?.unit_sekolah &&
+        !!guruData?.mapel_id &&
+        !!guruData?.bank &&
+        !!guruData?.no_rekening
+      setHasProfile(profileComplete)
 
-      // Cek profil validator: nama tidak boleh masih placeholder (= userId)
+      // Cek profil validator: semua field wajib harus terisi
       const vRole = fullProfile?.role || "guru"
       if (vRole === "validator" || vRole === "admin") {
-        setHasValidatorProfile(!!fullProfile?.nama && fullProfile.nama !== u.id)
+        const { data: vGuruData } = await supabase
+          .from("psat_guru_data")
+          .select("bank, no_rekening, unit_sekolah")
+          .eq("profile_id", u.id)
+          .maybeSingle()
+        const namaOk = !!fullProfile?.nama && fullProfile.nama !== u.id
+        const noHpOk = !!fullProfile?.no_hp
+        const unitOk = !!vGuruData?.unit_sekolah
+        const bankOk = !!vGuruData?.bank
+        const rekeningOk = !!vGuruData?.no_rekening
+        setHasValidatorProfile(namaOk && noHpOk && unitOk && bankOk && rekeningOk)
       }
 
       const { data: matrix } = await supabase
@@ -139,13 +158,7 @@ export default function DashboardPage() {
       setMapelCounts(counts)
       setMapelNames(names)
 
-      // Load mapel guru & patokan
-      const { data: guruData } = await supabase
-        .from("psat_guru_data")
-        .select("mapel_id")
-        .eq("profile_id", u.id)
-        .maybeSingle()
-
+      // Load mapel guru & patokan (gunakan guruData yang sudah diload di atas)
       if (guruData?.mapel_id) {
         const { data: patokanRows } = await supabase
           .from("psat_patokan_soal")
