@@ -23,6 +23,9 @@ const BOBOT_DEFAULT: Record<string, Record<string, number>> = {
   isian_singkat: { mudah: 1.0, sedang: 1.5, sulit: 2.0 },
 }
 
+// bobotConfig[`${tipe}_${kesulitan}`] = nilai bobot untuk mapel guru ini
+type BobotConfig = Record<string, number>
+
 export default function SoalPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -47,6 +50,7 @@ export default function SoalPage() {
   const [jawabanBenarCeklist, setJawabanBenarCeklist] = useState<number[]>([])
   const [bobot, setBobot] = useState<number>(1.0)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [bobotConfig, setBobotConfig] = useState<BobotConfig>({})
 
   useEffect(() => {
     async function load() {
@@ -78,7 +82,23 @@ export default function SoalPage() {
         .select("mapel_id")
         .eq("profile_id", u.id)
         .maybeSingle()
-      if (guruData?.mapel_id) setSelectedMapelId(guruData.mapel_id)
+      if (guruData?.mapel_id) {
+        setSelectedMapelId(guruData.mapel_id)
+
+        // Load bobot kustom untuk mapel ini (jika admin sudah set)
+        const { data: bobotRows } = await supabase
+          .from("bobot_config")
+          .select("tipe, kesulitan, bobot")
+          .eq("mapel_id", guruData.mapel_id)
+
+        if (bobotRows && bobotRows.length > 0) {
+          const cfg: BobotConfig = {}
+          bobotRows.forEach((r: any) => { cfg[`${r.tipe}_${r.kesulitan}`] = Number(r.bobot) })
+          setBobotConfig(cfg)
+          // Update bobot awal sesuai config yang baru dimuat
+          setBobot(cfg[`pilgan_mudah`] ?? BOBOT_DEFAULT["pilgan"]?.["mudah"] ?? 1.0)
+        }
+      }
 
       await reloadSoal(u.id)
       setLoading(false)
@@ -105,7 +125,7 @@ export default function SoalPage() {
   }
 
   const getDefaultBobot = (tipe: string, kesulitan: string) =>
-    BOBOT_DEFAULT[tipe]?.[kesulitan] ?? 1.0
+    bobotConfig[`${tipe}_${kesulitan}`] ?? BOBOT_DEFAULT[tipe]?.[kesulitan] ?? 1.0
 
   const getSoalCount = (babId: string, tipe: string, kesulitan: string) =>
     soalStats[`${babId}_${tipe}_${kesulitan}`] || 0

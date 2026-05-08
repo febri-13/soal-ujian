@@ -177,51 +177,47 @@ export default function UsersAdminPage() {
     if (!editForm) return
     setEditSaving(true)
 
-    const isGuru = editForm.role === "guru"
-
-    // Update profiles
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        nama: editForm.nama,
-        no_hp: editForm.noHp,
-        role: editForm.role,
-        kelas: isGuru ? editForm.kelas : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", editForm.userId)
-
-    if (profileError) {
-      setToast({ message: "Gagal update profil: " + profileError.message, type: "error" })
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setToast({ message: "Sesi tidak valid, silakan login ulang.", type: "error" })
       setEditSaving(false)
       return
     }
 
-    // Update psat_guru_data
-    const { data: existing } = await supabase
-      .from("psat_guru_data")
-      .select("id")
-      .eq("profile_id", editForm.userId)
-      .maybeSingle()
+    const isGuru = editForm.role === "guru"
 
-    const guruPayload = {
-      whatsapp: editForm.noHp,
-      unit_sekolah: editForm.unitSekolah,
-      bank: editForm.bank,
-      no_rekening: editForm.noRekening,
-      mapel_id: isGuru ? (editForm.mapelId || null) : null,
-    }
+    const res = await fetch("/api/admin/update-profile", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        userId: editForm.userId,
+        profileData: {
+          nama: editForm.nama,
+          no_hp: editForm.noHp,
+          role: editForm.role,
+          kelas: isGuru ? editForm.kelas : null,
+        },
+        guruData: {
+          no_hp: editForm.noHp,
+          unit_sekolah: editForm.unitSekolah,
+          bank: editForm.bank,
+          no_rekening: editForm.noRekening,
+          mapel_id: isGuru ? (editForm.mapelId || null) : null,
+        },
+      }),
+    })
 
-    if (existing) {
-      await supabase.from("psat_guru_data")
-        .update({ ...guruPayload, updated_at: new Date().toISOString() })
-        .eq("id", existing.id)
-    } else {
-      await supabase.from("psat_guru_data")
-        .insert({ profile_id: editForm.userId, ...guruPayload })
-    }
-
+    const result = await res.json()
     setEditSaving(false)
+
+    if (!res.ok) {
+      setToast({ message: result.error || "Gagal menyimpan profil.", type: "error" })
+      return
+    }
+
     setToast({ message: "Profil berhasil diperbarui!", type: "success" })
     setShowEditModal(false)
     setUserList(prev => prev.map(u =>
