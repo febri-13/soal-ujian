@@ -470,15 +470,18 @@ export default function SoalPage() {
                         {babDone}/{babTotal} soal
                       </p>
                     </div>
-                    <button
-                      className="p-0.5 ml-1 flex-shrink-0"
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="p-0.5 ml-1 flex-shrink-0 cursor-pointer"
                       style={{ color: isActive ? "var(--color-primary-foreground)" : "var(--color-muted-foreground)", opacity: isActive ? 0.85 : 1 }}
                       onClick={e => { e.stopPropagation(); toggleBab(bab.bab_id_text) }}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); toggleBab(bab.bab_id_text) } }}
                     >
                       {isExpanded
                         ? <ChevronUp className="w-4 h-4" />
                         : <ChevronDown className="w-4 h-4" />}
-                    </button>
+                    </div>
                   </button>
 
                   {/* Slot list */}
