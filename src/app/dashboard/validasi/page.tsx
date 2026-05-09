@@ -27,6 +27,7 @@ export default function ValidasiPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({})
+  const [validatorMapelIds, setValidatorMapelIds] = useState<string[] | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -69,6 +70,17 @@ export default function ValidasiPage() {
 
       setUser({ ...u, nama: profile.nama })
 
+      // Load assignment mapel untuk validator
+      let assignedMapelIds: string[] | null = null
+      if (profile.role === "validator") {
+        const { data: vmRows } = await supabase
+          .from("psat_validator_mapel")
+          .select("mapel_id")
+          .eq("validator_id", u.id)
+        assignedMapelIds = vmRows?.map((r: any) => r.mapel_id) ?? []
+        setValidatorMapelIds(assignedMapelIds)
+      }
+
       // Load semua mapel + hitung soal per status
       const { data: mapelList } = await supabase
         .from("mata_pelajaran")
@@ -81,7 +93,7 @@ export default function ValidasiPage() {
         .in("status", ["submitted", "needs_revision", "approved"])
 
       if (mapelList && soalCounts) {
-        const summaries: MapelSummary[] = mapelList.map(m => ({
+        let summaries: MapelSummary[] = mapelList.map(m => ({
           id: m.id,
           nama: m.nama,
           kode: m.kode,
@@ -89,6 +101,11 @@ export default function ValidasiPage() {
           needs_revision: soalCounts.filter(s => s.mata_pelajaran_id === m.id && s.status === "needs_revision").length,
           approved: soalCounts.filter(s => s.mata_pelajaran_id === m.id && s.status === "approved").length,
         })).filter(m => m.submitted + m.needs_revision + m.approved > 0)
+
+        // Validator hanya lihat mapel yang diassign
+        if (assignedMapelIds !== null) {
+          summaries = summaries.filter(m => assignedMapelIds!.includes(m.id))
+        }
 
         setMapelSummaries(summaries)
 
@@ -200,7 +217,11 @@ export default function ValidasiPage() {
 
         {/* Mapel grid — selalu tampil */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
-          {mapelSummaries.length === 0 && (
+          {validatorMapelIds !== null && validatorMapelIds.length === 0 ? (
+            <div className="col-span-full text-center py-10 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+              Belum ada mata pelajaran yang ditugaskan. Hubungi admin.
+            </div>
+          ) : mapelSummaries.length === 0 && (
             <div className="col-span-full text-center py-10 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
               Belum ada soal yang disubmit.
             </div>

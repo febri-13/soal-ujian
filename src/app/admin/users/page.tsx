@@ -69,6 +69,7 @@ export default function UsersAdminPage() {
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
+  const [editValidatorMapels, setEditValidatorMapels] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
@@ -157,10 +158,11 @@ export default function UsersAdminPage() {
       .eq("profile_id", u.id)
       .maybeSingle()
 
+    const resolvedRole = profileData?.role || u.role
     setEditForm({
       userId: u.id,
       email: u.email,
-      role: profileData?.role || u.role,
+      role: resolvedRole,
       nama: profileData?.nama || u.nama || "",
       noHp: guruData?.whatsapp || profileData?.no_hp || "",
       unitSekolah: guruData?.unit_sekolah || "",
@@ -169,6 +171,16 @@ export default function UsersAdminPage() {
       bank: guruData?.bank || "",
       noRekening: guruData?.no_rekening || "",
     })
+
+    if (resolvedRole === "validator") {
+      const { data: vmRows } = await supabase
+        .from("psat_validator_mapel")
+        .select("mapel_id")
+        .eq("validator_id", u.id)
+      setEditValidatorMapels(vmRows?.map((r: any) => r.mapel_id) ?? [])
+    } else {
+      setEditValidatorMapels([])
+    }
     setEditLoading(false)
   }
 
@@ -216,6 +228,22 @@ export default function UsersAdminPage() {
     if (!res.ok) {
       setToast({ message: result.error || "Gagal menyimpan profil.", type: "error" })
       return
+    }
+
+    if (editForm.role === "validator") {
+      await supabase
+        .from("psat_validator_mapel")
+        .delete()
+        .eq("validator_id", editForm.userId)
+
+      if (editValidatorMapels.length > 0) {
+        await supabase
+          .from("psat_validator_mapel")
+          .insert(editValidatorMapels.map(mapelId => ({
+            validator_id: editForm.userId,
+            mapel_id: mapelId,
+          })))
+      }
     }
 
     setToast({ message: "Profil berhasil diperbarui!", type: "success" })
@@ -302,6 +330,7 @@ export default function UsersAdminPage() {
   }
 
   const editIsGuru = editForm?.role === "guru"
+  const editIsValidator = editForm?.role === "validator"
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
@@ -537,6 +566,39 @@ export default function UsersAdminPage() {
                       </select>
                     </div>
                   </>
+                )}
+
+                {/* Mapel assignment — hanya untuk validator */}
+                {editIsValidator && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: "var(--color-foreground)" }}>
+                      Mata Pelajaran yang Divalidasi
+                    </label>
+                    <div
+                      className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded-md border p-3"
+                      style={{ borderColor: "var(--color-border)" }}
+                    >
+                      {mataPelajaran.map(mp => (
+                        <label key={mp.id} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--color-foreground)" }}>
+                          <input
+                            type="checkbox"
+                            checked={editValidatorMapels.includes(mp.id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setEditValidatorMapels(prev => [...prev, mp.id])
+                              } else {
+                                setEditValidatorMapels(prev => prev.filter(id => id !== mp.id))
+                              }
+                            }}
+                          />
+                          {mp.nama}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                      {editValidatorMapels.length} mapel dipilih
+                    </p>
+                  </div>
                 )}
 
                 {/* Bank & Rekening */}
