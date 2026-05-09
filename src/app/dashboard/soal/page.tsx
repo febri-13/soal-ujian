@@ -346,6 +346,19 @@ export default function SoalPage() {
     } else {
       setToast({ message: "Soal berhasil dikirim ke validator!", type: "success" })
       setSoalList(soalList.map(s => ({ ...s, status: "submitted" })))
+
+      // Kirim notifikasi WA ke validator (fire-and-forget)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session || !selectedMapelId) return
+        fetch("/api/notifications/whatsapp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ type: "guru_submit", mapelId: selectedMapelId, guruId: user.id }),
+        }).catch(() => {})
+      })
     }
   }
 

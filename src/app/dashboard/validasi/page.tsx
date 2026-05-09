@@ -182,6 +182,26 @@ export default function ValidasiPage() {
         return updated
       }))
       setRevisionNotes(prev => ({ ...prev, [soalId]: "" }))
+
+      // Kirim notifikasi WA ke guru jika soal perlu revisi (fire-and-forget)
+      if (newStatus === "needs_revision" && currentSoal?.guru_id && selectedMapel) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session) return
+          fetch("/api/notifications/whatsapp", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              type: "needs_revision",
+              guruId: currentSoal.guru_id,
+              mapelNama: selectedMapel.nama,
+              catatanRevisi: notes || "Mohon periksa kembali soal Anda.",
+            }),
+          }).catch(() => {})
+        })
+      }
     }
   }
 
