@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import { CheckCircle, Clock, AlertCircle, ChevronLeft } from "lucide-react"
+import DownloadDropdown from "@/components/DownloadDropdown"
 
 interface MapelSummary {
   id: string
@@ -261,6 +262,13 @@ export default function ValidasiPage() {
                 <span className="flex items-center gap-1" style={{ color: "#b45309" }}><Clock className="w-3 h-3" />{selectedMapel.submitted}</span>
                 <span className="flex items-center gap-1" style={{ color: "#dc2626" }}><AlertCircle className="w-3 h-3" />{selectedMapel.needs_revision}</span>
                 <span className="flex items-center gap-1" style={{ color: "#15803d" }}><CheckCircle className="w-3 h-3" />{selectedMapel.approved}</span>
+                {!loadingSoal && soalList.length > 0 && (
+                  <DownloadDropdown
+                    soalList={soalList}
+                    filename={`soal-${selectedMapel.nama}`}
+                    meta={{ judul: `Soal ${selectedMapel.nama}`, tanggal: new Date().toISOString() }}
+                  />
+                )}
               </div>
             </div>
 

@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import RichTextEditor from "@/components/RichTextEditor"
 import ImageUpload from "@/components/ImageUpload"
+import DownloadDropdown from "@/components/DownloadDropdown"
 
 interface BabMatrix {
   bab_id_text: string
@@ -35,6 +36,7 @@ export default function SoalPage() {
   const [selectedBab, setSelectedBab] = useState("")
   const [activeBab, setActiveBab] = useState<string | null>(null)
   const [selectedMapelId, setSelectedMapelId] = useState("")
+  const [mapelNama, setMapelNama] = useState("")
   const [selectedTipe, setSelectedTipe] = useState("pilgan")
   const [selectedKesulitan, setSelectedKesulitan] = useState("mudah")
   const [loading, setLoading] = useState(true)
@@ -84,6 +86,13 @@ export default function SoalPage() {
         .maybeSingle()
       if (guruData?.mapel_id) {
         setSelectedMapelId(guruData.mapel_id)
+
+        const { data: mp } = await supabase
+          .from("mata_pelajaran")
+          .select("nama")
+          .eq("id", guruData.mapel_id)
+          .single()
+        if (mp) setMapelNama(mp.nama)
 
         // Load bobot kustom untuk mapel ini (jika admin sudah set)
         const { data: bobotRows } = await supabase
@@ -368,18 +377,25 @@ export default function SoalPage() {
             </button>
             <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Soal</h1>
           </div>
-          <button
-            onClick={handleKirimValidator}
-            disabled={saving || !allMet}
-            className="py-2 px-4 rounded-md font-medium text-sm"
-            style={{
-              backgroundColor: allMet ? "#16a34a" : "var(--color-muted)",
-              color: allMet ? "#fff" : "var(--color-muted-foreground)",
-              cursor: allMet ? "pointer" : "not-allowed",
-            }}
-          >
-            {saving ? "Mengirim..." : "Kirim ke Validator"}
-          </button>
+          <div className="flex items-center gap-2">
+            <DownloadDropdown
+              soalList={soalList}
+              filename={`soal-${mapelNama || 'guru'}`}
+              meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString() }}
+            />
+            <button
+              onClick={handleKirimValidator}
+              disabled={saving || !allMet}
+              className="py-2 px-4 rounded-md font-medium text-sm"
+              style={{
+                backgroundColor: allMet ? "#16a34a" : "var(--color-muted)",
+                color: allMet ? "#fff" : "var(--color-muted-foreground)",
+                cursor: allMet ? "pointer" : "not-allowed",
+              }}
+            >
+              {saving ? "Mengirim..." : "Kirim ke Validator"}
+            </button>
+          </div>
         </div>
       </header>
 
