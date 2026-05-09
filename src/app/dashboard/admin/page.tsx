@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { Copy } from "lucide-react"
 
 interface MataPelajaran {
   id: string
@@ -94,6 +95,9 @@ export default function AdminPage() {
   const [customBobotMapels, setCustomBobotMapels] = useState<Set<string>>(new Set())
   const [selectedBobotMapel, setSelectedBobotMapel] = useState("")
   const [savingBobot, setSavingBobot] = useState(false)
+  const [showCopyModal, setShowCopyModal] = useState(false)
+  const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set())
+  const [copyingBobot, setCopyingBobot] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -277,6 +281,52 @@ export default function AdminPage() {
     }
 
     setSavingBobot(false)
+  }
+
+  const handleCopyBobot = async () => {
+    if (copyTargets.size === 0 || !selectedBobotMapel) return
+    setCopyingBobot(true)
+
+    const allRows = Array.from(copyTargets).flatMap(targetMapelId =>
+      TIPE_OPTIONS.flatMap(t =>
+        KESULITAN_OPTIONS.map(k => ({
+          mapel_id: targetMapelId,
+          tipe: t,
+          kesulitan: k,
+          bobot: bobotMap[selectedBobotMapel]?.[`${t}_${k}`] ?? BOBOT_DEFAULT[t]?.[k] ?? 1.0,
+        }))
+      )
+    )
+
+    const { error: delErr } = await supabase
+      .from("bobot_config")
+      .delete()
+      .in("mapel_id", Array.from(copyTargets))
+
+    if (!delErr) {
+      const { error: insErr } = await supabase
+        .from("bobot_config")
+        .insert(allRows)
+
+      if (!insErr) {
+        const newBobotMap = { ...bobotMap }
+        const newCustomSet = new Set(customBobotMapels)
+        copyTargets.forEach(id => {
+          newBobotMap[id] = { ...bobotMap[selectedBobotMapel] }
+          newCustomSet.add(id)
+        })
+        setBobotMap(newBobotMap)
+        setCustomBobotMapels(newCustomSet)
+        setShowCopyModal(false)
+        showToast(`Bobot disalin ke ${copyTargets.size} mapel`, "success")
+      } else {
+        showToast("Gagal menyalin bobot", "error")
+      }
+    } else {
+      showToast("Gagal menyalin bobot", "error")
+    }
+
+    setCopyingBobot(false)
   }
 
   if (loading) {
@@ -607,7 +657,7 @@ export default function AdminPage() {
             </div>
 
             {/* Tombol aksi */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 onClick={handleSaveBobot}
                 disabled={savingBobot || !selectedBobotMapel}
@@ -615,6 +665,14 @@ export default function AdminPage() {
                 style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
               >
                 {savingBobot ? "Menyimpan..." : `Simpan Bobot — ${selectedMapelName}`}
+              </button>
+              <button
+                onClick={() => { setCopyTargets(new Set()); setShowCopyModal(true) }}
+                disabled={savingBobot || !selectedBobotMapel}
+                className="py-2 px-4 rounded-lg font-medium text-sm border flex items-center gap-2 disabled:opacity-50"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", backgroundColor: "var(--color-card)" }}
+              >
+                <Copy size={14} /> Salin ke Mapel Lain...
               </button>
               {isCustom && (
                 <button
@@ -663,6 +721,122 @@ export default function AdminPage() {
           style={{ backgroundColor: toast.type === "success" ? "#22c55e" : "#ef4444" }}
         >
           {toast.message}
+        </div>
+      )}
+
+      {/* Modal Salin Bobot ke Mapel Lain */}
+      {showCopyModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowCopyModal(false) }}
+        >
+          <div
+            className="rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4"
+            style={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)" }}
+          >
+            <div>
+              <h3 className="font-semibold text-base" style={{ color: "var(--color-foreground)" }}>
+                Salin Bobot ke Mapel Lain
+              </h3>
+              <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                Bobot dari <strong>{selectedMapelName}</strong> akan disalin ke mapel yang dipilih.
+              </p>
+            </div>
+
+            {/* Tombol pilih semua / batalkan semua */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const allOther = mataPelajaran.filter(m => m.id !== selectedBobotMapel).map(m => m.id)
+                  setCopyTargets(new Set(allOther))
+                }}
+                className="text-xs px-3 py-1.5 rounded-md border"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", backgroundColor: "var(--color-muted)" }}
+              >
+                Pilih Semua
+              </button>
+              <button
+                onClick={() => setCopyTargets(new Set())}
+                className="text-xs px-3 py-1.5 rounded-md border"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)", backgroundColor: "var(--color-muted)" }}
+              >
+                Batalkan Semua
+              </button>
+            </div>
+
+            {/* List checkbox mapel */}
+            <div
+              className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1"
+            >
+              {mataPelajaran.filter(m => m.id !== selectedBobotMapel).map(m => {
+                const checked = copyTargets.has(m.id)
+                const isKustom = customBobotMapels.has(m.id)
+                return (
+                  <label
+                    key={m.id}
+                    className="flex items-start gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors"
+                    style={{
+                      borderColor: checked ? "var(--color-primary)" : "var(--color-border)",
+                      backgroundColor: checked ? "color-mix(in srgb, var(--color-primary) 8%, transparent)" : "var(--color-muted)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={e => {
+                        setCopyTargets(prev => {
+                          const next = new Set(prev)
+                          if (e.target.checked) next.add(m.id)
+                          else next.delete(m.id)
+                          return next
+                        })
+                      }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-xs font-medium block truncate" style={{ color: "var(--color-foreground)" }}>
+                        {m.nama}
+                      </span>
+                      {isKustom && (
+                        <span className="text-xs" style={{ color: "#b45309" }}>Kustom</span>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {/* Warning overwrite */}
+            {(() => {
+              const willOverwrite = Array.from(copyTargets).filter(id => customBobotMapels.has(id)).length
+              return willOverwrite > 0 ? (
+                <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "#fef3c7", color: "#92400e" }}>
+                  {willOverwrite} mapel sudah punya bobot kustom dan akan di-overwrite.
+                </p>
+              ) : null
+            })()}
+
+            {/* Tombol aksi */}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCopyModal(false)}
+                disabled={copyingBobot}
+                className="px-4 py-2 rounded-lg text-sm border disabled:opacity-50"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)", backgroundColor: "var(--color-card)" }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleCopyBobot}
+                disabled={copyTargets.size === 0 || copyingBobot}
+                className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
+              >
+                {copyingBobot ? "Menerapkan..." : `Terapkan (${copyTargets.size} mapel)`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
