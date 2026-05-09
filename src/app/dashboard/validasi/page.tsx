@@ -45,24 +45,26 @@ export default function ValidasiPage() {
         return
       }
 
-      // Cek semua field wajib profil terisi
-      const { data: guruData } = await supabase
-        .from("psat_guru_data")
-        .select("bank, no_rekening, unit_sekolah")
-        .eq("profile_id", u.id)
-        .maybeSingle()
+      // Validator wajib isi profil, admin tidak
+      if (profile.role === "validator") {
+        const { data: guruData } = await supabase
+          .from("psat_guru_data")
+          .select("bank, no_rekening, unit_sekolah")
+          .eq("profile_id", u.id)
+          .maybeSingle()
 
-      const missingFields: string[] = []
-      if (!profile.nama || profile.nama === u.id) missingFields.push("Nama")
-      if (!profile.no_hp) missingFields.push("No HP")
-      if (!guruData?.unit_sekolah) missingFields.push("Unit Sekolah")
-      if (!guruData?.bank) missingFields.push("Bank")
-      if (!guruData?.no_rekening) missingFields.push("No Rekening")
+        const missingFields: string[] = []
+        if (!profile.nama || profile.nama === u.id) missingFields.push("Nama")
+        if (!profile.no_hp) missingFields.push("No HP")
+        if (!guruData?.unit_sekolah) missingFields.push("Unit Sekolah")
+        if (!guruData?.bank) missingFields.push("Bank")
+        if (!guruData?.no_rekening) missingFields.push("No Rekening")
 
-      if (missingFields.length > 0) {
-        setToast({ message: `Lengkapi profil dulu: ${missingFields.join(", ")}`, type: "info" })
-        setTimeout(() => router.push("/dashboard/profile"), 1500)
-        return
+        if (missingFields.length > 0) {
+          setToast({ message: `Lengkapi profil dulu: ${missingFields.join(", ")}`, type: "info" })
+          setTimeout(() => router.push("/dashboard/profile"), 1500)
+          return
+        }
       }
 
       setUser({ ...u, nama: profile.nama })
