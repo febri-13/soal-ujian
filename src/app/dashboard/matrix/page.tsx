@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, CircleHelp, MessageCircle, Pencil, X } from "lucide-react"
+import { Check, CircleHelp, MessageCircle, Pencil, X, ArrowLeft } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import { driver } from "driver.js"
@@ -352,20 +353,24 @@ export default function MatrixPage() {
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
         <div className="max-w-full mx-auto py-4 px-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => router.push("/dashboard")} style={{ color: "var(--color-muted-foreground)" }}>
-              ← Kembali
+            <button onClick={() => router.push("/dashboard")} className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>
+              <ArrowLeft className="w-4 h-4" />
+              Kembali
             </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Matrix</h1>
+            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Input Matrix</h1>
           </div>
           <div id="tour-submit" className="flex items-center gap-2">
+            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+              <ThemeToggle />
+            </div>
             <button
               onClick={startTour}
               title="Tutorial"
-              className="p-1.5 rounded-md"
-              style={{ color: "var(--color-muted-foreground)" }}
+              className="p-1.5 rounded-md opacity-80 hover:opacity-100"
+              style={{ color: "var(--psat-primary-fg)" }}
             >
               <CircleHelp className="w-5 h-5" />
             </button>

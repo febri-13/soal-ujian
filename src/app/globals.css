@@ -24,6 +24,49 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* ── PSAT Brand Palette ───────────────────────────────────────── */
+:root {
+  /* Primary */
+  --psat-primary:            #164578;
+  --psat-primary-light:      #3B86FF;
+  --psat-primary-fg:         #FFFFFF;
+  --psat-primary-tint:       #EEF2F8;
+
+  /* Neutral */
+  --psat-bg:                 #F4F7FB;
+  --psat-card:               #FFFFFF;
+  --psat-border:             #E6E7E8;
+  --psat-muted:              #717173;
+  --psat-neutral-tint:       #F5F5F5;
+
+  /* Accent – green (success / approved) */
+  --psat-green:              #7DB04F;
+  --psat-green-tint:         #EEF7E7;
+  --psat-green-text:         #3D6B1F;
+
+  /* Accent – yellow-green (submitted / pending) */
+  --psat-yellow:             #C6CB4A;
+  --psat-yellow-tint:        #F5F7C4;
+  --psat-yellow-text:        #5C6000;
+
+  /* Accent – red (error / revision) */
+  --psat-red:                #A53123;
+  --psat-red-tint:           #FCF0EE;
+
+  /* Accent – amber (warning / tips / matrix step) */
+  --psat-amber:              #ED9A3F;
+  --psat-amber-tint:         #FEF3E2;
+  --psat-amber-text:         #7A4F00;
+
+  /* Accent – teal (dokumen step / patokan) */
+  --psat-teal:               #327883;
+
+  /* Accent – others */
+  --psat-burgundy:           #70153B;
+  --psat-cyan:               #59BBD4;
+  --psat-pink:               #E16A7E;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
@@ -83,6 +126,17 @@ input, textarea, select {
   font-size: 0.85em;
 }
 
+.logout-btn {
+  color: #ffffff;
+  background-color: #A53123;
+  border-color: #A53123;
+}
+.dark .logout-btn {
+  color: #ffffff;
+  background-color: #70153B;
+  border-color: #70153B;
+}
+
 .gradient-bg {
   background: linear-gradient(135deg, #ecfdf9 0%, #eff6ff 60%, #f5f3ff 100%);
 }
@@ -114,4 +168,36 @@ input, textarea, select {
   --color-border: oklch(30% 0.06 285);
   --color-input: oklch(30% 0.06 285);
   --color-ring: oklch(60% 0.18 250);
+
+  /* PSAT Brand Palette — dark mode overrides */
+  --psat-primary:            #5B9BD5;
+  --psat-primary-light:      #7AB3FF;
+  --psat-primary-fg:         #FFFFFF;
+  --psat-primary-tint:       #1A2C40;
+
+  --psat-bg:                 #0F1924;
+  --psat-card:               #1A2535;
+  --psat-border:             #2D3E52;
+  --psat-muted:              #8A9AB0;
+  --psat-neutral-tint:       #1E2A35;
+
+  --psat-green:              #8FC05F;
+  --psat-green-tint:         #162814;
+  --psat-green-text:         #A8D880;
+
+  --psat-yellow:             #D4D860;
+  --psat-yellow-tint:        #252A10;
+  --psat-yellow-text:        #D4D870;
+
+  --psat-red:                #E05A4A;
+  --psat-red-tint:           #2E1A18;
+
+  --psat-amber:              #F0A84F;
+  --psat-amber-tint:         #2E2010;
+  --psat-amber-text:         #F0B860;
+
+  --psat-teal:               #4A9AAA;
+  --psat-burgundy:           #C0356B;
+  --psat-cyan:               #70CCDE;
+  --psat-pink:               #F07888;
 }

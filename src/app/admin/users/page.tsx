@@ -334,14 +334,16 @@ export default function UsersAdminPage() {
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-sm hover:underline" style={{ color: "var(--color-muted-foreground)" }}>← Dashboard</a>
-            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Kelola Users</h1>
+            <a href="/dashboard" className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>← Dashboard</a>
+            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Kelola Users</h1>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+              <ThemeToggle />
+            </div>
             {selectedIds.size > 0 && (
               <button
                 onClick={() => handleDelete([...selectedIds])}

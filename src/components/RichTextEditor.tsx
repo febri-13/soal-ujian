@@ -8,7 +8,6 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import Superscript from '@tiptap/extension-superscript'
 import Subscript from '@tiptap/extension-subscript'
-import Underline from '@tiptap/extension-underline'
 import {
   Bold, Italic, Strikethrough, Underline as UnderlineIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -69,7 +68,6 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
     immediatelyRender: false,
     extensions: [
       StarterKit,
-      Underline,
       Superscript,
       Subscript,
       MathFraction,

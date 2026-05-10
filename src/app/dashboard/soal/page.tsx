@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import RichTextEditor from "@/components/RichTextEditor"
@@ -377,20 +378,23 @@ export default function SoalPage() {
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
       {/* Header */}
-      <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-1 text-sm"
-              style={{ color: "var(--color-muted-foreground)" }}
+              className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100"
+              style={{ color: "var(--psat-primary-fg)" }}
             >
               <ArrowLeft className="w-4 h-4" />
               Kembali
             </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Input Soal</h1>
+            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Input Soal</h1>
           </div>
           <div className="flex items-center gap-2">
+            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+              <ThemeToggle />
+            </div>
             <DownloadDropdown
               soalList={soalList}
               filename={`soal-${mapelNama || 'guru'}`}

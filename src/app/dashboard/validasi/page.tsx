@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
-import { CheckCircle, Clock, AlertCircle, ChevronLeft } from "lucide-react"
+import { CheckCircle, Clock, AlertCircle, ChevronLeft, ArrowLeft } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 import DownloadDropdown from "@/components/DownloadDropdown"
 
 interface MapelSummary {
@@ -218,18 +219,23 @@ export default function ValidasiPage() {
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="sticky top-0 z-10 border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-        <div className="max-w-7xl mx-auto py-3 px-4 flex items-center gap-4">
-          <a href="/dashboard" className="text-sm hover:underline flex items-center gap-1" style={{ color: "var(--color-muted-foreground)" }}>
-            <ChevronLeft className="w-4 h-4" /> Dashboard
-          </a>
-          <h1 className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>Validasi Soal</h1>
-          {selectedMapel && (
-            <>
-              <span style={{ color: "var(--color-muted-foreground)" }}>/</span>
-              <span className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>{selectedMapel.nama}</span>
-            </>
-          )}
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
+        <div className="max-w-7xl mx-auto py-3 px-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <a href="/dashboard" className="text-sm flex items-center gap-1 opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>
+              <ArrowLeft className="w-4 h-4" /> Kembali
+            </a>
+            <h1 className="text-lg font-bold" style={{ color: "var(--psat-primary-fg)" }}>Validasi Soal</h1>
+            {selectedMapel && (
+              <>
+                <span className="opacity-50" style={{ color: "var(--psat-primary-fg)" }}>/</span>
+                <span className="text-sm font-medium" style={{ color: "var(--psat-primary-fg)" }}>{selectedMapel.nama}</span>
+              </>
+            )}
+          </div>
+          <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

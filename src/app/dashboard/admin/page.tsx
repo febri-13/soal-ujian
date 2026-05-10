@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Copy } from "lucide-react"
+import { Copy, ArrowLeft } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 
 interface MataPelajaran {
   id: string
@@ -338,20 +339,21 @@ export default function AdminPage() {
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
         <div className="max-w-full mx-auto py-4 px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button onClick={() => router.push("/dashboard")} style={{ color: "var(--color-muted-foreground)" }}>
-              ← Kembali
+            <button onClick={() => router.push("/dashboard")} className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>
+              <ArrowLeft className="w-4 h-4" />
+              Kembali
             </button>
             {/* Tabs */}
-            <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--color-muted)" }}>
+            <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
               <button
                 onClick={() => setActiveTab("patokan")}
                 className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
                 style={activeTab === "patokan"
-                  ? { backgroundColor: "var(--color-card)", color: "var(--color-foreground)", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }
-                  : { color: "var(--color-muted-foreground)" }}
+                  ? { backgroundColor: "rgba(255,255,255,0.2)", color: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }
+                  : { color: "rgba(255,255,255,0.65)" }}
               >
                 Patokan Soal
               </button>
@@ -359,24 +361,29 @@ export default function AdminPage() {
                 onClick={() => setActiveTab("bobot")}
                 className="px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
                 style={activeTab === "bobot"
-                  ? { backgroundColor: "var(--color-card)", color: "var(--color-foreground)", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }
-                  : { color: "var(--color-muted-foreground)" }}
+                  ? { backgroundColor: "rgba(255,255,255,0.2)", color: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }
+                  : { color: "rgba(255,255,255,0.65)" }}
               >
                 Bobot Soal
               </button>
             </div>
           </div>
 
-          {activeTab === "patokan" && (
-            <button
-              onClick={handleSavePatokan}
-              disabled={saving}
-              className="py-2 px-5 rounded-md font-medium text-sm disabled:opacity-50"
-              style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
-            >
-              {saving ? "Menyimpan..." : "Simpan Semua"}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+              <ThemeToggle />
+            </div>
+            {activeTab === "patokan" && (
+              <button
+                onClick={handleSavePatokan}
+                disabled={saving}
+                className="py-2 px-5 rounded-md font-medium text-sm disabled:opacity-50"
+                style={{ backgroundColor: "rgba(255,255,255,0.15)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.3)" }}
+              >
+                {saving ? "Menyimpan..." : "Simpan Semua"}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

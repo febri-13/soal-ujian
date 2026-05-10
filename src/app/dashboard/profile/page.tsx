@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
-import { CircleHelp } from "lucide-react"
+import { CircleHelp, ArrowLeft } from "lucide-react"
+import ThemeToggle from "@/components/ThemeToggle"
 import { driver } from "driver.js"
 import "driver.js/dist/driver.css"
 
@@ -331,26 +332,32 @@ export default function ProfilePage() {
 
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
           <div id="tour-profile-header" className="flex items-center gap-4">
-            <button onClick={() => router.push("/dashboard")} style={{ color: "var(--color-muted-foreground)" }}>
-              ← Kembali
+            <button onClick={() => router.push("/dashboard")} className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>
+              <ArrowLeft className="w-4 h-4" />
+              Kembali
             </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>Profil Saya</h1>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Profil Saya</h1>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(255,255,255,0.2)", color: "var(--psat-primary-fg)" }}>
               {role}
             </span>
           </div>
-          <button
-            onClick={startTour}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border"
-            style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)", backgroundColor: "var(--color-card)" }}
-            title="Panduan pengisian profil"
-          >
-            <CircleHelp className="w-4 h-4" />
-            <span className="hidden sm:inline">Panduan</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+              <ThemeToggle />
+            </div>
+            <button
+              onClick={startTour}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-white/30 opacity-80 hover:opacity-100"
+              style={{ color: "var(--psat-primary-fg)" }}
+              title="Panduan pengisian profil"
+            >
+              <CircleHelp className="w-4 h-4" />
+              <span className="hidden sm:inline">Panduan</span>
+            </button>
+          </div>
         </div>
       </header>
 
