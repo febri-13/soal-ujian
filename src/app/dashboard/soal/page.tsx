@@ -1,14 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check, CircleHelp } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import RichTextEditor from "@/components/RichTextEditor"
 import ImageUpload from "@/components/ImageUpload"
 import DownloadDropdown from "@/components/DownloadDropdown"
+import { driver } from "driver.js"
+import "driver.js/dist/driver.css"
 
 interface BabMatrix {
   bab_id_text: string
@@ -363,6 +365,99 @@ export default function SoalPage() {
     }
   }
 
+  const startTour = useCallback(() => {
+    const driverObj = driver({
+      showProgress: true,
+      nextBtnText: "Lanjut →",
+      prevBtnText: "← Kembali",
+      doneBtnText: "Selesai",
+      progressText: "{{current}} dari {{total}}",
+      steps: [
+        {
+          element: "#tour-soal-header",
+          popover: {
+            title: "Input Soal",
+            description: "Halaman ini untuk membuat dan mengelola soal ujian. Kamu bisa download soal, kirim ke validator, atau kembali ke dashboard dari header ini.",
+            side: "bottom",
+          },
+        },
+        {
+          element: "#tour-overall-progress",
+          popover: {
+            title: "Progress Keseluruhan",
+            description: "Menampilkan berapa soal sudah dibuat dari total target semua bab. Progress bar berubah hijau jika semua target terpenuhi.",
+            side: "right",
+          },
+        },
+        {
+          element: "#tour-bab-nav",
+          popover: {
+            title: "Navigasi Bab",
+            description: "Daftar bab dari matrix yang sudah kamu submit. Klik bab untuk memilih bab aktif. Klik slot (tipe · kesulitan) untuk langsung mengisi form dengan pilihan tersebut.",
+            side: "right",
+          },
+        },
+        {
+          element: "#tour-form-soal",
+          popover: {
+            title: "Form Input Soal",
+            description: "Form utama untuk membuat soal baru. Pilih bab aktif dari navigasi kiri, lalu isi tipe, kesulitan, dan pertanyaan.",
+            side: "left",
+          },
+        },
+        {
+          element: "#tour-tipe-kesulitan",
+          popover: {
+            title: "Tipe & Kesulitan",
+            description: "Pilih tipe soal (Pilgan, Ceklist, Essay, Isian Singkat) dan tingkat kesulitan. Bobot soal dihitung otomatis. Untuk tipe Pilgan & Ceklist, pilihan jawaban A–D akan muncul di bawah editor.",
+            side: "bottom",
+          },
+        },
+        {
+          element: "#tour-editor-pertanyaan",
+          popover: {
+            title: "Editor Pertanyaan",
+            description: "Ketik soal di sini. Toolbar mendukung bold, italic, superscript, subscript, simbol derajat (°), dan pecahan matematika. Gambar juga bisa disisipkan.",
+            side: "top",
+          },
+        },
+        {
+          element: "#tour-aksi-soal",
+          popover: {
+            title: "Simpan Soal",
+            description: "Klik Simpan untuk menyimpan soal ke database. Jika sedang mengedit soal lama, tombol berubah jadi Update dan muncul tombol Batal Edit.",
+            side: "top",
+          },
+        },
+        {
+          element: "#tour-soal-list",
+          popover: {
+            title: "Daftar Soal",
+            description: "Soal yang sudah dibuat untuk bab aktif tampil di sini. Klik ikon pensil untuk edit, ikon tong sampah untuk hapus. Soal yang sudah dikirim ke validator tidak bisa diedit.",
+            side: "top",
+          },
+        },
+        {
+          element: "#tour-kirim-validator",
+          popover: {
+            title: "Kirim ke Validator",
+            description: "Setelah semua target soal terpenuhi (semua slot hijau), tombol ini aktif. Klik untuk mengirim soal ke validator untuk direview.",
+            side: "bottom",
+          },
+        },
+      ],
+    })
+    driverObj.drive()
+  }, [])
+
+  useEffect(() => {
+    if (loading) return
+    if (!localStorage.getItem("soal_tour_done")) {
+      localStorage.setItem("soal_tour_done", "1")
+      setTimeout(() => startTour(), 500)
+    }
+  }, [loading, startTour])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--color-background)" }}>
@@ -378,7 +473,7 @@ export default function SoalPage() {
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
       {/* Header */}
-      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
+      <header id="tour-soal-header" className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <button
@@ -395,12 +490,21 @@ export default function SoalPage() {
             <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
               <ThemeToggle />
             </div>
+            <button
+              onClick={startTour}
+              title="Panduan"
+              className="p-1.5 rounded-md opacity-80 hover:opacity-100"
+              style={{ color: "var(--psat-primary-fg)" }}
+            >
+              <CircleHelp className="w-5 h-5" />
+            </button>
             <DownloadDropdown
               soalList={soalList}
               filename={`soal-${mapelNama || 'guru'}`}
               meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString() }}
             />
             <button
+              id="tour-kirim-validator"
               onClick={handleKirimValidator}
               disabled={saving || !allMet}
               className="py-2 px-4 rounded-md font-medium text-sm"
@@ -420,7 +524,7 @@ export default function SoalPage() {
         {/* ── Left Sidebar ── */}
         <div className="w-72 flex-shrink-0 sticky top-6 space-y-3">
           {/* Overall progress */}
-          <div className="rounded-lg p-4 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div id="tour-overall-progress" className="rounded-lg p-4 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
             <div className="flex justify-between text-sm mb-2">
               <span className="font-medium" style={{ color: "var(--color-foreground)" }}>Progress</span>
               <span style={{ color: "var(--color-muted-foreground)" }}>{totalDibuat}/{totalTarget} ({progressPct}%)</span>
@@ -440,7 +544,7 @@ export default function SoalPage() {
           </div>
 
           {/* Bab navigation tree */}
-          <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div id="tour-bab-nav" className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
             {matrixData.map((bab, babIdx) => {
               const { done: babDone, total: babTotal } = getBabProgress(bab.bab_id_text)
               const isExpanded = expandedBabs.has(bab.bab_id_text)
@@ -539,7 +643,7 @@ export default function SoalPage() {
         {/* ── Right Content ── */}
         <div className="flex-1 min-w-0 space-y-4">
           {/* Form */}
-          <div className="rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div id="tour-form-soal" className="rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
             <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
               <h2 className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
                 {editingId ? "Edit Soal" : "Tambah Soal"}
@@ -554,7 +658,7 @@ export default function SoalPage() {
             ) : (
               <div className="p-4 space-y-4">
                 {/* Tipe + Kesulitan */}
-                <div className="grid grid-cols-2 gap-3">
+                <div id="tour-tipe-kesulitan" className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs mb-1" style={{ color: "var(--color-muted-foreground)" }}>Tipe</label>
                     <select
@@ -580,7 +684,7 @@ export default function SoalPage() {
                 </div>
 
                 {/* Pertanyaan */}
-                <div>
+                <div id="tour-editor-pertanyaan">
                   <label className="block text-xs mb-1" style={{ color: "var(--color-muted-foreground)" }}>Pertanyaan *</label>
                   <RichTextEditor
                     content={pertanyaan}
@@ -639,7 +743,7 @@ export default function SoalPage() {
 
                 <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {bobot}</p>
 
-                <div className="flex gap-2">
+                <div id="tour-aksi-soal" className="flex gap-2">
                   <button
                     onClick={handleSaveSoal}
                     disabled={saving}
@@ -664,7 +768,7 @@ export default function SoalPage() {
 
           {/* Soal list for active bab */}
           {activeBab && (
-            <div className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+            <div id="tour-soal-list" className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
               <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
                 <h2 className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
                   Daftar Soal — {activeBab}
