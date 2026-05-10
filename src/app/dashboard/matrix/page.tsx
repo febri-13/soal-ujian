@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, CircleHelp, Pencil, X } from "lucide-react"
+import { Check, CircleHelp, MessageCircle, Pencil, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
 import { driver } from "driver.js"
@@ -43,6 +43,9 @@ export default function MatrixPage() {
   const [newBabName, setNewBabName] = useState("")
   const [editingBab, setEditingBab] = useState<string | null>(null)
   const [editBabName, setEditBabName] = useState("")
+  const [guruNama, setGuruNama] = useState("")
+  const [guruMapelNama, setGuruMapelNama] = useState("")
+  const [requestingEdit, setRequestingEdit] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
@@ -160,8 +163,20 @@ export default function MatrixPage() {
         return
       }
 
+      setGuruNama(profileData?.nama || "")
+
       const mapelId = guruData?.mapel_id ?? null
       setGuruMapelId(mapelId)
+
+      if (mapelId) {
+        const { data: mapelRow } = await supabase
+          .from("mata_pelajaran")
+          .select("nama")
+          .eq("id", mapelId)
+          .maybeSingle()
+        setGuruMapelNama((mapelRow as any)?.nama || "")
+      }
+
       await loadBabsFromDB(u.id, mapelId)
 
       if (mapelId) {
@@ -300,6 +315,37 @@ export default function MatrixPage() {
     showToast("Semua matrix berhasil disubmit!", "success")
   }
 
+  const handleRequestEdit = async () => {
+    if (!user || !guruMapelId) return
+    setRequestingEdit(true)
+    try {
+      const [{ data: profileData }, { data: mapelRow }, { data: { session } }] = await Promise.all([
+        supabase.from("profiles").select("nama").eq("id", user.id).maybeSingle(),
+        supabase.from("mata_pelajaran").select("nama").eq("id", guruMapelId).maybeSingle(),
+        supabase.auth.getSession(),
+      ])
+      const namaGuru = (profileData as any)?.nama || guruNama || "Guru"
+      const namaMapel = (mapelRow as any)?.nama || guruMapelNama || "-"
+
+      await fetch("/api/notifications/whatsapp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          type: "request_matrix_edit",
+          guruNama: namaGuru,
+          mapelNama: namaMapel,
+        }),
+      }).catch(() => {})
+      showToast("Permintaan edit dikirim ke admin via WhatsApp", "success")
+    } catch {
+      showToast("Gagal mengirim notifikasi", "error")
+    }
+    setRequestingEdit(false)
+  }
+
   if (loading) return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
 
   const totals = getTotals()
@@ -331,6 +377,17 @@ export default function MatrixPage() {
                 style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
               >
                 {saving ? "Menyimpan..." : "Submit Semua"}
+              </button>
+            )}
+            {babs.length > 0 && babs.every(b => b.is_submitted) && (
+              <button
+                onClick={handleRequestEdit}
+                disabled={requestingEdit}
+                className="flex items-center gap-1.5 py-2 px-4 rounded-md font-medium text-sm border disabled:opacity-50"
+                style={{ backgroundColor: "#fffbeb", color: "#d97706", borderColor: "#fcd34d" }}
+              >
+                <MessageCircle className="w-4 h-4" />
+                {requestingEdit ? "Mengirim..." : "Minta Edit Ulang"}
               </button>
             )}
           </div>

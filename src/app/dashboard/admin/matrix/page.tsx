@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { ArrowLeft, Trash2, LockOpen } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 interface MatrixBab {
@@ -24,6 +24,7 @@ export default function AdminMatrixPage() {
   const [groups, setGroups] = useState<GuruGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [unlocking, setUnlocking] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null)
 
   useEffect(() => {
@@ -131,6 +132,28 @@ export default function AdminMatrixPage() {
     setDeleting(null)
   }
 
+  const handleUnlockGuru = async (profileId: string, nama: string) => {
+    if (!confirm(`Buka kunci edit matrix milik "${nama}"? Guru akan bisa mengedit ulang matrixnya.`)) return
+    setUnlocking(profileId)
+
+    const { error } = await supabase
+      .from("psat_matrix_input")
+      .update({ is_submitted: false })
+      .eq("profile_id", profileId)
+
+    if (error) {
+      showToast("Error: " + error.message, "error")
+    } else {
+      setGroups(prev => prev.map(g =>
+        g.profile_id === profileId
+          ? { ...g, babs: g.babs.map(b => ({ ...b, is_submitted: false })) }
+          : g
+      ))
+      showToast(`Matrix ${nama} dibuka untuk diedit ulang`, "success")
+    }
+    setUnlocking(null)
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
   }
@@ -170,6 +193,17 @@ export default function AdminMatrixPage() {
                       {group.email} · {group.mapel_nama}
                     </p>
                   </div>
+                  {group.babs.some(b => b.is_submitted) && (
+                    <button
+                      onClick={() => handleUnlockGuru(group.profile_id, group.nama)}
+                      disabled={unlocking === group.profile_id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border disabled:opacity-50"
+                      style={{ backgroundColor: "#fffbeb", color: "#d97706", borderColor: "#fcd34d" }}
+                    >
+                      <LockOpen className="w-3 h-3" />
+                      Buka Kunci Edit
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeleteGuru(group.profile_id, group.nama)}
                     disabled={deleting === group.profile_id}

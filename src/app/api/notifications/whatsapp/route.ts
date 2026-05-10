@@ -119,6 +119,36 @@ export async function POST(req: NextRequest) {
         await sendWA(guruContact.whatsapp, message)
       }
 
+    } else if (type === "request_matrix_edit") {
+      const { guruNama, mapelNama } = body as { guruNama: string; mapelNama: string }
+
+      const message =
+        `Halo Admin! *${guruNama}* (Mapel: *${mapelNama}*) ingin mengedit matrix.\n\n` +
+        `Silakan login ke sistem PSAT untuk membuka kunci edit matrix guru tersebut.`
+
+      // Kumpulkan nomor admin dari DB
+      const targets = new Set<string>()
+
+      const { data: adminProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("role", "admin")
+
+      if (adminProfiles && adminProfiles.length > 0) {
+        const adminIds = adminProfiles.map((a: any) => a.id)
+        const { data: adminContacts } = await supabaseAdmin
+          .from("psat_guru_data")
+          .select("whatsapp")
+          .in("profile_id", adminIds)
+        ;(adminContacts ?? []).forEach((a: any) => { if (a.whatsapp) targets.add(cleanPhone(a.whatsapp)) })
+      }
+
+      // Fallback: nomor admin dari env var
+      const envPhone = process.env.ADMIN_WHATSAPP
+      if (envPhone) targets.add(cleanPhone(envPhone))
+
+      await Promise.all([...targets].map(phone => sendWA(phone, message)))
+
     } else {
       return NextResponse.json({ error: "Unknown type" }, { status: 400 })
     }
