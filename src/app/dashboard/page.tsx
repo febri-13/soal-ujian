@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, X } from "lucide-react"
+import {
+  Check, X,
+  User, LayoutGrid, PenSquare, FileText,
+  CheckSquare, Settings, Users, Bell,
+  AlertTriangle, AlertCircle, CheckCircle, Lightbulb,
+  LogOut, Lock,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase"
 
 const TIPE_OPTIONS = ["pilgan", "ceklist", "essay"]
@@ -90,7 +96,6 @@ export default function DashboardPage() {
         !!guruData?.no_rekening
       setHasProfile(profileComplete)
 
-      // Cek profil validator: semua field wajib harus terisi
       const vRole = fullProfile?.role || "guru"
       if (vRole === "validator" || vRole === "admin") {
         const { data: vGuruData } = await supabase
@@ -135,7 +140,7 @@ export default function DashboardPage() {
         .from("bank_soal")
         .select("mata_pelajaran_id")
         .eq("status", "submitted")
-      
+
       const counts: Record<string, number> = {}
       const names: Record<string, string> = {}
       if (submittedByMapel) {
@@ -144,11 +149,11 @@ export default function DashboardPage() {
             counts[s.mata_pelajaran_id] = (counts[s.mata_pelajaran_id] || 0) + 1
           }
         })
-        
+
         const { data: mapels } = await supabase
           .from("mata_pelajaran")
           .select("id, nama")
-        
+
         if (mapels) {
           mapels.forEach(m => {
             names[m.id] = m.nama
@@ -158,7 +163,6 @@ export default function DashboardPage() {
       setMapelCounts(counts)
       setMapelNames(names)
 
-      // Load mapel guru & patokan (gunakan guruData yang sudah diload di atas)
       if (guruData?.mapel_id) {
         const { data: patokanRows } = await supabase
           .from("psat_patokan_soal")
@@ -186,7 +190,6 @@ export default function DashboardPage() {
         }
       }
 
-      // Statistik soal milik guru ini
       const { data: guruSoal } = await supabase
         .from("bank_soal")
         .select("status, tipe, tingkat_kesulitan")
@@ -209,7 +212,6 @@ export default function DashboardPage() {
         setSoalCounts(counts)
       }
 
-      // Target bank soal dari matrix
       const { data: matrixBabs } = await supabase
         .from("psat_matrix_input")
         .select("data")
@@ -262,267 +264,311 @@ export default function DashboardPage() {
   const isAdmin = userRole === "admin"
   const isValidator = userRole === "validator"
 
+  const adminMenuItems = [
+    ...(isValidator ? [{
+      icon: <User className="w-5 h-5" />,
+      label: "Profil",
+      desc: hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu",
+      done: hasValidatorProfile,
+      locked: false,
+      path: "/dashboard/profile",
+      color: "#0284c7",
+    }] : []),
+    {
+      icon: <CheckSquare className="w-5 h-5" />,
+      label: "Validasi",
+      desc: isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu",
+      done: false,
+      locked: !isAdmin && !hasValidatorProfile,
+      path: "/dashboard/validasi",
+      color: "#059669",
+    },
+    ...(isAdmin ? [
+      {
+        icon: <Settings className="w-5 h-5" />,
+        label: "Patokan Soal",
+        desc: "Atur target soal per mapel",
+        done: false,
+        locked: false,
+        path: "/dashboard/admin",
+        color: "#7c3aed",
+      },
+      {
+        icon: <LayoutGrid className="w-5 h-5" />,
+        label: "Matrix Guru",
+        desc: "Kelola & hapus matrix guru",
+        done: false,
+        locked: false,
+        path: "/dashboard/admin/matrix",
+        color: "#d97706",
+      },
+      {
+        icon: <Users className="w-5 h-5" />,
+        label: "Users",
+        desc: "Kelola users & roles",
+        done: false,
+        locked: false,
+        path: "/admin/users",
+        color: "#dc2626",
+      },
+    ] : []),
+  ]
+
   return (
     <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
       <header className="border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
         <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
           <h1 className="text-xl font-bold" style={{ color: "var(--color-foreground)" }}>PSAT Dashboard</h1>
-          <button onClick={handleLogout} className="text-sm underline" style={{ color: "var(--color-destructive)" }}>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border"
+            style={{ color: "var(--color-destructive)", borderColor: "var(--color-border)" }}
+          >
+            <LogOut className="w-4 h-4" />
             Logout
           </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto py-8 px-4">
-        <div className="rounded-lg p-6 border mb-6" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--color-foreground)" }}>
-            Selamat datang, {user?.nama || user?.username || userRole}!
-          </h2>
-          <p className="mb-2" style={{ color: "var(--color-muted-foreground)" }}>{user?.email}</p>
-          <div className="flex gap-2">
-            <span className={`px-2 py-1 text-xs rounded ${
-              isAdmin ? "bg-purple-600 text-white" :
-              isValidator ? "bg-blue-600 text-white" :
-              "bg-gray-500 text-white"
+
+        {/* Welcome card */}
+        <div className="rounded-xl p-6 border mb-6 flex items-start gap-4" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-white font-bold text-lg"
+            style={{ backgroundColor: isAdmin ? "#7c3aed" : isValidator ? "#2563eb" : "#0284c7" }}
+          >
+            {(user?.nama || user?.email || "?")[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-semibold" style={{ color: "var(--color-foreground)" }}>
+              Selamat datang, {user?.nama || user?.username || userRole}!
+            </h2>
+            <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>{user?.email}</p>
+            <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full font-medium ${
+              isAdmin ? "bg-purple-100 text-purple-700" :
+              isValidator ? "bg-blue-100 text-blue-700" :
+              "bg-gray-100 text-gray-600"
             }`}>
               {userRole}
             </span>
-          </div>
-          {!isAdmin && !isValidator && !hasProfile && (
-            <p className="text-sm mt-2" style={{ color: "var(--color-destructive)" }}>
-              ⚠️ Silakan lengkapi data diri terlebih dahulu
-            </p>
-          )}
-          {isValidator && !hasValidatorProfile && (
-            <p className="text-sm mt-2" style={{ color: "var(--color-destructive)" }}>
-              ⚠️ Silakan lengkapi data diri sebelum mulai validasi
-            </p>
-          )}
+            {!isAdmin && !isValidator && !hasProfile && (
+              <div className="flex items-center gap-1.5 mt-2 text-sm" style={{ color: "var(--color-destructive)" }}>
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Silakan lengkapi data diri terlebih dahulu
+              </div>
+            )}
+            {isValidator && !hasValidatorProfile && (
+              <div className="flex items-center gap-1.5 mt-2 text-sm" style={{ color: "var(--color-destructive)" }}>
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Silakan lengkapi data diri sebelum mulai validasi
+              </div>
+            )}
 
-{(isAdmin || isValidator) && submittedCount > 0 && (
-          <div className="mt-4">
-            <p className="font-medium mb-2" style={{ color: "var(--color-foreground)" }}>
-              🔔 {submittedCount} soal perlu divalidasi:
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {Object.entries(mapelCounts).map(([mapelId, count]) => (
-                <button
-                  key={mapelId}
-                  onClick={() => {
-                    localStorage.setItem("selectedMapelId", mapelId)
-                    router.push("/dashboard/validasi")
-                  }}
-                  className="p-3 rounded-lg border text-left cursor-pointer hover:opacity-80 transition-opacity"
-                  style={{ backgroundColor: "#fef3c7", borderColor: "#f59e0b" }}
-                >
-                  <div className="font-medium" style={{ color: "#92400e" }}>
-                    {mapelNames[mapelId] || "Unknown"}
-                  </div>
-                  <div className="text-sm" style={{ color: "#b45309" }}>
-                    {count} soal
-                  </div>
-                </button>
-              ))}
-            </div>
+            {/* Notifikasi validator/admin: soal pending */}
+            {(isAdmin || isValidator) && submittedCount > 0 && (
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bell className="w-4 h-4" style={{ color: "#b45309" }} />
+                  <p className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>
+                    {submittedCount} soal perlu divalidasi:
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(mapelCounts).map(([mapelId, count]) => (
+                    <button
+                      key={mapelId}
+                      onClick={() => {
+                        localStorage.setItem("selectedMapelId", mapelId)
+                        router.push("/dashboard/validasi")
+                      }}
+                      className="p-3 rounded-lg border text-left cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: "#fef3c7", borderColor: "#f59e0b" }}
+                    >
+                      <div className="font-medium text-sm" style={{ color: "#92400e" }}>
+                        {mapelNames[mapelId] || "Unknown"}
+                      </div>
+                      <div className="text-xs" style={{ color: "#b45309" }}>
+                        {count} soal
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
+        {/* Notifikasi guru: revisi / approved */}
         {!isAdmin && !isValidator && (revisionCount > 0 || approvedCount > 0) && (
-          <div className="mt-4 flex gap-2 flex-wrap">
+          <div className="flex gap-3 flex-wrap mb-6">
             {revisionCount > 0 && (
-              <div 
+              <div
                 onClick={() => router.push("/dashboard/soal")}
-                className="p-4 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 px-4 py-3 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: "#fef2f2", borderColor: "#ef4444" }}
               >
-                <p style={{ color: "#dc2626" }}>
-                  🔴 {revisionCount} soal perlu revision
-                </p>
+                <AlertCircle className="w-4 h-4 shrink-0" style={{ color: "#dc2626" }} />
+                <span className="text-sm font-medium" style={{ color: "#dc2626" }}>
+                  {revisionCount} soal perlu revisi
+                </span>
               </div>
             )}
             {approvedCount > 0 && (
-              <div className="p-4 rounded-lg border" style={{ backgroundColor: "#f0fdf4", borderColor: "#22c55e" }}>
-                <p className="text-green-700">
-                  🟢 {approvedCount} soal approved
-                </p>
+              <div
+                className="flex items-center gap-2 px-4 py-3 rounded-lg border"
+                style={{ backgroundColor: "#f0fdf4", borderColor: "#22c55e" }}
+              >
+                <CheckCircle className="w-4 h-4 shrink-0" style={{ color: "#15803d" }} />
+                <span className="text-sm font-medium" style={{ color: "#15803d" }}>
+                  {approvedCount} soal approved
+                </span>
               </div>
             )}
           </div>
         )}
-          </div>
 
+        {/* Menu cards */}
         {(isAdmin || isValidator) ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Tombol Profil untuk validator */}
-            {isValidator && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {adminMenuItems.map(({ icon, label, desc, done, locked, path, color }) => (
               <button
-                onClick={() => goTo("/dashboard/profile")}
-                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
+                key={label}
+                onClick={() => goTo(path, locked)}
+                disabled={locked}
+                className="rounded-xl p-5 border text-left transition-all hover:shadow-md disabled:cursor-not-allowed"
                 style={{
-                  borderColor: hasValidatorProfile ? "#22c55e" : "var(--color-border)",
                   backgroundColor: "var(--color-card)",
+                  borderColor: "var(--color-border)",
+                  borderLeftWidth: "4px",
+                  borderLeftColor: done ? "#22c55e" : locked ? "var(--color-border)" : color,
+                  opacity: locked ? 0.5 : 1,
                 }}
               >
-                <div className="text-2xl mb-2">👤</div>
-                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>
-                  Profil {hasValidatorProfile && "✓"}
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-white"
+                    style={{ backgroundColor: done ? "#22c55e" : locked ? "#9ca3af" : color }}
+                  >
+                    {done ? <Check className="w-5 h-5" /> : locked ? <Lock className="w-5 h-5" /> : icon}
+                  </div>
+                </div>
+                <h3 className="font-semibold text-sm mb-0.5" style={{ color: locked ? "var(--color-muted-foreground)" : "var(--color-foreground)" }}>
+                  {label}
                 </h3>
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  {hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu"}
-                </p>
+                <p className="text-xs leading-snug" style={{ color: "var(--color-muted-foreground)" }}>{desc}</p>
               </button>
-            )}
-
-            <button
-              onClick={() => goTo("/dashboard/validasi", !isAdmin && !hasValidatorProfile)}
-              className="rounded-lg p-4 border text-left transition-opacity"
-              style={{
-                borderColor: "var(--color-border)",
-                backgroundColor: "var(--color-card)",
-                opacity: isAdmin || hasValidatorProfile ? 1 : 0.5,
-                cursor: isAdmin || hasValidatorProfile ? "pointer" : "not-allowed",
-              }}
-            >
-              <div className="text-2xl mb-2">✅</div>
-              <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Validasi</h3>
-              <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                {isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu"}
-              </p>
-            </button>
-
-            {isAdmin && (
-              <>
-                <button
-                  onClick={() => goTo("/dashboard/admin")}
-                  className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-                >
-                  <div className="text-2xl mb-2">⚙️</div>
-                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Patokan Soal</h3>
-                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                    Atur target soal per mapel
-                  </p>
-                </button>
-
-                <button
-                  onClick={() => goTo("/dashboard/admin/matrix")}
-                  className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-                >
-                  <div className="text-2xl mb-2">📊</div>
-                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Matrix Guru</h3>
-                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                    Kelola & hapus matrix guru
-                  </p>
-                </button>
-
-                <button
-                  onClick={() => goTo("/admin/users")}
-                  className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                  style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-                >
-                  <div className="text-2xl mb-2">👥</div>
-                  <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Users</h3>
-                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                    Kelola users & roles
-                  </p>
-                </button>
-              </>
-            )}
+            ))}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <button
-                onClick={() => goTo("/dashboard/profile")}
-                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                style={{ 
-                  borderColor: hasProfile ? "#22c55e" : "var(--color-border)", 
-                  backgroundColor: "var(--color-card)" 
-                }}
-              >
-                <div className="text-2xl mb-2">👤</div>
-                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>
-                  Profil {hasProfile && "✓"}
-                </h3>
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  {hasProfile ? "Data diri lengkap" : "Data diri (WA, Bank, Rekening)"}
-                </p>
-              </button>
-
-              <button
-                onClick={() => goTo("/dashboard/matrix", !hasProfile)}
-                className="rounded-lg p-4 border text-left transition-opacity"
-                style={{
-                  borderColor: hasMatrix ? "#22c55e" : "var(--color-border)",
-                  backgroundColor: "var(--color-card)",
-                  opacity: hasProfile ? 1 : 0.5,
-                  cursor: hasProfile ? "pointer" : "not-allowed",
-                }}
-              >
-                <div className="text-2xl mb-2">📊</div>
-                <h3 className="font-medium" style={{ color: hasProfile ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
-                  Matrix {hasMatrix && "✓"}
-                </h3>
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  {hasProfile ? "Pemetaan jumlah soal" : "Lengkapi data diri dulu"}
-                </p>
-              </button>
-
-              <button
-                onClick={() => goTo("/dashboard/soal", false, true)}
-                className="rounded-lg p-4 border text-left transition-opacity"
-                style={{
-                  borderColor: hasMatrix ? "var(--color-border)" : "var(--color-muted)",
-                  backgroundColor: "var(--color-card)",
-                  opacity: hasMatrix ? 1 : 0.5,
-                  cursor: hasMatrix ? "pointer" : "not-allowed",
-                }}
-              >
-                <div className="text-2xl mb-2">📝</div>
-                <h3 className="font-medium" style={{ color: hasMatrix ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>Soal</h3>
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  {hasMatrix ? "Input soal ujian" : "Selesaikan matrix dulu"}
-                </p>
-              </button>
-
-              <button
-                onClick={() => goTo("/dashboard/dokumen")}
-                className="rounded-lg p-4 border text-left hover:opacity-80 transition-opacity"
-                style={{ 
-                  borderColor: "var(--color-border)", 
-                  backgroundColor: "var(--color-card)" 
-                }}
-              >
-                <div className="text-2xl mb-2">📄</div>
-                <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>Dokumen</h3>
-                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                  Kisi-kisi & Glossary
-                </p>
-              </button>
+            {/* Step cards guru */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                {
+                  step: 1,
+                  icon: <User className="w-5 h-5" />,
+                  label: "Profil",
+                  desc: hasProfile ? "Data diri lengkap" : "Data diri (WA, Bank, Rekening)",
+                  done: hasProfile,
+                  locked: false,
+                  path: "/dashboard/profile",
+                  color: "#0284c7",
+                },
+                {
+                  step: 2,
+                  icon: <LayoutGrid className="w-5 h-5" />,
+                  label: "Matrix",
+                  desc: hasProfile ? "Pemetaan jumlah soal" : "Lengkapi data diri dulu",
+                  done: hasMatrix,
+                  locked: !hasProfile,
+                  path: "/dashboard/matrix",
+                  color: "#7c3aed",
+                },
+                {
+                  step: 3,
+                  icon: <PenSquare className="w-5 h-5" />,
+                  label: "Soal",
+                  desc: hasMatrix ? "Input soal ujian" : "Selesaikan matrix dulu",
+                  done: false,
+                  locked: !hasMatrix,
+                  path: "/dashboard/soal",
+                  color: "#059669",
+                },
+                {
+                  step: 4,
+                  icon: <FileText className="w-5 h-5" />,
+                  label: "Dokumen",
+                  desc: "Kisi-kisi & Glossary",
+                  done: false,
+                  locked: false,
+                  path: "/dashboard/dokumen",
+                  color: "#d97706",
+                },
+              ].map(({ step, icon, label, desc, done, locked, path, color }) => (
+                <button
+                  key={label}
+                  onClick={() => goTo(path, locked, label === "Soal")}
+                  disabled={locked}
+                  className="rounded-xl p-5 border text-left transition-all hover:shadow-md disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: "var(--color-card)",
+                    borderColor: "var(--color-border)",
+                    borderLeftWidth: "4px",
+                    borderLeftColor: done ? "#22c55e" : locked ? "var(--color-border)" : color,
+                    opacity: locked ? 0.5 : 1,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-white"
+                      style={{ backgroundColor: done ? "#22c55e" : locked ? "#9ca3af" : color }}
+                    >
+                      {done ? <Check className="w-5 h-5" /> : locked ? <Lock className="w-5 h-5" /> : icon}
+                    </div>
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                    >
+                      {step}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-sm mb-0.5" style={{ color: locked ? "var(--color-muted-foreground)" : "var(--color-foreground)" }}>
+                    {label}
+                  </h3>
+                  <p className="text-xs leading-snug" style={{ color: "var(--color-muted-foreground)" }}>{desc}</p>
+                </button>
+              ))}
             </div>
 
+            {/* Tips */}
             {!hasMatrix && (
-              <div className="mt-6 p-4 rounded-lg border" style={{ backgroundColor: "#fef3c7", borderColor: "#f59e0b" }}>
-                <p style={{ color: "#92400e" }}>
-                  💡 Tips: Isi matrix terlebih dahulu untuk dapat input soal.
-                  Tetapi Anda bisa upload dokumen sekarang.
+              <div
+                className="mt-4 flex items-start gap-2 p-4 rounded-lg border"
+                style={{ backgroundColor: "#fffbeb", borderColor: "#f59e0b" }}
+              >
+                <Lightbulb className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#d97706" }} />
+                <p className="text-sm" style={{ color: "#92400e" }}>
+                  Isi matrix terlebih dahulu untuk dapat input soal. Tetapi Anda bisa upload dokumen sekarang.
                 </p>
               </div>
             )}
 
             {/* Statistik Soal */}
             <div className="mt-6">
-              <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--color-muted-foreground)" }}>STATISTIK SOAL SAYA</h3>
+              <h3 className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--color-muted-foreground)" }}>
+                STATISTIK SOAL SAYA
+              </h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
-                  { label: "Total", value: guruSoalStats.total, color: "var(--color-foreground)", bg: "var(--color-card)" },
-                  { label: "Draft", value: guruSoalStats.draft, color: "#6b7280", bg: "#f9fafb" },
-                  { label: "Submitted", value: guruSoalStats.submitted, color: "#b45309", bg: "#fef3c7" },
-                  { label: "Approved", value: guruSoalStats.approved, color: "#15803d", bg: "#f0fdf4" },
-                  { label: "Perlu Revisi", value: guruSoalStats.needs_revision, color: "#dc2626", bg: "#fef2f2" },
-                ].map(({ label, value, color, bg }) => (
-                  <div key={label} className="rounded-lg p-4 border text-center" style={{ backgroundColor: bg, borderColor: "var(--color-border)" }}>
+                  { label: "Total", value: guruSoalStats.total, color: "var(--color-foreground)", bg: "var(--color-card)", icon: <FileText className="w-4 h-4" /> },
+                  { label: "Draft", value: guruSoalStats.draft, color: "#6b7280", bg: "#f9fafb", icon: <PenSquare className="w-4 h-4" /> },
+                  { label: "Submitted", value: guruSoalStats.submitted, color: "#b45309", bg: "#fef3c7", icon: <Bell className="w-4 h-4" /> },
+                  { label: "Approved", value: guruSoalStats.approved, color: "#15803d", bg: "#f0fdf4", icon: <CheckCircle className="w-4 h-4" /> },
+                  { label: "Perlu Revisi", value: guruSoalStats.needs_revision, color: "#dc2626", bg: "#fef2f2", icon: <AlertCircle className="w-4 h-4" /> },
+                ].map(({ label, value, color, bg, icon }) => (
+                  <div key={label} className="rounded-xl p-4 border text-center" style={{ backgroundColor: bg, borderColor: "var(--color-border)" }}>
+                    <div className="flex justify-center mb-1" style={{ color }}>{icon}</div>
                     <div className="text-2xl font-bold" style={{ color }}>{value}</div>
                     <div className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>{label}</div>
                   </div>
@@ -555,7 +601,9 @@ export default function DashboardPage() {
               {/* Progress per tipe × kesulitan vs patokan */}
               {Object.keys(patokan).length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-semibold mb-3" style={{ color: "var(--color-muted-foreground)" }}>PROGRESS VS PATOKAN</h4>
+                  <h4 className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--color-muted-foreground)" }}>
+                    PROGRESS VS PATOKAN
+                  </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {TIPE_OPTIONS.map(tipe => (
                       <div key={tipe} className="rounded-lg p-3 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
@@ -574,13 +622,17 @@ export default function DashboardPage() {
                           return (
                             <div key={kesulitan} className="flex items-center gap-1 mb-1">
                               <span className="text-xs flex-1 capitalize" style={{ color: "var(--color-muted-foreground)" }}>{kesulitan}</span>
-                              <span className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
-                                style={{ backgroundColor: targetKeluar === 0 ? "var(--color-muted)" : okKeluar ? "#f0fdf4" : "#fef2f2", color: targetKeluar === 0 ? "var(--color-muted-foreground)" : okKeluar ? "#15803d" : "#dc2626" }}>
+                              <span
+                                className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
+                                style={{ backgroundColor: targetKeluar === 0 ? "var(--color-muted)" : okKeluar ? "#f0fdf4" : "#fef2f2", color: targetKeluar === 0 ? "var(--color-muted-foreground)" : okKeluar ? "#15803d" : "#dc2626" }}
+                              >
                                 {targetKeluar > 0 && (okKeluar ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />)}
                                 {dibuat}/{targetKeluar}
                               </span>
-                              <span className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
-                                style={{ backgroundColor: targetBankVal === 0 ? "var(--color-muted)" : okBank ? "#f0fdf4" : "#fef2f2", color: targetBankVal === 0 ? "var(--color-muted-foreground)" : okBank ? "#15803d" : "#dc2626" }}>
+                              <span
+                                className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
+                                style={{ backgroundColor: targetBankVal === 0 ? "var(--color-muted)" : okBank ? "#f0fdf4" : "#fef2f2", color: targetBankVal === 0 ? "var(--color-muted-foreground)" : okBank ? "#15803d" : "#dc2626" }}
+                              >
                                 {targetBankVal > 0 && (okBank ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />)}
                                 {dibuat}/{targetBankVal}
                               </span>
