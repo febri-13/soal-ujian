@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-display, "Fraunces", ui-serif, Georgia, serif);
   
   --color-background: oklch(100% 0 0);
   --color-foreground: oklch(23% 0.06 285);
@@ -148,6 +149,71 @@ input, textarea, select {
 }
 .dark .card-shadow {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* ── Pastel Playful Design System ─────────────────────────────── */
+:root {
+  --pp-bg:       #FFF8F0;
+  --pp-bg-2:     #FFEFE2;
+  --pp-ink:      #1F2330;
+  --pp-ink-2:    #4A5060;
+  --pp-muted:    #8B91A3;
+  --pp-line:     #ECE2D2;
+  --pp-card:     #FFFFFF;
+  --pp-primary:  #2D4DD8;
+  --pp-peach:    #FFB68A;
+  --pp-mint:     #9DE3C4;
+  --pp-lemon:    #FFE072;
+  --pp-pink:     #FFA6C5;
+  --pp-lilac:    #C9B8FF;
+}
+.dark {
+  --pp-bg:       #16140F;
+  --pp-bg-2:     #1F1B14;
+  --pp-ink:      #FFF8F0;
+  --pp-ink-2:    #C9C2B0;
+  --pp-muted:    #8A8170;
+  --pp-line:     #3A3324;
+  --pp-card:     #221E16;
+  --pp-peach:    #C28960;
+  --pp-mint:     #6FB295;
+  --pp-lemon:    #C9A93C;
+  --pp-pink:     #C97A98;
+  --pp-lilac:    #9586C7;
+}
+
+.font-display {
+  font-family: var(--font-display, "Fraunces", ui-serif, Georgia, serif);
+  font-optical-sizing: auto;
+}
+
+.shadow-hard-sm { box-shadow: 2px 2px 0 0 var(--pp-ink); }
+.shadow-hard-md { box-shadow: 4px 4px 0 0 var(--pp-ink); }
+.shadow-hard-lg { box-shadow: 6px 6px 0 0 var(--pp-ink); }
+
+.squiggle-underline {
+  position: relative;
+  display: inline-block;
+}
+.squiggle-underline::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -8px;
+  height: 10px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 10' preserveAspectRatio='none'><path d='M0,5 Q25,-3 50,5 T100,5 T150,5 T200,5' fill='none' stroke='%23FFB68A' stroke-width='3' stroke-linecap='round'/></svg>") repeat-x;
+  background-size: 120px 10px;
+}
+
+.doodle-card {
+  background: var(--pp-card);
+  border: 1.5px solid var(--pp-ink);
+  border-radius: 22px;
+  padding: 16px 18px;
+  box-shadow: 4px 4px 0 0 var(--pp-ink);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 340px;
 }
 
 .dark {

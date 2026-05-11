@@ -47,3 +47,5 @@ supabase/.temp
 
 # utility scripts (may contain hardcoded credentials)
 scripts/
+.kilo
+

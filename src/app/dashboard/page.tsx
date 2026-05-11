@@ -7,7 +7,7 @@ import {
   User, LayoutGrid, PenSquare, FileText,
   CheckSquare, Settings, Users, Bell,
   AlertTriangle, AlertCircle, CheckCircle, Lightbulb,
-  LogOut, Lock,
+  LogOut, Lock, BookOpen,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import ThemeToggle from "@/components/ThemeToggle"
@@ -180,55 +180,64 @@ export default function DashboardPage() {
   const isAdmin = userRole === "admin"
   const isValidator = userRole === "validator"
 
-  const adminMenuItems = [
-    ...(isValidator ? [{
-      icon: <User className="w-5 h-5" />,
-      label: "Profil",
-      desc: hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu",
-      done: hasValidatorProfile,
-      locked: false,
-      path: "/dashboard/profile",
-      color: "var(--psat-primary-light)",
-    }] : []),
-    {
-      icon: <CheckSquare className="w-5 h-5" />,
-      label: "Validasi",
-      desc: isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu",
-      done: false,
-      locked: !isAdmin && !hasValidatorProfile,
-      path: "/dashboard/validasi",
-      color: "var(--psat-green)",
-    },
-    ...(isAdmin ? [
-      {
-        icon: <Settings className="w-5 h-5" />,
-        label: "Patokan Soal",
-        desc: "Atur target soal per mapel",
-        done: false,
-        locked: false,
-        path: "/dashboard/admin",
-        color: "var(--psat-teal)",
-      },
-      {
-        icon: <LayoutGrid className="w-5 h-5" />,
-        label: "Matrix Guru",
-        desc: "Kelola & hapus matrix guru",
-        done: false,
-        locked: false,
-        path: "/dashboard/admin/matrix",
-        color: "var(--psat-amber)",
-      },
-      {
-        icon: <Users className="w-5 h-5" />,
-        label: "Users",
-        desc: "Kelola users & roles",
-        done: false,
-        locked: false,
-        path: "/admin/users",
-        color: "var(--psat-burgundy)",
-      },
-    ] : []),
-  ]
+   const adminMenuItems = [
+     ...(isValidator ? [{
+       icon: <User className="w-5 h-5" />,
+       label: "Profil",
+       desc: hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu",
+       done: hasValidatorProfile,
+       locked: false,
+       path: "/dashboard/profile",
+       color: "var(--psat-primary-light)",
+     }] : []),
+     {
+       icon: <CheckSquare className="w-5 h-5" />,
+       label: "Validasi",
+       desc: isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu",
+       done: false,
+       locked: !isAdmin && !hasValidatorProfile,
+       path: "/dashboard/validasi",
+       color: "var(--psat-green)",
+     },
+     ...(isAdmin ? [
+       {
+         icon: <Settings className="w-5 h-5" />,
+         label: "Patokan Soal",
+         desc: "Atur target soal per mapel",
+         done: false,
+         locked: false,
+         path: "/dashboard/admin",
+         color: "var(--psat-teal)",
+       },
+       {
+         icon: <BookOpen className="w-5 h-5" />,
+         label: "Mata Pelajaran",
+         desc: "Kelola daftar mata pelajaran",
+         done: false,
+         locked: false,
+         path: "/dashboard/admin/mapel",
+         color: "var(--psat-amber)",
+       },
+       {
+         icon: <LayoutGrid className="w-5 h-5" />,
+         label: "Matrix Guru",
+         desc: "Kelola & hapus matrix guru",
+         done: false,
+         locked: false,
+         path: "/dashboard/admin/matrix",
+         color: "var(--psat-cyan)",
+       },
+       {
+         icon: <Users className="w-5 h-5" />,
+         label: "Users",
+         desc: "Kelola users & roles",
+         done: false,
+         locked: false,
+         path: "/admin/users",
+         color: "var(--psat-burgundy)",
+       },
+     ] : []),
+   ]
 
   const guruSteps = [
     {

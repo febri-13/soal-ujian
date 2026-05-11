@@ -1,8 +1,8 @@
-import { supabase } from "@/lib/supabase"
 import {
   BookOpen, TrendingUp, CheckCircle, Clock, AlertCircle,
-  Download, LayoutGrid, LogIn, FileEdit,
+  Download, LayoutGrid, ArrowRight,
 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 import ThemeToggle from "@/components/ThemeToggle"
 
 export const revalidate = 300
@@ -26,6 +26,36 @@ interface GuruProgress {
   kisi_kisi_url: string | null
 }
 
+const AVATAR_COLORS = [
+  { bg: "#FFB68A", text: "#6B2D00" },
+  { bg: "#9DE3C4", text: "#0E4A2F" },
+  { bg: "#C9B8FF", text: "#2E1A6B" },
+  { bg: "#FFE072", text: "#5A4500" },
+  { bg: "#FFA6C5", text: "#6B0E33" },
+]
+
+const STAT_VARIANTS = {
+  lemon: { bg: "#FFF5C6", iconBg: "#FFE072", iconColor: "#5A4500", blob: "#FFE072" },
+  lilac: { bg: "#ECE4FF", iconBg: "#C9B8FF", iconColor: "#2E1A6B", blob: "#C9B8FF" },
+  mint:  { bg: "#DAF5E7", iconBg: "#9DE3C4", iconColor: "#0E4A2F", blob: "#9DE3C4" },
+  peach: { bg: "#FFE3D0", iconBg: "#FFB68A", iconColor: "#6B2D00", blob: "#FFB68A" },
+  pink:  { bg: "#FFD9E6", iconBg: "#FFA6C5", iconColor: "#6B0E33", blob: "#FFA6C5" },
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return "?"
+  const parts = name.trim().split(" ")
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function getBarGradient(pct: number, hasPatokan: boolean): string {
+  if (!hasPatokan || pct === 0) return "#E0D8CF"
+  if (pct >= 80) return "linear-gradient(90deg, #9DE3C4, #34A86E)"
+  if (pct >= 40) return "linear-gradient(90deg, #FFE072, #C99A14)"
+  return "linear-gradient(90deg, #FFC9C9, #DC4F4F)"
+}
+
 export default async function HomePage() {
   const { data, error } = await supabase.rpc("get_public_guru_progress")
   const rows: GuruProgress[] = (data as GuruProgress[]) ?? []
@@ -37,431 +67,491 @@ export default async function HomePage() {
   const totalRevision  = rows.reduce((s, r) => s + Number(r.needs_revision), 0)
 
   return (
-    <div className="gradient-bg min-h-screen flex flex-col">
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
+
+      {/* Decorative bg shapes */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        <div style={{
+          position: "absolute", top: "380px", right: "-60px",
+          width: "120px", height: "120px", borderRadius: "50%",
+          border: "1.5px solid var(--pp-ink)", background: "var(--pp-lemon)", opacity: 0.35,
+        }} />
+        <div style={{
+          position: "absolute", top: "120px", right: "320px",
+          width: "28px", height: "28px", background: "var(--pp-peach)",
+          opacity: 0.6, transform: "rotate(15deg)",
+          clipPath: "polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+        }} />
+        <div style={{
+          position: "absolute", top: "220px", right: "80px",
+          width: "28px", height: "28px", background: "var(--pp-lilac)",
+          opacity: 0.6, transform: "rotate(-8deg)",
+          clipPath: "polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)",
+        }} />
+      </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--pp-card)", borderBottom: "1px solid var(--pp-line)" }}>
+        <div className="max-w-7xl mx-auto px-6 md:px-8 py-4 flex items-center justify-between gap-4">
+          {/* Brand */}
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: "var(--color-primary)" }}
-            >
-              <BookOpen className="w-4 h-4 text-white" />
+            <div style={{
+              width: "44px", height: "44px", borderRadius: "14px",
+              backgroundColor: "var(--pp-primary)",
+              display: "grid", placeItems: "center",
+              color: "white", position: "relative",
+              boxShadow: "0 4px 0 0 #1A2F8B",
+              flexShrink: 0,
+            }}>
+              <BookOpen className="w-5 h-5" />
+              <div style={{
+                position: "absolute", inset: "6px", borderRadius: "10px",
+                border: "1.5px dashed rgba(255,255,255,0.45)",
+                pointerEvents: "none",
+              }} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm md:text-base font-bold leading-tight truncate" style={{ color: "var(--color-foreground)" }}>
+              <div className="font-bold text-sm leading-tight truncate" style={{ color: "var(--pp-ink)" }}>
                 Portal Validasi Soal PSAT Al Abidin
-              </h1>
-              <p className="text-xs hidden sm:block" style={{ color: "var(--color-muted-foreground)" }}>
-                Progress Upload Soal Ujian
-              </p>
+              </div>
+              <div className="text-xs mt-0.5 hidden sm:block" style={{ color: "var(--pp-muted)" }}>
+                Progress upload soal ujian — tahun ajar 2025/2026
+              </div>
             </div>
           </div>
+
+          {/* Nav actions */}
           <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle />
+            <div className="[&_button]:rounded-full [&_button]:text-xs [&_button]:px-3 [&_button]:py-2"
+                 style={{ color: "var(--pp-ink-2)" }}>
+              <ThemeToggle />
+            </div>
             <a
               href="/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
-              style={{ backgroundColor: "var(--color-primary)", color: "white", textDecoration: "none" }}
+              className="flex items-center gap-2 text-sm font-semibold"
+              style={{
+                backgroundColor: "var(--pp-ink)", color: "#FFFFFF",
+                padding: "10px 18px", borderRadius: "999px",
+                boxShadow: "0 3px 0 0 rgba(0,0,0,0.5)",
+                textDecoration: "none", whiteSpace: "nowrap",
+              }}
             >
-              <LogIn className="w-4 h-4" />
-              <span className="hidden sm:inline">Login</span>
+              Masuk
+              <ArrowRight className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-5">
+      {/* Hero */}
+      <section className="max-w-7xl mx-auto px-6 md:px-8 pt-10 pb-6 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 items-end">
+          <div>
+            {/* Eyebrow */}
+            <span className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full"
+                  style={{
+                    backgroundColor: "#E8EDFF", border: "1px solid #D5DEFF",
+                    color: "var(--pp-primary)", letterSpacing: "0.08em", textTransform: "uppercase",
+                  }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--pp-primary)", flexShrink: 0 }} />
+              Update tiap 5 menit · Live progress
+            </span>
 
-            {/* Summary stat cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <StatCard
-                icon={<TrendingUp className="w-5 h-5" />}
-                label="Total Soal"
-                value={totalSoal}
-                gradient="linear-gradient(135deg, #6366f1, #8b5cf6)"
-              />
-              <StatCard
-                icon={<FileEdit className="w-5 h-5" />}
-                label="Draft"
-                value={totalDraft}
-                gradient="linear-gradient(135deg, #64748b, #94a3b8)"
-              />
-              <StatCard
-                icon={<CheckCircle className="w-5 h-5" />}
-                label="Approved"
-                value={totalApproved}
-                gradient="linear-gradient(135deg, #059669, #34d399)"
-              />
-              <StatCard
-                icon={<Clock className="w-5 h-5" />}
-                label="Menunggu"
-                value={totalSubmitted}
-                gradient="linear-gradient(135deg, #d97706, #fbbf24)"
-              />
-              <StatCard
-                icon={<AlertCircle className="w-5 h-5" />}
-                label="Perlu Revisi"
-                value={totalRevision}
-                gradient="linear-gradient(135deg, #dc2626, #f87171)"
-              />
-            </div>
+            {/* Title */}
+            <h1 className="font-display font-semibold mt-4 mb-3"
+                style={{ fontSize: "clamp(38px, 5vw, 64px)", lineHeight: 1.02, letterSpacing: "-0.025em", color: "var(--pp-ink)" }}>
+              Setiap guru, setiap{" "}
+              <em style={{ fontStyle: "italic", color: "var(--pp-primary)" }}>soal</em>,<br />
+              terpantau{" "}
+              <span className="squiggle-underline">jelas.</span>
+            </h1>
 
-            {/* Progress table card */}
-            <div
-              className="rounded-2xl border overflow-hidden card-shadow"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-card)" }}
-            >
-              <div
-                className="px-5 py-4 border-b flex items-center justify-between"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                <h2 className="font-semibold" style={{ color: "var(--color-foreground)" }}>
-                  Progress Per Akun Guru
-                </h2>
-                <span
-                  className="text-xs px-2.5 py-1 rounded-full font-medium"
-                  style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
-                >
-                  {rows.length} akun
-                </span>
+            <p style={{ color: "var(--pp-ink-2)", fontSize: "17px", lineHeight: 1.55, maxWidth: "540px", margin: 0 }}>
+              Dashboard publik untuk memantau perkembangan unggahan soal PSAT dari seluruh guru SMP Al Abidin. Transparan, real-time, dan dirancang untuk membuat proses validasi terasa lebih ringan.
+            </p>
+          </div>
+
+          {/* Doodle cards */}
+          <div className="hidden lg:flex flex-col items-end gap-3">
+            {rows.length > 0 && (
+              <div className="doodle-card" style={{ transform: "rotate(-2deg)" }}>
+                <div className="flex" style={{ marginRight: "4px" }}>
+                  {rows.slice(0, 4).map((g, i) => {
+                    const col = AVATAR_COLORS[i % AVATAR_COLORS.length]
+                    return (
+                      <div key={g.profile_id} style={{
+                        width: "32px", height: "32px", borderRadius: "50%",
+                        border: "2px solid var(--pp-card)", marginRight: "-8px",
+                        backgroundColor: col.bg, color: col.text,
+                        display: "grid", placeItems: "center",
+                        fontWeight: 700, fontSize: "11px", flexShrink: 0, zIndex: 4 - i,
+                        position: "relative",
+                      }}>
+                        {getInitials(g.guru_nama)}
+                      </div>
+                    )
+                  })}
+                  {rows.length > 4 && (
+                    <div style={{
+                      width: "32px", height: "32px", borderRadius: "50%",
+                      border: "2px solid var(--pp-card)", marginRight: "-8px",
+                      backgroundColor: "#FFA6C5", color: "#6B0E33",
+                      display: "grid", placeItems: "center",
+                      fontWeight: 700, fontSize: "11px", flexShrink: 0, position: "relative",
+                    }}>
+                      +{rows.length - 4}
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: "12px", color: "var(--pp-ink-2)", paddingLeft: "8px" }}>
+                  <strong style={{ color: "var(--pp-ink)" }}>{rows.length} guru aktif</strong><br />
+                  tahun ini
+                </div>
               </div>
+            )}
 
-              {error ? (
-                <div className="p-8 text-center text-sm" style={{ color: "#dc2626" }}>
-                  Gagal memuat data. Silakan coba lagi.
-                </div>
-              ) : rows.length === 0 ? (
-                <div className="p-8 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                  Belum ada data tersedia.
-                </div>
-              ) : (
-                <>
-                  {/* Mobile: card list */}
-                  <div className="block md:hidden divide-y" style={{ borderColor: "var(--color-border)" }}>
-                    {rows.map((row, i) => {
-                      const total        = Number(row.total)
-                      const approved     = Number(row.approved)
-                      const submitted    = Number(row.submitted)
-                      const draft        = Number(row.draft)
-                      const needs_revision = Number(row.needs_revision)
-                      const patokan      = Number(row.patokan_bank_total)
-                      const hasPatokan   = patokan > 0
-                      const pct          = hasPatokan ? Math.min(100, Math.round((total / patokan) * 100)) : 0
-                      const barColor     = !hasPatokan ? "var(--color-muted-foreground)" : pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+            <div className="doodle-card" style={{ transform: "rotate(1.5deg)", width: "280px" }}>
+              <div style={{
+                width: "42px", height: "42px", borderRadius: "12px",
+                backgroundColor: "var(--pp-mint)", border: "1.5px solid var(--pp-ink)",
+                display: "grid", placeItems: "center", flexShrink: 0,
+              }}>
+                <CheckCircle className="w-5 h-5" style={{ color: "#0E4A2F" }} />
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--pp-ink-2)" }}>
+                <strong style={{ color: "var(--pp-ink)" }}>{totalApproved} soal di-approve</strong><br />
+                dari total {totalSoal} soal
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-                      return (
-                        <div key={row.profile_id} className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>{i + 1}.</span>
-                                <span className="font-semibold text-sm" style={{ color: "var(--color-foreground)" }}>
-                                  {row.mapel_nama}
-                                </span>
-                                {row.mapel_kode && (
-                                  <span
-                                    className="text-xs px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
-                                  >
-                                    {row.mapel_kode}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
-                                {row.guru_nama ?? "—"}
-                                {row.guru_unit_sekolah && (
-                                  <span> · {row.guru_unit_sekolah}</span>
-                                )}
-                              </p>
-                            </div>
-                            {row.guru_kelas && (
-                              <span
-                                className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                                style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
-                              >
-                                Kls {row.guru_kelas}
+      {/* Stats */}
+      <section className="max-w-7xl mx-auto px-6 md:px-8 pb-7">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <StatCard value={totalSoal}      label="Total Soal"      variant="lemon" icon={<TrendingUp className="w-5 h-5" />} />
+          <StatCard value={totalDraft}     label="Draft"           variant="lilac" icon={<AlertCircle className="w-5 h-5" />} />
+          <StatCard value={totalApproved}  label="Approved"        variant="mint"  icon={<CheckCircle className="w-5 h-5" />} />
+          <StatCard value={totalSubmitted} label="Menunggu Review" variant="peach" icon={<Clock className="w-5 h-5" />} />
+          <StatCard value={totalRevision}  label="Perlu Revisi"    variant="pink"  icon={<AlertCircle className="w-5 h-5" />} />
+        </div>
+      </section>
+
+      {/* Progress table */}
+      <section className="max-w-7xl mx-auto px-6 md:px-8 pb-14">
+        <div className="rounded-[28px] overflow-hidden shadow-hard-lg"
+             style={{ backgroundColor: "var(--pp-card)", border: "1.5px solid var(--pp-ink)" }}>
+
+          {/* Card header */}
+          <div className="px-7 py-5 flex items-center justify-between"
+               style={{ borderBottom: "1.5px solid var(--pp-ink)", background: "linear-gradient(180deg, #FFF8F0 0%, #FFFFFF 100%)" }}>
+            <h2 className="font-display font-semibold flex items-center gap-2.5"
+                style={{ fontSize: "22px", letterSpacing: "-0.01em", color: "var(--pp-ink)", margin: 0 }}>
+              <span style={{
+                width: "14px", height: "14px", borderRadius: "4px",
+                backgroundColor: "var(--pp-peach)", border: "1.5px solid var(--pp-ink)", flexShrink: 0,
+              }} />
+              Progress per akun guru
+            </h2>
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                  style={{ backgroundColor: "var(--pp-ink)", color: "white" }}>
+              {rows.length} akun aktif
+            </span>
+          </div>
+
+          {error ? (
+            <div className="p-8 text-center text-sm" style={{ color: "#dc2626" }}>
+              Gagal memuat data. Silakan coba lagi.
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="p-8 text-center text-sm" style={{ color: "var(--pp-muted)" }}>
+              Belum ada data tersedia.
+            </div>
+          ) : (
+            <>
+              {/* Mobile: card list */}
+              <div className="block md:hidden">
+                {rows.map((row, i) => {
+                  const total   = Number(row.total)
+                  const patokan = Number(row.patokan_bank_total)
+                  const hasP    = patokan > 0
+                  const pct     = hasP ? Math.min(100, Math.round((total / patokan) * 100)) : 0
+                  const col     = AVATAR_COLORS[i % AVATAR_COLORS.length]
+
+                  return (
+                    <div key={row.profile_id} className="p-5 space-y-3"
+                         style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--pp-line)" : "none" }}>
+                      <div className="flex items-center gap-3">
+                        <div style={{
+                          width: "36px", height: "36px", borderRadius: "50%",
+                          backgroundColor: col.bg, color: col.text,
+                          display: "grid", placeItems: "center",
+                          fontWeight: 700, fontSize: "12px",
+                          border: "1.5px solid var(--pp-ink)", flexShrink: 0,
+                        }}>
+                          {getInitials(row.guru_nama)}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm" style={{ color: "var(--pp-ink)" }}>
+                            {row.mapel_nama}
+                            {row.mapel_kode && (
+                              <span className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                                    style={{ backgroundColor: "#FFE3D0", color: "#6B2D00", fontWeight: 600 }}>
+                                {row.mapel_kode}
                               </span>
                             )}
                           </div>
-
-                          <div>
-                            <div className="w-full rounded-full h-1.5 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
-                              <div
-                                className="h-1.5 rounded-full transition-all"
-                                style={{ width: `${pct}%`, backgroundColor: barColor }}
-                              />
-                            </div>
-                            <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                              {hasPatokan ? `${total}/${patokan} soal (${pct}%)` : `${total}/— (patokan belum diset)`}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-1 text-center">
-                            {[
-                              { label: "Draft",    value: draft,          color: "var(--color-muted-foreground)" },
-                              { label: "Submit",   value: submitted,      color: "#b45309" },
-                              { label: "Approved", value: approved,       color: "#15803d" },
-                              { label: "Revisi",   value: needs_revision, color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" },
-                            ].map(({ label, value, color }) => (
-                              <div key={label}>
-                                <p className="text-xs" style={{ color }}>{label}</p>
-                                <p className="text-sm font-semibold" style={{ color }}>{value}</p>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <ActionButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} label="Glossary" newTab />
-                            <ActionButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} label="Kisi-kisi" newTab />
-                            <ActionButton href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Matrix" />
+                          <div className="text-xs mt-0.5" style={{ color: "var(--pp-muted)" }}>
+                            {row.guru_nama ?? "—"}
+                            {row.guru_kelas && ` · Kls ${row.guru_kelas}`}
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+                      </div>
 
-                  {/* Desktop: table */}
-                  <div className="hidden md:block">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr style={{ borderBottom: "1px solid var(--color-border)", backgroundColor: "var(--color-muted)" }}>
-                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Mata Pelajaran</th>
-                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Guru</th>
-                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide w-48" style={{ color: "var(--color-muted-foreground)" }}>Progress</th>
-                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Status</th>
-                          <th className="px-4 py-2.5 text-left font-medium text-xs uppercase tracking-wide" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((row, i) => {
-                          const total          = Number(row.total)
-                          const approved       = Number(row.approved)
-                          const submitted      = Number(row.submitted)
-                          const draft          = Number(row.draft)
-                          const needs_revision = Number(row.needs_revision)
-                          const patokan        = Number(row.patokan_bank_total)
-                          const hasPatokan     = patokan > 0
-                          const pct            = hasPatokan ? Math.min(100, Math.round((total / patokan) * 100)) : 0
-                          const barColor       = !hasPatokan ? "var(--color-muted-foreground)" : pct === 100 ? "#22c55e" : pct >= 50 ? "#3b82f6" : "#f59e0b"
+                      <div>
+                        <div style={{
+                          height: "10px", borderRadius: "999px",
+                          backgroundColor: "#F4ECDF", border: "1.5px solid var(--pp-ink)", overflow: "hidden",
+                        }}>
+                          <div style={{ height: "100%", width: `${pct}%`, background: getBarGradient(pct, hasP) }} />
+                        </div>
+                        <div className="text-xs mt-1.5" style={{ color: "var(--pp-ink-2)", fontVariantNumeric: "tabular-nums" }}>
+                          {hasP ? `${total}/${patokan} soal · ${pct}%` : `${total}/— patokan belum diset`}
+                        </div>
+                      </div>
 
-                          return (
-                            <tr
-                              key={row.profile_id}
-                              style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--color-border)" : undefined }}
-                            >
-                              {/* Mapel */}
-                              <td className="px-4 py-3">
-                                <span className="font-medium" style={{ color: "var(--color-foreground)" }}>
-                                  {row.mapel_nama}
-                                </span>
-                                {row.mapel_kode && (
-                                  <span
-                                    className="ml-1.5 text-xs px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
-                                  >
-                                    {row.mapel_kode}
-                                  </span>
-                                )}
-                              </td>
+                      <StatusRow row={row} />
 
-                              {/* Guru + Kelas + Unit Sekolah */}
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-sm" style={{ color: row.guru_nama ? "var(--color-foreground)" : "var(--color-muted-foreground)" }}>
-                                    {row.guru_nama ?? "—"}
-                                  </span>
+                      <div className="flex items-center gap-1.5">
+                        <IconBtn href={row.glossary_url} title="Download Glossary" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
+                        <IconBtn href={row.kisi_kisi_url} title="Download Kisi-kisi" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
+                        <IconBtn href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} title="Lihat Matrix"><LayoutGrid className="w-3.5 h-3.5" /></IconBtn>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#FFF4E5", borderBottom: "1.5px solid var(--pp-ink)" }}>
+                      {["Mata Pelajaran", "Guru", "Progress", "Status", "Aksi"].map(h => (
+                        <th key={h} style={{
+                          textAlign: "left", padding: "14px 22px",
+                          fontSize: "11px", fontWeight: 700,
+                          textTransform: "uppercase", letterSpacing: "0.1em",
+                          color: "var(--pp-ink-2)",
+                        }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => {
+                      const total   = Number(row.total)
+                      const patokan = Number(row.patokan_bank_total)
+                      const hasP    = patokan > 0
+                      const pct     = hasP ? Math.min(100, Math.round((total / patokan) * 100)) : 0
+                      const col     = AVATAR_COLORS[i % AVATAR_COLORS.length]
+
+                      return (
+                        <tr key={row.profile_id}
+                            style={{ borderBottom: i < rows.length - 1 ? "1px solid var(--pp-line)" : "none" }}>
+
+                          {/* Mapel */}
+                          <td style={{ padding: "18px 22px", verticalAlign: "middle", fontSize: "14px" }}>
+                            <span className="font-semibold" style={{ color: "var(--pp-ink)" }}>{row.mapel_nama}</span>
+                            {row.mapel_kode && (
+                              <span className="ml-2 text-xs px-2 py-0.5 rounded"
+                                    style={{ backgroundColor: "#FFE3D0", color: "#6B2D00", fontWeight: 600 }}>
+                                {row.mapel_kode}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Guru */}
+                          <td style={{ padding: "18px 22px", verticalAlign: "middle", fontSize: "14px" }}>
+                            <div className="flex items-center gap-2.5">
+                              <div style={{
+                                width: "32px", height: "32px", borderRadius: "50%",
+                                backgroundColor: col.bg, color: col.text,
+                                display: "grid", placeItems: "center",
+                                fontWeight: 700, fontSize: "12px",
+                                border: "1.5px solid var(--pp-ink)", flexShrink: 0,
+                              }}>
+                                {getInitials(row.guru_nama)}
+                              </div>
+                              <div>
+                                <div className="font-medium" style={{ color: "var(--pp-ink)" }}>
+                                  {row.guru_nama ?? "—"}
                                   {row.guru_kelas && (
-                                    <span
-                                      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                      style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
-                                    >
+                                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold"
+                                          style={{ backgroundColor: "#ECE4FF", color: "#2E1A6B", border: "1px solid #C9B8FF" }}>
                                       Kls {row.guru_kelas}
                                     </span>
                                   )}
                                 </div>
                                 {row.guru_unit_sekolah && (
-                                  <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
+                                  <div className="text-xs mt-0.5" style={{ color: "var(--pp-muted)" }}>
                                     {row.guru_unit_sekolah}
-                                  </p>
+                                  </div>
                                 )}
-                              </td>
+                              </div>
+                            </div>
+                          </td>
 
-                              {/* Progress */}
-                              <td className="px-4 py-3">
-                                <div className="w-full rounded-full h-1.5 mb-1" style={{ backgroundColor: "var(--color-muted)" }}>
-                                  <div
-                                    className="h-1.5 rounded-full transition-all"
-                                    style={{ width: `${pct}%`, backgroundColor: barColor }}
-                                  />
-                                </div>
-                                <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                                  {hasPatokan ? `${total}/${patokan} (${pct}%)` : `${total}/— belum diset`}
-                                </span>
-                              </td>
+                          {/* Progress */}
+                          <td style={{ padding: "18px 22px", verticalAlign: "middle" }}>
+                            <div style={{ width: "180px" }}>
+                              <div style={{
+                                height: "10px", borderRadius: "999px",
+                                backgroundColor: "#F4ECDF", border: "1.5px solid var(--pp-ink)", overflow: "hidden",
+                              }}>
+                                <div style={{ height: "100%", width: `${pct}%`, background: getBarGradient(pct, hasP) }} />
+                              </div>
+                              <div className="text-xs mt-1.5" style={{ color: "var(--pp-ink-2)", fontVariantNumeric: "tabular-nums" }}>
+                                {hasP ? `${total} / ${patokan} soal · ${pct}%` : `${total}/— belum diset`}
+                              </div>
+                            </div>
+                          </td>
 
-                              {/* Status: 4 baris */}
-                              <td className="px-4 py-3">
-                                <div className="flex flex-col gap-0.5 text-xs">
-                                  <span className="font-medium" style={{ color: "#15803d" }}>✓ {approved} approved</span>
-                                  <span className="font-medium" style={{ color: "#b45309" }}>⏳ {submitted} submitted</span>
-                                  <span style={{ color: "var(--color-muted-foreground)" }}>· {draft} draft</span>
-                                  <span className="font-medium" style={{ color: needs_revision > 0 ? "#dc2626" : "var(--color-muted-foreground)" }}>
-                                    ! {needs_revision} revisi
-                                  </span>
-                                </div>
-                              </td>
+                          {/* Status */}
+                          <td style={{ padding: "18px 22px", verticalAlign: "middle" }}>
+                            <StatusRow row={row} />
+                          </td>
 
-                              {/* Aksi: icon only */}
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-1">
-                                  <IconButton href={row.glossary_url} icon={<Download className="w-3.5 h-3.5" />} title="Download Glossary" newTab />
-                                  <IconButton href={row.kisi_kisi_url} icon={<Download className="w-3.5 h-3.5" />} title="Download Kisi-kisi" newTab />
-                                  <IconButton href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} icon={<LayoutGrid className="w-3.5 h-3.5" />} title="Lihat Matrix" />
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-      </main>
+                          {/* Aksi */}
+                          <td style={{ padding: "18px 22px", verticalAlign: "middle" }}>
+                            <div className="flex items-center gap-1.5">
+                              <IconBtn href={row.glossary_url} title="Download Glossary" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
+                              <IconBtn href={row.kisi_kisi_url} title="Download Kisi-kisi" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
+                              <IconBtn href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} title="Lihat Matrix"><LayoutGrid className="w-3.5 h-3.5" /></IconBtn>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
-      <footer className="text-center py-4 text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-        © 2026 PSAT SMP Al Abidin
+      <footer className="text-center pb-7" style={{ fontSize: "12px", color: "var(--pp-muted)" }}>
+        © 2026 <strong style={{ color: "var(--pp-ink-2)" }}>PSAT SMP Al Abidin</strong> · Dibuat dengan teliti oleh tim akademik
       </footer>
     </div>
   )
 }
 
-function StatCard({
-  icon, label, value, gradient,
-}: {
-  icon: React.ReactNode
-  label: string
+function StatCard({ value, label, variant, icon }: {
   value: number
-  gradient: string
+  label: string
+  variant: keyof typeof STAT_VARIANTS
+  icon: React.ReactNode
 }) {
+  const v = STAT_VARIANTS[variant]
   return (
-    <div
-      className="rounded-2xl p-4 card-shadow relative overflow-hidden"
-      style={{ background: gradient }}
-    >
-      {/* Dekorasi lingkaran di pojok kanan atas */}
-      <div
-        className="absolute -right-3 -top-3 w-16 h-16 rounded-full"
-        style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
-      />
-      <div
-        className="absolute -right-1 -top-5 w-10 h-10 rounded-full"
-        style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-      />
-      <div className="relative">
-        <div className="mb-3 opacity-90" style={{ color: "white" }}>
-          {icon}
-        </div>
-        <p className="text-3xl font-bold text-white leading-none mb-1.5">
-          {value}
-        </p>
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.75)" }}>
-          {label}
-        </p>
+    <div className="relative overflow-hidden shadow-hard-md" style={{
+      borderRadius: "22px",
+      padding: "22px 20px",
+      border: "1.5px solid var(--pp-ink)",
+      backgroundColor: v.bg,
+      minHeight: "150px",
+    }}>
+      <div style={{
+        position: "absolute", right: "-20px", top: "-20px",
+        width: "90px", height: "90px", borderRadius: "50%",
+        backgroundColor: v.blob, opacity: 0.5,
+      }} />
+      <div style={{
+        width: "36px", height: "36px", borderRadius: "12px",
+        backgroundColor: v.iconBg, color: v.iconColor,
+        display: "grid", placeItems: "center",
+        marginBottom: "28px", position: "relative",
+      }}>
+        {icon}
+      </div>
+      <div className="font-display font-semibold relative"
+           style={{ fontSize: "44px", lineHeight: 1, letterSpacing: "-0.03em", color: "var(--pp-ink)" }}>
+        {value}
+      </div>
+      <div className="font-medium relative mt-1.5" style={{ fontSize: "13px", color: "var(--pp-ink-2)" }}>
+        {label}
       </div>
     </div>
   )
 }
 
-function ActionButton({
-  href, icon, label, newTab,
-}: {
-  href: string | null | undefined
-  icon: React.ReactNode
-  label: string
-  newTab?: boolean
-}) {
-  const cls = "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border"
-  if (!href) {
-    return (
-      <span
-        className={cls}
-        style={{
-          backgroundColor: "var(--color-muted)",
-          borderColor: "var(--color-border)",
-          color: "var(--color-muted-foreground)",
-          opacity: 0.4,
-          cursor: "not-allowed",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {icon}{label}
-      </span>
-    )
-  }
+function StatusRow({ row }: { row: GuruProgress }) {
+  const approved      = Number(row.approved)
+  const submitted     = Number(row.submitted)
+  const draft         = Number(row.draft)
+  const needsRevision = Number(row.needs_revision)
+
   return (
-    <a
-      href={href}
-      target={newTab ? "_blank" : undefined}
-      rel={newTab ? "noopener noreferrer" : undefined}
-      className={cls}
-      style={{
-        backgroundColor: "var(--color-muted)",
-        borderColor: "var(--color-border)",
-        color: "var(--color-foreground)",
-        textDecoration: "none",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {icon}{label}
-    </a>
+    <div className="flex flex-col gap-0.5" style={{ fontSize: "12px", fontVariantNumeric: "tabular-nums" }}>
+      <span className="flex items-center gap-1.5">
+        <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: "#34A86E", flexShrink: 0 }} />
+        <strong>{approved}</strong>&nbsp;approved
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: "#C99A14", flexShrink: 0 }} />
+        <strong>{submitted}</strong>&nbsp;menunggu
+      </span>
+      {draft > 0 && (
+        <span className="flex items-center gap-1.5" style={{ color: "var(--pp-muted)" }}>
+          <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: "var(--pp-muted)", flexShrink: 0 }} />
+          <strong>{draft}</strong>&nbsp;draft
+        </span>
+      )}
+      {needsRevision > 0 && (
+        <span className="flex items-center gap-1.5" style={{ color: "#DC4F4F" }}>
+          <span style={{ width: "7px", height: "7px", borderRadius: "2px", backgroundColor: "#DC4F4F", flexShrink: 0 }} />
+          <strong>{needsRevision}</strong>&nbsp;revisi
+        </span>
+      )}
+    </div>
   )
 }
 
-function IconButton({
-  href, icon, title, newTab,
-}: {
+function IconBtn({ href, children, title, newTab }: {
   href: string | null | undefined
-  icon: React.ReactNode
+  children: React.ReactNode
   title: string
   newTab?: boolean
 }) {
-  const cls = "flex items-center justify-center w-7 h-7 rounded-lg border"
+  const base: React.CSSProperties = {
+    width: "34px", height: "34px", borderRadius: "12px",
+    border: "1.5px solid var(--pp-ink)",
+    backgroundColor: "var(--pp-card)",
+    display: "grid", placeItems: "center",
+    boxShadow: "2px 2px 0 0 var(--pp-ink)",
+    color: "var(--pp-ink)",
+    textDecoration: "none",
+    flexShrink: 0,
+  }
+
   if (!href) {
     return (
-      <span
-        className={cls}
-        title={title}
-        style={{
-          backgroundColor: "var(--color-muted)",
-          borderColor: "var(--color-border)",
-          color: "var(--color-muted-foreground)",
-          opacity: 0.35,
-          cursor: "not-allowed",
-        }}
-      >
-        {icon}
+      <span title={title} style={{ ...base, opacity: 0.3, boxShadow: "none", cursor: "not-allowed" }}>
+        {children}
       </span>
     )
   }
+
   return (
-    <a
-      href={href}
-      target={newTab ? "_blank" : undefined}
-      rel={newTab ? "noopener noreferrer" : undefined}
-      className={cls}
-      title={title}
-      style={{
-        backgroundColor: "var(--color-muted)",
-        borderColor: "var(--color-border)",
-        color: "var(--color-foreground)",
-        textDecoration: "none",
-      }}
-    >
-      {icon}
+    <a href={href} title={title}
+       target={newTab ? "_blank" : undefined}
+       rel={newTab ? "noopener noreferrer" : undefined}
+       style={base}>
+      {children}
     </a>
   )
 }
