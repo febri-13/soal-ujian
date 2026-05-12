@@ -22,9 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" suppressHydrationWarning className={fraunces.variable}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();` }} />
-      </head>
+      <head />
       <body className="min-h-screen bg-background text-foreground antialiased">
         {children}
       </body>

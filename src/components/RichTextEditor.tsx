@@ -91,8 +91,13 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
   })
 
   useEffect(() => {
-    if (editor && content === "") {
-      editor.commands.setContent("")
+    if (!editor) return
+    const currentHTML = editor.getHTML()
+    const isEmpty = currentHTML === "<p></p>" || currentHTML === ""
+    if (content === "" && !isEmpty) {
+      editor.commands.setContent("", false)
+    } else if (content !== "" && currentHTML !== content) {
+      editor.commands.setContent(content, false)
     }
   }, [content, editor])
 
