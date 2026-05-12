@@ -144,26 +144,58 @@ export default function SoalPage() {
     load()
   }, [router])
 
-  const reloadSoal = async (uid: string) => {
+  const reloadSoal = async (uid: string): Promise<Record<string, number>> => {
     const { data } = await supabase
       .from("bank_soal")
       .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes")
       .eq("guru_id", uid)
       .order("created_at", { ascending: true })
 
+    const stats: Record<string, number> = {}
     if (data) {
       setSoalList(data)
-      const stats: Record<string, number> = {}
       data.forEach((s: any) => {
         const k = `${s.bab_id_text}_${s.tipe}_${s.tingkat_kesulitan}`
         stats[k] = (stats[k] || 0) + 1
       })
       setSoalStats(stats)
     }
+    return stats
   }
 
   const getDefaultBobot = (tipe: string, kesulitan: string) =>
     bobotConfig[`${tipe}_${kesulitan}`] ?? BOBOT_DEFAULT[tipe]?.[kesulitan] ?? 1.0
+
+  const findNextOpenSlot = (
+    updatedStats: Record<string, number>,
+    currentBab: string, currentTipe: string, currentKesulitan: string
+  ): { bab: string; tipe: string; kesulitan: string } | null => {
+    // Build ordered list of all slots, starting right after current
+    const slots: { bab: string; tipe: string; kesulitan: string }[] = []
+    for (const bab of matrixData) {
+      for (const tipe of TIPE_OPTIONS) {
+        for (const kesulitan of KESULITAN_OPTIONS) {
+          const target = bab.data[`${tipe}_${kesulitan}_bank`] || 0
+          if (target > 0) slots.push({ bab: bab.bab_id_text, tipe, kesulitan })
+        }
+      }
+    }
+    const currentIdx = slots.findIndex(
+      s => s.bab === currentBab && s.tipe === currentTipe && s.kesulitan === currentKesulitan
+    )
+    // Search from next slot wrapping around — skip current and already-full ones
+    const ordered = [
+      ...slots.slice(currentIdx + 1),
+      ...slots.slice(0, currentIdx),
+    ]
+    for (const slot of ordered) {
+      const target = matrixData.find(b => b.bab_id_text === slot.bab)
+        ?.data[`${slot.tipe}_${slot.kesulitan}_bank`] || 0
+      const count = updatedStats[`${slot.bab}_${slot.tipe}_${slot.kesulitan}`] || 0
+      if (count < target) return slot
+    }
+    return null
+  }
 
   const getSoalCount = (babId: string, tipe: string, kesulitan: string) =>
     soalStats[`${babId}_${tipe}_${kesulitan}`] || 0
@@ -214,6 +246,17 @@ export default function SoalPage() {
     setSelectedTipe("pilgan")
     setSelectedKesulitan("mudah")
     setBobot(getDefaultBobot("pilgan", "mudah"))
+    setEditingId(null)
+  }
+
+  // Clear form content only — keep current bab, tipe, kesulitan
+  const resetFormContent = () => {
+    setPertanyaan("")
+    setGambarUrl("")
+    setPilihan(["", "", "", ""])
+    setPilihanGambar(["", "", "", ""])
+    setJawabanBenar(0)
+    setJawabanBenarCeklist([])
     setEditingId(null)
   }
 
@@ -313,9 +356,35 @@ export default function SoalPage() {
       return
     }
 
-    setToast({ message: editingId ? "Soal diupdate!" : "Soal disimpan!", type: "success" })
-    resetForm()
-    await reloadSoal(user.id)
+    if (editingId) {
+      setToast({ message: "Soal diupdate!", type: "success" })
+      resetForm()
+      await reloadSoal(user.id)
+      return
+    }
+
+    // New soal: reload then check if slot is now full
+    const savedBab = selectedBab
+    const savedTipe = selectedTipe
+    const savedKesulitan = selectedKesulitan
+    const updatedStats = await reloadSoal(user.id)
+    const newCount = updatedStats[`${savedBab}_${savedTipe}_${savedKesulitan}`] || 0
+    const target = getTargetBank(savedBab, savedTipe, savedKesulitan)
+
+    if (newCount >= target) {
+      const next = findNextOpenSlot(updatedStats, savedBab, savedTipe, savedKesulitan)
+      if (next) {
+        setToast({ message: `Slot penuh! Pindah ke ${TIPE_LABELS[next.tipe]} · ${next.kesulitan}`, type: "info" })
+        openSlot(next.bab, next.tipe, next.kesulitan)
+      } else {
+        setToast({ message: "Semua slot terpenuhi!", type: "success" })
+        resetFormContent()
+      }
+    } else {
+      // Slot belum penuh — stay di tipe & kesulitan yang sama
+      setToast({ message: "Soal disimpan!", type: "success" })
+      resetFormContent()
+    }
   }
 
   const handleEditSoal = async (soal: any) => {
@@ -719,29 +788,35 @@ export default function SoalPage() {
                           const count = getSoalCount(bab.bab_id_text, tipe, kesulitan)
                           const target = getTargetBank(bab.bab_id_text, tipe, kesulitan)
                           if (target === 0) return null
-                          const ok = count >= target
+                          const full = count >= target
                           const isSelected = isActive && selectedTipe === tipe && selectedKesulitan === kesulitan
                           return (
                             <div
                               key={`${tipe}_${kesulitan}`}
-                              className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                              className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition-opacity"
                               style={{
-                                backgroundColor: isSelected ? "var(--pp-ink)" : ok ? "#f0fdf4" : "#fef2f2",
-                                border: `1px solid ${isSelected ? "var(--pp-ink)" : ok ? "#bbf7d0" : "#fca5a5"}`,
+                                backgroundColor: isSelected
+                                  ? "var(--pp-ink)"
+                                  : full
+                                  ? "var(--pp-bg)"
+                                  : "#fef2f2",
+                                border: `1px solid ${isSelected ? "var(--pp-ink)" : full ? "var(--pp-line)" : "#fca5a5"}`,
+                                cursor: full ? "not-allowed" : "pointer",
+                                opacity: full && !isSelected ? 0.55 : 1,
                               }}
-                              onClick={() => openSlot(bab.bab_id_text, tipe, kesulitan)}
+                              onClick={full ? undefined : () => openSlot(bab.bab_id_text, tipe, kesulitan)}
                             >
                               <span
                                 className="capitalize font-medium"
-                                style={{ color: isSelected ? "#fff" : ok ? "#15803d" : "#dc2626" }}
+                                style={{ color: isSelected ? "#fff" : full ? "var(--pp-muted)" : "#dc2626" }}
                               >
                                 {TIPE_LABELS[tipe]} · {kesulitan}
                               </span>
                               <span
                                 className="flex items-center gap-0.5 font-semibold"
-                                style={{ color: isSelected ? "#fff" : ok ? "#15803d" : "#dc2626" }}
+                                style={{ color: isSelected ? "#fff" : full ? "var(--pp-muted)" : "#dc2626" }}
                               >
-                                {ok ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                {full ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                                 {count}/{target}
                               </span>
                             </div>

@@ -8,6 +8,10 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import Superscript from '@tiptap/extension-superscript'
 import Subscript from '@tiptap/extension-subscript'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
 import {
   Bold, Italic, Strikethrough, Underline as UnderlineIcon,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -16,6 +20,8 @@ import {
   Upload,
   Superscript as SuperscriptIcon,
   Subscript as SubscriptIcon,
+  Table as TableIcon,
+  Plus, Trash2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -60,8 +66,11 @@ async function calculateFileHash(file: File): Promise<string> {
 export default function RichTextEditor({ content, onChange, placeholder = "Write something...", mini = false }: RichTextEditorProps) {
   const [uploading, setUploading] = useState(false)
   const [showFracPopover, setShowFracPopover] = useState(false)
+  const [showTablePopover, setShowTablePopover] = useState(false)
   const [fracNum, setFracNum] = useState("")
   const [fracDen, setFracDen] = useState("")
+  const [tableRows, setTableRows] = useState(3)
+  const [tableCols, setTableCols] = useState(3)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const editor = useEditor({
@@ -74,6 +83,10 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
       ...(mini ? [] : [
         Image.configure({ inline: true, allowBase64: true }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableHeader,
+        TableCell,
       ]),
       Placeholder.configure({ placeholder }),
     ],
@@ -103,6 +116,11 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
 
   if (!editor) {
     return null
+  }
+
+  const insertTable = () => {
+    editor.chain().focus().insertTable({ rows: tableRows, cols: tableCols, withHeaderRow: true }).run()
+    setShowTablePopover(false)
   }
 
   const insertFraction = () => {
@@ -291,10 +309,85 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
               style={{ color: "var(--color-foreground)" }} title="Upload Image">
               {uploading ? <Upload className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
             </label>
+
+            {sep}
+
+            {/* Table insert + controls */}
+            <div className="relative">
+              <button type="button" onClick={() => setShowTablePopover(v => !v)}
+                className={`${btnBase} ${showTablePopover || editor.isActive("table") ? btnActive : ""}`}
+                style={{ color: "var(--color-foreground)" }} title="Tabel">
+                <TableIcon className="w-3.5 h-3.5" />
+              </button>
+              {showTablePopover && (
+                <div
+                  className="absolute top-full left-0 mt-1 z-20 p-3 rounded-md border shadow-lg flex flex-col gap-2"
+                  style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)", minWidth: "160px" }}
+                >
+                  <div className="text-xs font-semibold" style={{ color: "var(--color-foreground)" }}>Sisipkan Tabel</div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1 flex-1">
+                      <label className="text-xs" style={{ color: "var(--color-foreground)" }}>Baris</label>
+                      <input type="number" min={1} max={20} value={tableRows}
+                        onChange={e => setTableRows(Math.max(1, Number(e.target.value)))}
+                        className="border rounded px-2 py-1 text-sm w-full"
+                        style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-background)", color: "var(--color-foreground)" }}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 flex-1">
+                      <label className="text-xs" style={{ color: "var(--color-foreground)" }}>Kolom</label>
+                      <input type="number" min={1} max={10} value={tableCols}
+                        onChange={e => setTableCols(Math.max(1, Number(e.target.value)))}
+                        className="border rounded px-2 py-1 text-sm w-full"
+                        style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-background)", color: "var(--color-foreground)" }}
+                      />
+                    </div>
+                  </div>
+                  <button onClick={insertTable} className="text-xs px-2 py-1 rounded text-center"
+                    style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}>
+                    Buat Tabel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Table row/col controls — only visible when cursor is inside a table */}
+            {editor.isActive("table") && (
+              <>
+                {sep}
+                <button type="button" title="Tambah baris di bawah"
+                  onClick={() => editor.chain().focus().addRowAfter().run()}
+                  className={btnBase} style={{ color: "var(--color-foreground)", fontSize: "10px", fontWeight: 700 }}>
+                  +B
+                </button>
+                <button type="button" title="Hapus baris"
+                  onClick={() => editor.chain().focus().deleteRow().run()}
+                  className={btnBase} style={{ color: "#dc2626", fontSize: "10px", fontWeight: 700 }}>
+                  <Trash2 className="w-3 h-3" />B
+                </button>
+                <button type="button" title="Tambah kolom di kanan"
+                  onClick={() => editor.chain().focus().addColumnAfter().run()}
+                  className={btnBase} style={{ color: "var(--color-foreground)", fontSize: "10px", fontWeight: 700 }}>
+                  +K
+                </button>
+                <button type="button" title="Hapus kolom"
+                  onClick={() => editor.chain().focus().deleteColumn().run()}
+                  className={btnBase} style={{ color: "#dc2626", fontSize: "10px", fontWeight: 700 }}>
+                  <Trash2 className="w-3 h-3" />K
+                </button>
+                <button type="button" title="Hapus tabel"
+                  onClick={() => editor.chain().focus().deleteTable().run()}
+                  className={btnBase} style={{ color: "#dc2626" }}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </>
         )}
       </div>
-      <EditorContent editor={editor} />
+      <div className="overflow-x-auto">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   )
 }
