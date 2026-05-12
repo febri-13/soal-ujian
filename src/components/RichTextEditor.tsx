@@ -63,6 +63,34 @@ async function calculateFileHash(file: File): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+async function uploadImageFile(file: File): Promise<string | null> {
+  try {
+    const fileHash = await calculateFileHash(file)
+    const { data: existing } = await supabase
+      .from('psat_image_uploads')
+      .select('image_url')
+      .eq('file_hash', fileHash)
+      .maybeSingle()
+    if (existing) return existing.image_url
+
+    const fileExt = file.name.split('.').pop() || 'png'
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    const { error: uploadError } = await supabase.storage
+      .from('soal-images')
+      .upload(fileName, file, { cacheControl: '3600', upsert: false })
+    if (uploadError) { console.error('Upload error:', uploadError); return null }
+
+    const { data: { publicUrl } } = supabase.storage.from('soal-images').getPublicUrl(fileName)
+    await supabase.from('psat_image_uploads').insert({
+      file_name: file.name, file_size: file.size, file_hash: fileHash, image_url: publicUrl,
+    })
+    return publicUrl
+  } catch (err) {
+    console.error('Error:', err)
+    return null
+  }
+}
+
 export default function RichTextEditor({ content, onChange, placeholder = "Write something...", mini = false }: RichTextEditorProps) {
   const [uploading, setUploading] = useState(false)
   const [showFracPopover, setShowFracPopover] = useState(false)
@@ -81,7 +109,7 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
       Subscript,
       MathFraction,
       ...(mini ? [] : [
-        Image.configure({ inline: true, allowBase64: true }),
+        Image.configure({ inline: true, allowBase64: false }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
         Table.configure({ resizable: false }),
         TableRow,
@@ -99,6 +127,22 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
         class: mini
           ? "focus:outline-none min-h-[38px] px-3 py-2 text-sm"
           : "prose prose-sm max-w-none focus:outline-none min-h-[120px] p-3",
+      },
+      handlePaste(_view, event) {
+        const items = Array.from(event.clipboardData?.items ?? [])
+        const imageItem = items.find(item => item.type.startsWith('image/'))
+        if (!imageItem) return false
+
+        event.preventDefault()
+        const file = imageItem.getAsFile()
+        if (!file) return true
+
+        setUploading(true)
+        uploadImageFile(file).then(url => {
+          if (url) editor?.chain().focus().setImage({ src: url }).run()
+          setUploading(false)
+        })
+        return true
       },
     },
   })
@@ -138,39 +182,10 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    try {
-      const fileHash = await calculateFileHash(file)
-      const { data: existing } = await supabase
-        .from('psat_image_uploads')
-        .select('image_url')
-        .eq('file_hash', fileHash)
-        .maybeSingle()
-
-      if (existing) {
-        editor.chain().focus().setImage({ src: existing.image_url }).run()
-        setUploading(false)
-        return
-      }
-
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const { error: uploadError } = await supabase.storage
-        .from('soal-images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: false })
-
-      if (uploadError) { console.error('Upload error:', uploadError); setUploading(false); return }
-
-      const { data: { publicUrl } } = supabase.storage.from('soal-images').getPublicUrl(fileName)
-      await supabase.from('psat_image_uploads').insert({
-        file_name: file.name, file_size: file.size, file_hash: fileHash, image_url: publicUrl,
-      })
-      editor.chain().focus().setImage({ src: publicUrl }).run()
-    } catch (err) {
-      console.error('Error:', err)
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
+    const url = await uploadImageFile(file)
+    if (url) editor.chain().focus().setImage({ src: url }).run()
+    setUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const btnBase = `p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800`

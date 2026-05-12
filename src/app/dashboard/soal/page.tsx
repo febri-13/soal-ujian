@@ -74,6 +74,8 @@ export default function SoalPage() {
   const [kirimPressed, setKirimPressed] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
   const [expandedBabs, setExpandedBabs] = useState<Set<string>>(new Set())
+  const [filterTipe, setFilterTipe] = useState<string | null>(null)
+  const [filterKesulitan, setFilterKesulitan] = useState<string | null>(null)
 
   const [pertanyaan, setPertanyaan] = useState("")
   const [gambarUrl, setGambarUrl] = useState("")
@@ -358,7 +360,7 @@ export default function SoalPage() {
 
     if (editingId) {
       setToast({ message: "Soal diupdate!", type: "success" })
-      resetForm()
+      resetFormContent()
       await reloadSoal(user.id)
       return
     }
@@ -414,6 +416,10 @@ export default function SoalPage() {
       }
     }
     if (soalData.pilihan_gambar) setPilihanGambar(soalData.pilihan_gambar)
+
+    setTimeout(() => {
+      document.getElementById("tour-form-soal")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 50)
   }
 
   const handleDeleteSoal = async (soalId: string) => {
@@ -563,6 +569,9 @@ export default function SoalPage() {
   const allMet = isAllTargetMet()
   const progressPct = totalTarget > 0 ? Math.min(100, Math.round((totalDibuat / totalTarget) * 100)) : 0
   const activeBabSoal = activeBab ? soalList.filter(s => s.bab_id_text === activeBab) : []
+  const filteredSoal = activeBabSoal
+    .filter(s => !filterTipe || s.tipe === filterTipe)
+    .filter(s => !filterKesulitan || s.tingkat_kesulitan === filterKesulitan)
 
   const selectStyle: React.CSSProperties = {
     border: "1.5px solid var(--pp-ink)",
@@ -1111,33 +1120,100 @@ export default function SoalPage() {
                   padding: "12px 20px",
                   borderBottom: "1.5px solid var(--pp-ink)",
                   backgroundColor: "var(--pp-bg)",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}
               >
-                <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
-                  Daftar Soal — {activeBab}
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
+                    Daftar Soal — {activeBab}
+                  </div>
+                  <span
+                    className="text-xs font-bold px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: "var(--pp-ink)", color: "#fff" }}
+                  >
+                    {filteredSoal.length}{filterTipe || filterKesulitan ? `/${activeBabSoal.length}` : ""} soal
+                  </span>
                 </div>
-                <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{
-                    backgroundColor: "var(--pp-ink)",
-                    color: "#fff",
-                  }}
-                >
-                  {activeBabSoal.length} soal
-                </span>
+
+                {/* Filter pills */}
+                <div className="flex flex-wrap gap-1.5">
+                  {/* Tipe filter */}
+                  {TIPE_OPTIONS.map(tipe => {
+                    const c = TIPE_COLORS[tipe]
+                    const active = filterTipe === tipe
+                    const count = activeBabSoal.filter(s => s.tipe === tipe).length
+                    if (count === 0) return null
+                    return (
+                      <button
+                        key={tipe}
+                        onClick={() => setFilterTipe(active ? null : tipe)}
+                        className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all"
+                        style={{
+                          backgroundColor: active ? c.accent : c.bg,
+                          color: active ? "#fff" : c.accent,
+                          border: `1.5px solid ${active ? c.accent : "var(--pp-line)"}`,
+                          boxShadow: active ? "none" : "1px 1px 0 0 var(--pp-line)",
+                        }}
+                      >
+                        {TIPE_LABELS[tipe]} ({count})
+                      </button>
+                    )
+                  })}
+
+                  {/* Separator */}
+                  {(filterTipe || filterKesulitan || TIPE_OPTIONS.some(t => activeBabSoal.some(s => s.tipe === t))) && (
+                    <div style={{ width: 1, backgroundColor: "var(--pp-line)", margin: "0 2px" }} />
+                  )}
+
+                  {/* Kesulitan filter */}
+                  {KESULITAN_OPTIONS.map(kes => {
+                    const c = KESULITAN_COLORS[kes]
+                    const active = filterKesulitan === kes
+                    const count = activeBabSoal.filter(s => s.tingkat_kesulitan === kes).length
+                    if (count === 0) return null
+                    return (
+                      <button
+                        key={kes}
+                        onClick={() => setFilterKesulitan(active ? null : kes)}
+                        className="text-xs px-2.5 py-1 rounded-full font-semibold capitalize transition-all"
+                        style={{
+                          backgroundColor: active ? "#374151" : c.bg,
+                          color: active ? "#fff" : c.text,
+                          border: `1.5px solid ${active ? "#374151" : "var(--pp-line)"}`,
+                          boxShadow: active ? "none" : "1px 1px 0 0 var(--pp-line)",
+                        }}
+                      >
+                        {kes} ({count})
+                      </button>
+                    )
+                  })}
+
+                  {/* Reset filter */}
+                  {(filterTipe || filterKesulitan) && (
+                    <button
+                      onClick={() => { setFilterTipe(null); setFilterKesulitan(null) }}
+                      className="text-xs px-2.5 py-1 rounded-full"
+                      style={{
+                        backgroundColor: "var(--pp-bg)",
+                        color: "var(--pp-muted)",
+                        border: "1.5px solid var(--pp-line)",
+                      }}
+                    >
+                      × Reset
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {activeBabSoal.length === 0 ? (
+              {filteredSoal.length === 0 ? (
                 <div
                   className="text-sm text-center"
                   style={{ padding: "48px 24px", color: "var(--pp-muted)" }}
                 >
-                  Belum ada soal untuk bab ini
+                  {activeBabSoal.length === 0 ? "Belum ada soal untuk bab ini" : "Tidak ada soal yang cocok dengan filter"}
                 </div>
               ) : (
                 <div>
-                  {activeBabSoal.map((soal, idx) => {
+                  {filteredSoal.map((soal, idx) => {
                     const statusStyle = STATUS_STYLES[soal.status] || STATUS_STYLES["draft"]
                     const tipeColor = TIPE_COLORS[soal.tipe] || TIPE_COLORS["pilgan"]
                     const kesColor = KESULITAN_COLORS[soal.tingkat_kesulitan] || KESULITAN_COLORS["mudah"]
