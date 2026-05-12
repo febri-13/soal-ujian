@@ -171,9 +171,9 @@ export default function AdminMapelPage() {
   const openDeleteConfirm = async (mapel: MapelSimple) => {
     setDeletingMapel(mapel)
     setShowDeleteModal(true)
-    setFormError("")
-    setCascadeInfo(null)
+    setFormError("") // reset error state
 
+    // Check dependencies in background to show informative message
     try {
       const [guruRes, soalRes, patokanRes, bobotRes, validatorRes] = await Promise.all([
         supabase.from("psat_guru_data").select("id", { count: "exact", head: true }).eq("mapel_id", mapel.id),
@@ -189,14 +189,10 @@ export default function AdminMapelPage() {
       const bobotCount = bobotRes.count || 0
       const validatorCount = validatorRes.count || 0
 
-      // Only block if guru or soal exist (they must be reassigned first)
-      if (guruCount > 0 || soalCount > 0) {
-        setFormError(`blocked|${guruCount}|${soalCount}`)
-      }
+      const totalDeps = guruCount + soalCount + patokanCount + bobotCount + validatorCount
 
-      // Patokan, bobot, validator will be cascade-deleted automatically
-      if (patokanCount > 0 || bobotCount > 0 || validatorCount > 0) {
-        setCascadeInfo({ patokan: patokanCount, bobot: bobotCount, validator: validatorCount })
+      if (totalDeps > 0) {
+        setFormError(`blocked|${guruCount}|${soalCount}|${patokanCount}|${bobotCount}|${validatorCount}`)
       }
     } catch (err) {
       console.error("Dependency check error:", err)
@@ -208,20 +204,14 @@ export default function AdminMapelPage() {
     setDeleting(true)
 
     try {
-      // Delete cascade-able related data first
-      await Promise.all([
-        supabase.from("psat_patokan_soal").delete().eq("mapel_id", deletingMapel.id),
-        supabase.from("bobot_config").delete().eq("mapel_id", deletingMapel.id),
-        supabase.from("psat_validator_mapel").delete().eq("mapel_id", deletingMapel.id),
-      ])
-
       const { error } = await supabase
         .from("mata_pelajaran")
         .delete()
         .eq("id", deletingMapel.id)
 
       if (error) {
-        if (error.code === "23503") {
+        // If delete fails due to constraints, show error
+        if (error.code === "23503") { // foreign key violation
           setFormError("delete_blocked")
         }
         throw error
@@ -230,10 +220,10 @@ export default function AdminMapelPage() {
       setToast({ message: "Mata pelajaran berhasil dihapus", type: "success" })
       setShowDeleteModal(false)
       setDeletingMapel(null)
-      setCascadeInfo(null)
       loadMapel()
     } catch (err: any) {
       console.error("Delete mapel error:", err)
+      // For foreign key errors, we'll show dependency info
       if (err.code === "23503") {
         setFormError("delete_blocked")
       } else {
@@ -452,7 +442,7 @@ export default function AdminMapelPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-          onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError(""); setCascadeInfo(null) }}
+          onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
         >
           <div
             className="w-full max-w-md rounded-xl border shadow-xl"
@@ -464,68 +454,61 @@ export default function AdminMapelPage() {
                 <Trash2 className="w-4 h-4" style={{ color: "#dc2626" }} />
                 Hapus Mata Pelajaran
               </h2>
-              <button onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError(""); setCascadeInfo(null) }} style={{ color: "var(--color-muted-foreground)" }}>
+              <button onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }} style={{ color: "var(--color-muted-foreground)" }}>
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-3">
+            <div className="p-5">
               {formError && formError.startsWith("blocked|") ? (
                 <div className="space-y-2">
                   <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
-                    Tidak dapat menghapus karena masih ada data terikat:
+                    Tidak dapat menghapus mata pelajaran ini karena masih digunakan:
                   </p>
                   <ul className="text-sm list-disc list-inside space-y-1" style={{ color: "var(--color-muted-foreground)" }}>
                     {(() => {
-                      const [, guru, soal] = formError.split("|")
+                      const parts = formError.split("|")
+                      const [, guru, soal, patokan, bobot, validator] = parts
                       return [
-                        Number(guru) > 0 && `${guru} guru terdaftar`,
-                        Number(soal) > 0 && `${soal} soal bank`,
+                        guru && Number(guru) > 0 && `${guru} guru terdaftar`,
+                        soal && Number(soal) > 0 && `${soal} soal bank`,
+                        patokan && Number(patokan) > 0 && `${patokan} entri patokan`,
+                        bobot && Number(bobot) > 0 && `${bobot} konfigurasi bobot (akan ter-hapus otomatis)`,
+                        validator && Number(validator) > 0 && `${validator} penugasan validator (akan ter-hapus otomatis)`,
                       ].filter(Boolean)
                     })()}
                   </ul>
-                  <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                    Hapus atau pindahkan data guru dan soal yang terkait terlebih dahulu.
+                  <p className="text-xs mt-3" style={{ color: "var(--color-muted-foreground)" }}>
+                    Silakan hapus, ubah, atau pindahkan data terkait terlebih dahulu sebelum menghapus mata pelajaran ini.
                   </p>
                 </div>
-              ) : formError === "delete_blocked" ? (
+              ) : formError && formError === "delete_blocked" ? (
                 <div className="space-y-2">
                   <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
-                    Gagal menghapus: masih ada data terikat di database.
+                    Gagal menghapus: Mata pelajaran masih memiliki data terikat.
                   </p>
                   <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                    Hapus atau reassign data guru dan soal yang terkait terlebih dahulu.
+                    Hapus atau reassign data guru, soal, patokan, bobot, dan validator yang terkait terlebih dahulu.
                   </p>
                 </div>
-              ) : formError ? (
-                <p className="text-sm" style={{ color: "#dc2626" }}>{formError}</p>
               ) : (
                 <p className="text-sm" style={{ color: "var(--color-foreground)" }}>
                   Apakah Anda yakin ingin menghapus <strong>{deletingMapel?.nama}</strong>? Tindakan ini tidak dapat dibatalkan.
                 </p>
               )}
-
-              {cascadeInfo && !formError.startsWith("blocked|") && (
-                <div className="rounded-md px-3 py-2 text-xs space-y-0.5" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-                  <p className="font-medium">Data berikut akan ikut dihapus otomatis:</p>
-                  {cascadeInfo.patokan > 0 && <p>• {cascadeInfo.patokan} entri patokan soal</p>}
-                  {cascadeInfo.bobot > 0 && <p>• {cascadeInfo.bobot} konfigurasi bobot</p>}
-                  {cascadeInfo.validator > 0 && <p>• {cascadeInfo.validator} penugasan validator</p>}
-                </div>
-              )}
             </div>
 
             <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--color-border)" }}>
               <button
-                onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError(""); setCascadeInfo(null) }}
+                onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
                 className="flex-1 py-2 px-4 rounded-md text-sm font-medium border"
                 style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
               >
                 Batal
               </button>
-              {formError.startsWith("blocked|") || formError === "delete_blocked" ? (
+              {formError ? (
                 <button
-                  onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError(""); setCascadeInfo(null) }}
+                  onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
                   className="flex-1 py-2 px-4 rounded-md text-sm font-medium"
                   style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
                 >

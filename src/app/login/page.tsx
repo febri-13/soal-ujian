@@ -382,7 +382,7 @@ export default function LoginPage() {
                   disabled={loading}
                   className="flex items-center justify-center gap-2 w-full font-semibold disabled:opacity-50"
                   style={{
-                    backgroundColor: "var(--pp-ink)",
+                    backgroundColor: "var(--pp-head-ink)",
                     color: "white",
                     padding: "15px 18px",
                     borderRadius: "14px",
