@@ -155,6 +155,7 @@ input, textarea, select {
 :root {
   --pp-bg:       #FFF8F0;
   --pp-bg-2:     #FFEFE2;
+  --pp-head-ink: #1F2330; 
   --pp-ink:      #1F2330;
   --pp-ink-2:    #4A5060;
   --pp-muted:    #8B91A3;
@@ -170,6 +171,7 @@ input, textarea, select {
 .dark {
   --pp-bg:       #16140F;
   --pp-bg-2:     #1F1B14;
+  --pp-head-ink: #1F2330; 
   --pp-ink:      #FFF8F0;
   --pp-ink-2:    #C9C2B0;
   --pp-muted:    #8A8170;

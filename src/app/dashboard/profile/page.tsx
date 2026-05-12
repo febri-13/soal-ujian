@@ -294,7 +294,7 @@ export default function ProfilePage() {
               {initial}
             </div>
             <div>
-              <h2 className="font-display font-semibold" style={{ fontSize: "20px", color: "var(--pp-ink)", margin: 0 }}>
+              <h2 className="font-display font-semibold" style={{ fontSize: "20px", color: "var(--pp-head-ink)", margin: 0 }}>
                 {nama || "Belum diisi"}
               </h2>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -437,7 +437,7 @@ export default function ProfilePage() {
                 className="flex items-center justify-center gap-2 font-semibold disabled:opacity-50"
                 style={{
                   flex: 1, padding: "14px 18px", borderRadius: "14px",
-                  backgroundColor: "var(--pp-ink)", color: "white",
+                  backgroundColor: "var(--pp-head-ink)", color: "white",
                   border: "none", fontSize: "14px", letterSpacing: "0.02em",
                   boxShadow: "0 4px 0 0 rgba(0,0,0,0.4)",
                   cursor: saving ? "not-allowed" : "pointer",

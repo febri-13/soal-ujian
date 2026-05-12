@@ -30,6 +30,13 @@ TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
   INITIAL_DATA[`${t}_${k}_bank`] = 0
 }))
 
+const TIPE_COLORS = [
+  { bg: "#ECE4FF", accent: "#6d28d9" },
+  { bg: "#DAF5E7", accent: "#15803d" },
+  { bg: "#FFF5C6", accent: "#92400e" },
+  { bg: "#FFE3D0", accent: "#c2410c" },
+]
+
 export default function MatrixPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -47,6 +54,7 @@ export default function MatrixPage() {
   const [guruNama, setGuruNama] = useState("")
   const [guruMapelNama, setGuruMapelNama] = useState("")
   const [requestingEdit, setRequestingEdit] = useState(false)
+  const [submitPressed, setSubmitPressed] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
@@ -347,49 +355,101 @@ export default function MatrixPage() {
     setRequestingEdit(false)
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
+  if (loading) return (
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }} className="flex items-center justify-center">
+      <div className="font-display text-xl" style={{ color: "var(--pp-ink-2)" }}>Memuat...</div>
+    </div>
+  )
 
   const totals = getTotals()
 
   return (
-    <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
-        <div className="max-w-full mx-auto py-4 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.push("/dashboard")} className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>
-              <ArrowLeft className="w-4 h-4" />
-              Kembali
-            </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Input Matrix</h1>
-          </div>
-          <div id="tour-submit" className="flex items-center gap-2">
-            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
-              <ThemeToggle />
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
+      {/* Header */}
+      <header
+        className="sticky top-0 z-10"
+        style={{ backgroundColor: "var(--pp-card)", borderBottom: "1.5px solid var(--pp-ink)" }}
+      >
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          {/* Brand + title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              backgroundColor: "var(--pp-primary)",
+              border: "1.5px dashed rgba(255,255,255,0.45)",
+              borderRadius: 12,
+              boxShadow: "2px 2px 0 0 var(--pp-ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span className="font-display font-bold text-sm text-white">M</span>
             </div>
+            <div className="min-w-0">
+              <div className="font-display font-semibold text-base leading-tight truncate" style={{ color: "var(--pp-ink)" }}>
+                Input Matrix
+              </div>
+              {guruMapelNama && (
+                <div className="text-xs leading-tight truncate" style={{ color: "var(--pp-muted)" }}>
+                  {guruMapelNama}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div id="tour-submit" className="flex items-center gap-2 shrink-0">
+            <ThemeToggle />
             <button
               onClick={startTour}
-              title="Tutorial"
-              className="p-1.5 rounded-md opacity-80 hover:opacity-100"
-              style={{ color: "var(--psat-primary-fg)" }}
+              title="Panduan"
+              className="hover:opacity-70 transition-opacity"
+              style={{ color: "var(--pp-ink-2)", padding: 6, borderRadius: 8 }}
             >
               <CircleHelp className="w-5 h-5" />
             </button>
+
             {babs.some(b => !b.is_submitted) && (
               <button
                 onClick={handleSubmitAll}
                 disabled={saving}
-                className="py-2 px-5 rounded-md font-medium text-sm disabled:opacity-50"
-                style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
+                onMouseDown={() => setSubmitPressed(true)}
+                onMouseUp={() => setSubmitPressed(false)}
+                onMouseLeave={() => setSubmitPressed(false)}
+                style={{
+                  backgroundColor: "var(--pp-ink)",
+                  color: "#fff",
+                  border: "1.5px solid var(--pp-ink)",
+                  borderRadius: 12,
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  boxShadow: submitPressed ? "none" : "3px 3px 0 0 rgba(0,0,0,0.35)",
+                  transform: submitPressed ? "translate(2px,2px)" : "none",
+                  transition: "all 80ms",
+                  opacity: saving ? 0.6 : 1,
+                  cursor: saving ? "not-allowed" : "pointer",
+                }}
               >
                 {saving ? "Menyimpan..." : "Submit Semua"}
               </button>
             )}
+
             {babs.length > 0 && babs.every(b => b.is_submitted) && (
               <button
                 onClick={handleRequestEdit}
                 disabled={requestingEdit}
-                className="flex items-center gap-1.5 py-2 px-4 rounded-md font-medium text-sm border disabled:opacity-50"
-                style={{ backgroundColor: "#fffbeb", color: "#d97706", borderColor: "#fcd34d" }}
+                className="flex items-center gap-1.5"
+                style={{
+                  backgroundColor: "var(--pp-lemon)",
+                  color: "var(--pp-ink)",
+                  border: "1.5px solid var(--pp-ink)",
+                  borderRadius: 12,
+                  padding: "8px 14px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  boxShadow: "3px 3px 0 0 var(--pp-ink)",
+                  opacity: requestingEdit ? 0.6 : 1,
+                  cursor: requestingEdit ? "not-allowed" : "pointer",
+                }}
               >
                 <MessageCircle className="w-4 h-4" />
                 {requestingEdit ? "Mengirim..." : "Minta Edit Ulang"}
@@ -399,256 +459,454 @@ export default function MatrixPage() {
         </div>
       </header>
 
-      <main className="px-4 py-6">
+      {/* Back link */}
+      <div className="max-w-5xl mx-auto px-4 pt-4 pb-1">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity"
+          style={{ color: "var(--pp-muted)" }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Kembali ke Dashboard
+        </button>
+      </div>
+
+      <main className="max-w-5xl mx-auto px-4 py-4 pb-12 space-y-5">
+
         {/* Progress vs Patokan */}
-        <div id="tour-progress" className="mb-4 p-4 rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>Progress vs Patokan</h3>
-            <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+        <div
+          id="tour-progress"
+          style={{
+            backgroundColor: "var(--pp-card)",
+            border: "1.5px solid var(--pp-ink)",
+            borderRadius: 22,
+            boxShadow: "4px 4px 0 0 var(--pp-ink)",
+            padding: "20px 24px",
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div
+                className="text-xs font-bold uppercase mb-0.5"
+                style={{ color: "var(--pp-muted)", letterSpacing: "0.12em" }}
+              >
+                Progres
+              </div>
+              <div className="font-display font-semibold text-lg" style={{ color: "var(--pp-ink)" }}>
+                Progress vs Patokan
+              </div>
+            </div>
+            <span
+              className="text-xs font-semibold px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: "var(--pp-lemon)",
+                color: "var(--pp-ink)",
+                border: "1.5px solid var(--pp-ink)",
+              }}
+            >
               aktual / target
             </span>
           </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {TIPE_OPTIONS.map(tipe => (
-              <div key={tipe}>
-                <div className="text-xs font-semibold mb-2 capitalize" style={{ color: "var(--color-foreground)" }}>{TIPE_LABELS[tipe]}</div>
-                {KESULITAN_OPTIONS.map(k => {
-                  const ak = totals[`${tipe}_${k}_keluar`] || 0
-                  const ab = totals[`${tipe}_${k}_bank`] || 0
-                  const tk = patokan[`${tipe}_${k}_keluar`] || 0
-                  const tb = patokan[`${tipe}_${k}_bank`] || 0
-                  const okK = tk > 0 && ak === tk
-                  const okB = tb > 0 && ab === tb
-                  return (
-                    <div key={k} className="flex items-center gap-1 mb-1">
-                      <span className="text-xs capitalize w-14" style={{ color: "var(--color-muted-foreground)" }}>{k}</span>
-                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
-                        style={{ backgroundColor: tk === 0 ? "var(--color-muted)" : okK ? "#f0fdf4" : "#fef2f2", color: tk === 0 ? "var(--color-muted-foreground)" : okK ? "#15803d" : "#dc2626" }}>
-                        {tk > 0 && (okK ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
-                        {ak}/{tk}
-                      </span>
-                      <span className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5"
-                        style={{ backgroundColor: tb === 0 ? "var(--color-muted)" : okB ? "#f0fdf4" : "#fef2f2", color: tb === 0 ? "var(--color-muted-foreground)" : okB ? "#15803d" : "#dc2626" }}>
-                        {tb > 0 && (okB ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
-                        {ab}/{tb}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
+            {TIPE_OPTIONS.map((tipe, ti) => {
+              const tc = TIPE_COLORS[ti]
+              return (
+                <div
+                  key={tipe}
+                  style={{
+                    backgroundColor: tc.bg,
+                    border: "1.5px solid var(--pp-ink)",
+                    borderRadius: 14,
+                    padding: "12px 14px",
+                    boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                  }}
+                >
+                  <div className="font-semibold text-sm mb-2.5" style={{ color: tc.accent }}>
+                    {TIPE_LABELS[tipe]}
+                  </div>
+                  {KESULITAN_OPTIONS.map(k => {
+                    const ak = totals[`${tipe}_${k}_keluar`] || 0
+                    const ab = totals[`${tipe}_${k}_bank`] || 0
+                    const tk = patokan[`${tipe}_${k}_keluar`] || 0
+                    const tb = patokan[`${tipe}_${k}_bank`] || 0
+                    const okK = tk > 0 && ak === tk
+                    const okB = tb > 0 && ab === tb
+                    return (
+                      <div key={k} className="mb-2">
+                        <div className="text-xs capitalize font-medium mb-1" style={{ color: "var(--pp-ink-2)" }}>
+                          {k}
+                        </div>
+                        <div className="flex gap-1">
+                          <span
+                            className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5 font-medium"
+                            style={{
+                              backgroundColor: tk === 0 ? "rgba(0,0,0,0.06)" : okK ? "#f0fdf4" : "#fef2f2",
+                              color: tk === 0 ? "var(--pp-muted)" : okK ? "#15803d" : "#dc2626",
+                            }}
+                          >
+                            {tk > 0 && (okK ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
+                            {ak}/{tk}
+                          </span>
+                          <span
+                            className="flex-1 px-1 py-0.5 rounded text-xs text-center flex items-center justify-center gap-0.5 font-medium"
+                            style={{
+                              backgroundColor: tb === 0 ? "rgba(0,0,0,0.06)" : okB ? "#f0fdf4" : "#fef2f2",
+                              color: tb === 0 ? "var(--pp-muted)" : okB ? "#15803d" : "#dc2626",
+                            }}
+                          >
+                            {tb > 0 && (okB ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />)}
+                            {ab}/{tb}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
         </div>
 
         {/* Manajemen Bab */}
-        <div id="tour-bab-pills" className="mb-4 flex items-center gap-2 flex-wrap">
-          {babs.map(bab => (
-            <div key={bab.id} className="flex items-center gap-1">
-              {!bab.is_submitted && editingBab === bab.id ? (
-                <input
-                  autoFocus type="text" value={editBabName}
-                  onChange={e => setEditBabName(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleRenameBab(bab.id)}
-                  onBlur={() => handleRenameBab(bab.id)}
-                  className="px-2 py-1 rounded text-sm w-28 border"
-                  style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                />
+        <div
+          style={{
+            backgroundColor: "var(--pp-card)",
+            border: "1.5px solid var(--pp-ink)",
+            borderRadius: 22,
+            boxShadow: "4px 4px 0 0 var(--pp-ink)",
+            padding: "20px 24px",
+          }}
+        >
+          <div
+            className="text-xs font-bold uppercase mb-3"
+            style={{ color: "var(--pp-muted)", letterSpacing: "0.12em" }}
+          >
+            Manajemen Bab
+          </div>
+
+          <div id="tour-bab-pills" className="flex flex-wrap gap-2 items-center">
+            {babs.map(bab => (
+              <div key={bab.id} className="flex items-center gap-1">
+                {!bab.is_submitted && editingBab === bab.id ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editBabName}
+                    onChange={e => setEditBabName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleRenameBab(bab.id)}
+                    onBlur={() => handleRenameBab(bab.id)}
+                    className="px-3 py-1.5 text-sm w-32 font-medium"
+                    style={{
+                      border: "1.5px solid var(--pp-primary)",
+                      borderRadius: 20,
+                      color: "var(--pp-ink)",
+                      backgroundColor: "var(--pp-card)",
+                      outline: "none",
+                      boxShadow: "2px 2px 0 0 var(--pp-primary)",
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-transform"
+                    style={{
+                      border: "1.5px solid var(--pp-ink)",
+                      borderRadius: 20,
+                      boxShadow: bab.is_submitted ? "none" : "2px 2px 0 0 var(--pp-ink)",
+                      backgroundColor: bab.is_submitted ? "var(--pp-mint)" : "var(--pp-card)",
+                      color: "var(--pp-ink)",
+                      cursor: bab.is_submitted ? "default" : "pointer",
+                    }}
+                    onClick={() => {
+                      if (!bab.is_submitted) {
+                        setEditingBab(bab.id)
+                        setEditBabName(bab.nama_bab)
+                      }
+                    }}
+                  >
+                    {bab.is_submitted
+                      ? <Check className="w-3.5 h-3.5 shrink-0" />
+                      : <Pencil className="w-3 h-3 shrink-0 opacity-60" />
+                    }
+                    {bab.nama_bab}
+                  </button>
+                )}
+                {!bab.is_submitted && (
+                  <button
+                    onClick={() => handleDeleteBab(bab.id)}
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                    style={{
+                      backgroundColor: "var(--pp-pink)",
+                      color: "var(--pp-ink)",
+                      border: "1px solid var(--pp-ink)",
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {!babs.every(b => b.is_submitted) && (
+              isAdding ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newBabName}
+                    onChange={e => setNewBabName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleAddBab()}
+                    onBlur={() => { if (!newBabName) setIsAdding(false) }}
+                    placeholder="Nama bab..."
+                    className="px-3 py-1.5 text-sm w-32"
+                    style={{
+                      border: "1.5px solid var(--pp-primary)",
+                      borderRadius: 20,
+                      color: "var(--pp-ink)",
+                      backgroundColor: "var(--pp-card)",
+                      outline: "none",
+                      boxShadow: "2px 2px 0 0 var(--pp-primary)",
+                    }}
+                  />
+                  <button onClick={handleAddBab} className="font-bold" style={{ color: "#15803d" }}>✓</button>
+                  <button onClick={() => { setIsAdding(false); setNewBabName("") }} style={{ color: "var(--pp-muted)" }}>×</button>
+                </div>
               ) : (
-                <span
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
+                <button
+                  id="tour-tambah-bab"
+                  onClick={() => setIsAdding(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium"
                   style={{
-                    backgroundColor: bab.is_submitted ? "#22c55e" : "var(--color-primary)",
-                    color: "#fff",
-                    cursor: bab.is_submitted ? "default" : "pointer",
+                    border: "1.5px dashed var(--pp-ink)",
+                    borderRadius: 20,
+                    color: "var(--pp-ink-2)",
+                    backgroundColor: "transparent",
                   }}
-                  onClick={() => { if (!bab.is_submitted) { setEditingBab(bab.id); setEditBabName(bab.nama_bab) } }}
                 >
-                  {bab.is_submitted
-                    ? <Check className="w-3.5 h-3.5 shrink-0" />
-                    : <Pencil className="w-3 h-3 shrink-0 opacity-70" />
-                  }
-                  {bab.nama_bab}
-                </span>
-              )}
-              {!bab.is_submitted && (
-                <button onClick={() => handleDeleteBab(bab.id)} className="text-sm w-4" style={{ color: "var(--color-destructive)" }}>×</button>
-              )}
-            </div>
-          ))}
-          {!babs.every(b => b.is_submitted) && (isAdding ? (
-            <div className="flex items-center gap-1">
-              <input
-                autoFocus type="text" value={newBabName}
-                onChange={e => setNewBabName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleAddBab()}
-                onBlur={() => { if (!newBabName) setIsAdding(false) }}
-                placeholder="Nama bab..."
-                className="px-2 py-1 rounded text-sm w-28 border"
-                style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-              />
-              <button onClick={handleAddBab} style={{ color: "var(--color-primary)" }}>✓</button>
-              <button onClick={() => { setIsAdding(false); setNewBabName("") }} style={{ color: "var(--color-muted-foreground)" }}>×</button>
-            </div>
-          ) : (
-            <button
-              id="tour-tambah-bab"
-              onClick={() => setIsAdding(true)}
-              className="px-3 py-1 rounded-full text-sm border"
-              style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
-            >
-              + Tambah Bab
-            </button>
-          ))}
+                  + Tambah Bab
+                </button>
+              )
+            )}
+          </div>
         </div>
 
-        {/* Tabel Matrix */}
+        {/* Matrix Table */}
         {babs.length === 0 ? (
-          <div className="rounded-lg p-8 border text-center" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <p style={{ color: "var(--color-muted-foreground)" }}>Klik "+ Tambah Bab" untuk menambah bab/chapter.</p>
+          <div
+            style={{
+              border: "1.5px dashed var(--pp-ink)",
+              borderRadius: 22,
+              padding: "48px 24px",
+              textAlign: "center",
+              color: "var(--pp-muted)",
+            }}
+          >
+            Klik "+ Tambah Bab" untuk menambah bab/chapter.
           </div>
         ) : (
-          <div id="tour-matrix-table" className="overflow-x-auto">
-            <table className="text-sm border-collapse w-full" style={{ minWidth: `${260 + babs.length * 160}px` }}>
-              <thead>
-                <tr style={{ backgroundColor: "var(--color-muted)" }}>
-                  <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Tipe</th>
-                  <th className="border px-3 py-2 text-left font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }} rowSpan={2}>Tingkat</th>
-                  {babs.map(bab => (
-                    <th key={bab.id} className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>
-                      <div className="flex items-center justify-center gap-1.5">
-                        {bab.is_submitted && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#22c55e" }} />}
-                        {bab.nama_bab}
-                      </div>
+          <div
+            id="tour-matrix-table"
+            style={{
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "6px 6px 0 0 var(--pp-ink)",
+              overflow: "hidden",
+            }}
+          >
+            <div className="overflow-x-auto">
+              <table
+                className="text-sm border-collapse w-full"
+                style={{ minWidth: `${260 + babs.length * 160}px` }}
+              >
+                <thead>
+                  <tr style={{ backgroundColor: "var(--pp-lemon)" }}>
+                    <th
+                      className="border px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wide"
+                      style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink-2)" }}
+                      rowSpan={2}
+                    >
+                      Tipe
                     </th>
-                  ))}
-                  <th className="border px-3 py-2 text-center font-medium" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }} colSpan={2}>Total</th>
-                </tr>
-                <tr style={{ backgroundColor: "var(--color-muted)" }}>
-                  {babs.map(bab => (
-                    <React.Fragment key={bab.id}>
-                      <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
-                      <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
-                    </React.Fragment>
-                  ))}
-                  <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>Soal</th>
-                  <th className="border px-2 py-1 text-center text-xs font-medium" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>Bank</th>
-                </tr>
-              </thead>
-              <tbody>
-                {TIPE_OPTIONS.map((tipe, ti) => {
-                  const rowBg = ti % 2 === 0 ? "var(--color-card)" : "var(--color-muted)"
-                  const totalBg = ti % 2 === 0 ? "#f0fdf4" : "#dcfce7"
-                  return (
-                    <React.Fragment key={tipe}>
-                      {KESULITAN_OPTIONS.map((k, ki) => {
-                        const rowSoal = babs.reduce((s, bab) => s + ((matrixData[bab.id] || INITIAL_DATA)[`${tipe}_${k}_keluar`] || 0), 0)
-                        const rowBank = babs.reduce((s, bab) => s + ((matrixData[bab.id] || INITIAL_DATA)[`${tipe}_${k}_bank`] || 0), 0)
-                        return (
-                          <tr key={`${tipe}-${k}`} style={{ backgroundColor: rowBg }}>
-                            {ki === 0 && (
-                              <td
-                                className="border px-3 py-2 font-medium"
-                                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)", verticalAlign: "middle" }}
-                                rowSpan={KESULITAN_OPTIONS.length + 1}
-                              >
-                                {TIPE_LABELS[tipe]}
-                              </td>
-                            )}
-                            <td className="border px-3 py-1.5 capitalize text-xs" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
-                              {k}
-                            </td>
-                            {babs.map(bab => {
-                              const p = matrixData[bab.id] || INITIAL_DATA
-                              const submitted = bab.is_submitted
-                              return (
-                                <React.Fragment key={bab.id}>
-                                  <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
-                                    <input
-                                      type="number" min="0"
-                                      value={p[`${tipe}_${k}_keluar`] || 0}
-                                      onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_keluar`, parseInt(e.target.value) || 0)}
-                                      onBlur={() => !submitted && handleSave(bab.id)}
-                                      disabled={submitted}
-                                      className="w-14 px-1 py-0.5 rounded text-xs text-center border"
-                                      style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
-                                    />
-                                  </td>
-                                  <td className="border px-1 py-1" style={{ borderColor: "var(--color-border)" }}>
-                                    <input
-                                      type="number" min="0"
-                                      value={p[`${tipe}_${k}_bank`] || 0}
-                                      onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_bank`, parseInt(e.target.value) || 0)}
-                                      onBlur={() => !submitted && handleSave(bab.id)}
-                                      disabled={submitted}
-                                      className="w-14 px-1 py-0.5 rounded text-xs text-center border"
-                                      style={{ backgroundColor: submitted ? "var(--color-muted)" : "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)", cursor: submitted ? "not-allowed" : "auto" }}
-                                    />
-                                  </td>
-                                </React.Fragment>
-                              )
-                            })}
-                            <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#15803d" }}>{rowSoal}</td>
-                            <td className="border px-2 py-1 text-center text-xs font-semibold" style={{ borderColor: "var(--color-border)", backgroundColor: totalBg, color: "#b45309" }}>{rowBank}</td>
-                          </tr>
-                        )
-                      })}
-
-                      {/* Baris total per tipe */}
-                      <tr style={{ backgroundColor: totalBg, borderBottom: "2px solid var(--color-border)" }}>
-                        <td className="border px-3 py-1.5 text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>Total</td>
-                        {babs.map(bab => {
-                          const p = matrixData[bab.id] || INITIAL_DATA
-                          const colSoal = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_keluar`] || 0), 0)
-                          const colBank = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_bank`] || 0), 0)
+                    <th
+                      className="border px-3 py-2.5 text-left font-semibold text-xs uppercase tracking-wide"
+                      style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink-2)" }}
+                      rowSpan={2}
+                    >
+                      Tingkat
+                    </th>
+                    {babs.map(bab => (
+                      <th
+                        key={bab.id}
+                        className="border px-3 py-2.5 text-center font-semibold text-sm"
+                        style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink)" }}
+                        colSpan={2}
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          {bab.is_submitted && <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#15803d" }} />}
+                          {bab.nama_bab}
+                        </div>
+                      </th>
+                    ))}
+                    <th
+                      className="border px-3 py-2.5 text-center font-semibold text-sm"
+                      style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink)" }}
+                      colSpan={2}
+                    >
+                      Total
+                    </th>
+                  </tr>
+                  <tr style={{ backgroundColor: "var(--pp-lemon)" }}>
+                    {babs.map(bab => (
+                      <React.Fragment key={bab.id}>
+                        <th className="border px-2 py-1.5 text-center text-xs font-semibold" style={{ borderColor: "var(--pp-ink)", color: "#15803d" }}>Soal</th>
+                        <th className="border px-2 py-1.5 text-center text-xs font-semibold" style={{ borderColor: "var(--pp-ink)", color: "#b45309" }}>Bank</th>
+                      </React.Fragment>
+                    ))}
+                    <th className="border px-2 py-1.5 text-center text-xs font-semibold" style={{ borderColor: "var(--pp-ink)", color: "#15803d" }}>Soal</th>
+                    <th className="border px-2 py-1.5 text-center text-xs font-semibold" style={{ borderColor: "var(--pp-ink)", color: "#b45309" }}>Bank</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {TIPE_OPTIONS.map((tipe, ti) => {
+                    const rowBg = ti % 2 === 0 ? "var(--pp-card)" : "var(--pp-bg)"
+                    const tipeBg = TIPE_COLORS[ti].bg
+                    return (
+                      <React.Fragment key={tipe}>
+                        {KESULITAN_OPTIONS.map((k, ki) => {
+                          const rowSoal = babs.reduce((s, bab) => s + ((matrixData[bab.id] || INITIAL_DATA)[`${tipe}_${k}_keluar`] || 0), 0)
+                          const rowBank = babs.reduce((s, bab) => s + ((matrixData[bab.id] || INITIAL_DATA)[`${tipe}_${k}_bank`] || 0), 0)
                           return (
-                            <React.Fragment key={bab.id}>
-                              <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{colSoal}</td>
-                              <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{colBank}</td>
-                            </React.Fragment>
+                            <tr key={`${tipe}-${k}`} style={{ backgroundColor: rowBg }}>
+                              {ki === 0 && (
+                                <td
+                                  className="border px-3 py-2 font-semibold text-sm"
+                                  style={{
+                                    borderColor: "var(--pp-ink)",
+                                    color: TIPE_COLORS[ti].accent,
+                                    verticalAlign: "middle",
+                                    backgroundColor: tipeBg,
+                                  }}
+                                  rowSpan={KESULITAN_OPTIONS.length + 1}
+                                >
+                                  {TIPE_LABELS[tipe]}
+                                </td>
+                              )}
+                              <td
+                                className="border px-3 py-2 capitalize text-xs font-medium"
+                                style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink-2)" }}
+                              >
+                                {k}
+                              </td>
+                              {babs.map(bab => {
+                                const p = matrixData[bab.id] || INITIAL_DATA
+                                const submitted = bab.is_submitted
+                                const inputStyle: React.CSSProperties = {
+                                  border: "1.5px solid var(--pp-ink)",
+                                  borderRadius: 8,
+                                  backgroundColor: submitted ? "var(--pp-bg)" : "var(--pp-card)",
+                                  color: "var(--pp-ink)",
+                                  cursor: submitted ? "not-allowed" : "auto",
+                                  opacity: submitted ? 0.6 : 1,
+                                  outline: "none",
+                                }
+                                return (
+                                  <React.Fragment key={bab.id}>
+                                    <td className="border px-1.5 py-1.5" style={{ borderColor: "var(--pp-ink)" }}>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={p[`${tipe}_${k}_keluar`] || 0}
+                                        onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_keluar`, parseInt(e.target.value) || 0)}
+                                        disabled={submitted}
+                                        className="w-14 px-1 py-1 text-xs text-center font-medium"
+                                        style={inputStyle}
+                                        onFocus={e => { if (!submitted) { e.target.style.borderColor = "var(--pp-primary)"; e.target.style.boxShadow = "2px 2px 0 0 var(--pp-primary)" } }}
+                                        onBlur={e => { e.target.style.borderColor = "var(--pp-ink)"; e.target.style.boxShadow = "none"; if (!submitted) handleSave(bab.id) }}
+                                      />
+                                    </td>
+                                    <td className="border px-1.5 py-1.5" style={{ borderColor: "var(--pp-ink)" }}>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={p[`${tipe}_${k}_bank`] || 0}
+                                        onChange={e => !submitted && handleFieldChange(bab.id, `${tipe}_${k}_bank`, parseInt(e.target.value) || 0)}
+                                        disabled={submitted}
+                                        className="w-14 px-1 py-1 text-xs text-center font-medium"
+                                        style={inputStyle}
+                                        onFocus={e => { if (!submitted) { e.target.style.borderColor = "var(--pp-primary)"; e.target.style.boxShadow = "2px 2px 0 0 var(--pp-primary)" } }}
+                                        onBlur={e => { e.target.style.borderColor = "var(--pp-ink)"; e.target.style.boxShadow = "none"; if (!submitted) handleSave(bab.id) }}
+                                      />
+                                    </td>
+                                  </React.Fragment>
+                                )
+                              })}
+                              <td className="border px-2 py-1.5 text-center text-xs font-bold" style={{ borderColor: "var(--pp-ink)", backgroundColor: "#f0fdf4", color: "#15803d" }}>{rowSoal}</td>
+                              <td className="border px-2 py-1.5 text-center text-xs font-bold" style={{ borderColor: "var(--pp-ink)", backgroundColor: "#fefce8", color: "#b45309" }}>{rowBank}</td>
+                            </tr>
                           )
                         })}
-                        <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>
-                          {babs.reduce((s, bab) => {
+
+                        {/* Total per tipe */}
+                        <tr style={{ backgroundColor: tipeBg, borderBottom: "2px solid var(--pp-ink)" }}>
+                          <td className="border px-3 py-1.5 text-xs font-bold" style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink-2)" }}>Total</td>
+                          {babs.map(bab => {
                             const p = matrixData[bab.id] || INITIAL_DATA
-                            return s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${tipe}_${k}_keluar`] || 0), 0)
-                          }, 0)}
-                        </td>
-                        <td className="border px-2 py-1 text-center text-xs font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>
-                          {babs.reduce((s, bab) => {
-                            const p = matrixData[bab.id] || INITIAL_DATA
-                            return s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${tipe}_${k}_bank`] || 0), 0)
-                          }, 0)}
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  )
-                })}
-              </tbody>
-              <tfoot>
-                <tr style={{ backgroundColor: "#dbeafe", borderTop: "3px solid var(--color-border)" }}>
-                  <td colSpan={2} className="border px-3 py-2 text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}>
-                    Grand Total
-                  </td>
-                  {babs.map(bab => {
-                    const p = matrixData[bab.id] || INITIAL_DATA
-                    const grandSoal = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_keluar`] || 0), 0), 0)
-                    const grandBank = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_bank`] || 0), 0), 0)
-                    return (
-                      <React.Fragment key={bab.id}>
-                        <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>{grandSoal}</td>
-                        <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>{grandBank}</td>
+                            const colSoal = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_keluar`] || 0), 0)
+                            const colBank = KESULITAN_OPTIONS.reduce((s, k) => s + (p[`${tipe}_${k}_bank`] || 0), 0)
+                            return (
+                              <React.Fragment key={bab.id}>
+                                <td className="border px-2 py-1.5 text-center text-xs font-bold" style={{ borderColor: "var(--pp-ink)", color: "#15803d" }}>{colSoal}</td>
+                                <td className="border px-2 py-1.5 text-center text-xs font-bold" style={{ borderColor: "var(--pp-ink)", color: "#b45309" }}>{colBank}</td>
+                              </React.Fragment>
+                            )
+                          })}
+                          <td className="border px-2 py-1.5 text-center text-xs font-bold" style={{ borderColor: "var(--pp-ink)", color: "#15803d" }}>
+                            {babs.reduce((s, bab) => {
+                              const p = matrixData[bab.id] || INITIAL_DATA
+                              return s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${tipe}_${k}_keluar`] || 0), 0)
+                            }, 0)}
+                          </td>
+                          <td className="border px-2 py-1.5 text-center text-xs font-bold" style={{ borderColor: "var(--pp-ink)", color: "#b45309" }}>
+                            {babs.reduce((s, bab) => {
+                              const p = matrixData[bab.id] || INITIAL_DATA
+                              return s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${tipe}_${k}_bank`] || 0), 0)
+                            }, 0)}
+                          </td>
+                        </tr>
                       </React.Fragment>
                     )
                   })}
-                  <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#15803d" }}>
-                    {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (totals[`${t}_${k}_keluar`] || 0), 0), 0)}
-                  </td>
-                  <td className="border px-2 py-2 text-center text-sm font-bold" style={{ borderColor: "var(--color-border)", color: "#b45309" }}>
-                    {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (totals[`${t}_${k}_bank`] || 0), 0), 0)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: "var(--pp-mint)", borderTop: "2px solid var(--pp-ink)" }}>
+                    <td
+                      colSpan={2}
+                      className="border px-3 py-2.5 text-sm font-bold"
+                      style={{ borderColor: "var(--pp-ink)", color: "var(--pp-ink)" }}
+                    >
+                      Grand Total
+                    </td>
+                    {babs.map(bab => {
+                      const p = matrixData[bab.id] || INITIAL_DATA
+                      const grandSoal = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_keluar`] || 0), 0), 0)
+                      const grandBank = TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (p[`${t}_${k}_bank`] || 0), 0), 0)
+                      return (
+                        <React.Fragment key={bab.id}>
+                          <td className="border px-2 py-2.5 text-center text-sm font-bold" style={{ borderColor: "var(--pp-ink)", color: "#15803d" }}>{grandSoal}</td>
+                          <td className="border px-2 py-2.5 text-center text-sm font-bold" style={{ borderColor: "var(--pp-ink)", color: "#b45309" }}>{grandBank}</td>
+                        </React.Fragment>
+                      )
+                    })}
+                    <td className="border px-2 py-2.5 text-center text-sm font-bold" style={{ borderColor: "var(--pp-ink)", color: "#15803d" }}>
+                      {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (totals[`${t}_${k}_keluar`] || 0), 0), 0)}
+                    </td>
+                    <td className="border px-2 py-2.5 text-center text-sm font-bold" style={{ borderColor: "var(--pp-ink)", color: "#b45309" }}>
+                      {TIPE_OPTIONS.reduce((s, t) => s + KESULITAN_OPTIONS.reduce((ss, k) => ss + (totals[`${t}_${k}_bank`] || 0), 0), 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         )}
       </main>

@@ -20,6 +20,33 @@ interface BabMatrix {
 const TIPE_OPTIONS = ["pilgan", "ceklist", "essay", "isian_singkat"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
+const TIPE_LABELS: Record<string, string> = {
+  pilgan: "Pilgan",
+  ceklist: "Ceklist",
+  essay: "Essay",
+  isian_singkat: "Isian Singkat",
+}
+
+const TIPE_COLORS: Record<string, { bg: string; accent: string }> = {
+  pilgan:        { bg: "#ECE4FF", accent: "#6d28d9" },
+  ceklist:       { bg: "#DAF5E7", accent: "#15803d" },
+  essay:         { bg: "#FFE3D0", accent: "#c2410c" },
+  isian_singkat: { bg: "#FFF5C6", accent: "#92400e" },
+}
+
+const KESULITAN_COLORS: Record<string, { bg: string; text: string }> = {
+  mudah:  { bg: "#d1fae5", text: "#065f46" },
+  sedang: { bg: "#fef9c3", text: "#854d0e" },
+  sulit:  { bg: "#fee2e2", text: "#991b1b" },
+}
+
+const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  draft:          { bg: "var(--pp-bg)",   text: "var(--pp-muted)", label: "Draft" },
+  submitted:      { bg: "var(--pp-lemon)", text: "var(--pp-ink)",   label: "Dikirim" },
+  approved:       { bg: "var(--pp-mint)",  text: "var(--pp-ink)",   label: "Approved" },
+  needs_revision: { bg: "var(--pp-pink)",  text: "var(--pp-ink)",   label: "Revisi" },
+}
+
 const BOBOT_DEFAULT: Record<string, Record<string, number>> = {
   pilgan:        { mudah: 1.0, sedang: 1.5, sulit: 2.0 },
   ceklist:       { mudah: 1.5, sedang: 2.0, sulit: 2.5 },
@@ -27,7 +54,6 @@ const BOBOT_DEFAULT: Record<string, Record<string, number>> = {
   isian_singkat: { mudah: 1.0, sedang: 1.5, sulit: 2.0 },
 }
 
-// bobotConfig[`${tipe}_${kesulitan}`] = nilai bobot untuk mapel guru ini
 type BobotConfig = Record<string, number>
 
 export default function SoalPage() {
@@ -44,6 +70,8 @@ export default function SoalPage() {
   const [selectedKesulitan, setSelectedKesulitan] = useState("mudah")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savePressed, setSavePressed] = useState(false)
+  const [kirimPressed, setKirimPressed] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
   const [expandedBabs, setExpandedBabs] = useState<Set<string>>(new Set())
 
@@ -97,7 +125,6 @@ export default function SoalPage() {
           .single()
         if (mp) setMapelNama(mp.nama)
 
-        // Load bobot kustom untuk mapel ini (jika admin sudah set)
         const { data: bobotRows } = await supabase
           .from("bobot_config")
           .select("tipe, kesulitan, bobot")
@@ -107,7 +134,6 @@ export default function SoalPage() {
           const cfg: BobotConfig = {}
           bobotRows.forEach((r: any) => { cfg[`${r.tipe}_${r.kesulitan}`] = Number(r.bobot) })
           setBobotConfig(cfg)
-          // Update bobot awal sesuai config yang baru dimuat
           setBobot(cfg[`pilgan_mudah`] ?? BOBOT_DEFAULT["pilgan"]?.["mudah"] ?? 1.0)
         }
       }
@@ -350,7 +376,6 @@ export default function SoalPage() {
       setToast({ message: "Soal berhasil dikirim ke validator!", type: "success" })
       setSoalList(soalList.map(s => ({ ...s, status: "submitted" })))
 
-      // Kirim notifikasi WA ke validator (fire-and-forget)
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session || !selectedMapelId) return
         fetch("/api/notifications/whatsapp", {
@@ -409,7 +434,7 @@ export default function SoalPage() {
           element: "#tour-tipe-kesulitan",
           popover: {
             title: "Tipe & Kesulitan",
-            description: "Pilih tipe soal (Pilgan, Ceklist, Essay, Isian Singkat) dan tingkat kesulitan. Bobot soal dihitung otomatis. Untuk tipe Pilgan & Ceklist, pilihan jawaban A–D akan muncul di bawah editor.",
+            description: "Pilih tipe soal (Pilgan, Ceklist, Essay, Isian Singkat) dan tingkat kesulitan. Bobot soal dihitung otomatis.",
             side: "bottom",
           },
         },
@@ -433,7 +458,7 @@ export default function SoalPage() {
           element: "#tour-soal-list",
           popover: {
             title: "Daftar Soal",
-            description: "Soal yang sudah dibuat untuk bab aktif tampil di sini. Klik ikon pensil untuk edit, ikon tong sampah untuk hapus. Soal yang sudah dikirim ke validator tidak bisa diedit.",
+            description: "Soal yang sudah dibuat untuk bab aktif tampil di sini. Klik ikon pensil untuk edit, ikon tong sampah untuk hapus.",
             side: "top",
           },
         },
@@ -441,7 +466,7 @@ export default function SoalPage() {
           element: "#tour-kirim-validator",
           popover: {
             title: "Kirim ke Validator",
-            description: "Setelah semua target soal terpenuhi (semua slot hijau), tombol ini aktif. Klik untuk mengirim soal ke validator untuk direview.",
+            description: "Setelah semua target soal terpenuhi, tombol ini aktif. Klik untuk mengirim soal ke validator untuk direview.",
             side: "bottom",
           },
         },
@@ -460,8 +485,8 @@ export default function SoalPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--color-background)" }}>
-        Memuat...
+      <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }} className="flex items-center justify-center">
+        <div className="font-display text-xl" style={{ color: "var(--pp-ink-2)" }}>Memuat...</div>
       </div>
     )
   }
@@ -470,81 +495,175 @@ export default function SoalPage() {
   const progressPct = totalTarget > 0 ? Math.min(100, Math.round((totalDibuat / totalTarget) * 100)) : 0
   const activeBabSoal = activeBab ? soalList.filter(s => s.bab_id_text === activeBab) : []
 
+  const selectStyle: React.CSSProperties = {
+    border: "1.5px solid var(--pp-ink)",
+    borderRadius: 10,
+    padding: "8px 12px",
+    fontSize: 14,
+    color: "var(--pp-ink)",
+    backgroundColor: "var(--pp-card)",
+    outline: "none",
+    width: "100%",
+  }
+
   return (
-    <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
       {/* Header */}
-      <header id="tour-soal-header" className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
-        <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100"
-              style={{ color: "var(--psat-primary-fg)" }}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Kembali
-            </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Input Soal</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
-              <ThemeToggle />
+      <header
+        id="tour-soal-header"
+        className="sticky top-0 z-10"
+        style={{ backgroundColor: "var(--pp-card)", borderBottom: "1.5px solid var(--pp-ink)" }}
+      >
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          {/* Brand + title */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              backgroundColor: "var(--pp-primary)",
+              border: "1.5px dashed rgba(255,255,255,0.45)",
+              borderRadius: 12,
+              boxShadow: "2px 2px 0 0 var(--pp-ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span className="font-display font-bold text-sm text-white">S</span>
             </div>
+            <div className="min-w-0">
+              <div className="font-display font-semibold text-base leading-tight" style={{ color: "var(--pp-ink)" }}>
+                Input Soal
+              </div>
+              {mapelNama && (
+                <div className="text-xs leading-tight truncate" style={{ color: "var(--pp-muted)" }}>
+                  {mapelNama}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle />
             <button
               onClick={startTour}
               title="Panduan"
-              className="p-1.5 rounded-md opacity-80 hover:opacity-100"
-              style={{ color: "var(--psat-primary-fg)" }}
+              className="hover:opacity-70 transition-opacity"
+              style={{ color: "var(--pp-ink-2)", padding: 6, borderRadius: 8 }}
             >
               <CircleHelp className="w-5 h-5" />
             </button>
             <DownloadDropdown
               soalList={soalList}
-              filename={`soal-${mapelNama || 'guru'}`}
+              filename={`soal-${mapelNama || "guru"}`}
               meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString() }}
             />
             <button
               id="tour-kirim-validator"
-              onClick={handleKirimValidator}
+              onClick={allMet ? handleKirimValidator : undefined}
               disabled={saving || !allMet}
-              className="py-2 px-4 rounded-md font-medium text-sm"
+              onMouseDown={() => allMet && setKirimPressed(true)}
+              onMouseUp={() => setKirimPressed(false)}
+              onMouseLeave={() => setKirimPressed(false)}
               style={{
-                backgroundColor: allMet ? "#16a34a" : "var(--color-muted)",
-                color: allMet ? "#fff" : "var(--color-muted-foreground)",
+                backgroundColor: allMet ? "var(--pp-mint)" : "var(--pp-bg)",
+                color: allMet ? "var(--pp-ink)" : "var(--pp-muted)",
+                border: `1.5px solid ${allMet ? "var(--pp-ink)" : "var(--pp-line)"}`,
+                borderRadius: 12,
+                padding: "8px 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                boxShadow: allMet && !kirimPressed ? "3px 3px 0 0 var(--pp-ink)" : "none",
+                transform: kirimPressed ? "translate(2px,2px)" : "none",
+                transition: "all 80ms",
                 cursor: allMet ? "pointer" : "not-allowed",
+                display: "flex", alignItems: "center", gap: 6,
               }}
             >
+              {allMet && <Check className="w-3.5 h-3.5" />}
               {saving ? "Mengirim..." : "Kirim ke Validator"}
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto py-6 px-4 flex gap-6 items-start">
+      {/* Back link */}
+      <div className="max-w-7xl mx-auto px-4 pt-4 pb-1">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity"
+          style={{ color: "var(--pp-muted)" }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Kembali ke Dashboard
+        </button>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-4 pb-12 flex gap-5 items-start">
+
         {/* ── Left Sidebar ── */}
-        <div className="w-72 flex-shrink-0 sticky top-6 space-y-3">
+        <div className="w-64 flex-shrink-0 sticky top-20 space-y-4">
+
           {/* Overall progress */}
-          <div id="tour-overall-progress" className="rounded-lg p-4 border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="font-medium" style={{ color: "var(--color-foreground)" }}>Progress</span>
-              <span style={{ color: "var(--color-muted-foreground)" }}>{totalDibuat}/{totalTarget} ({progressPct}%)</span>
+          <div
+            id="tour-overall-progress"
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "4px 4px 0 0 var(--pp-ink)",
+              padding: "16px 20px",
+            }}
+          >
+            <div className="text-xs font-bold uppercase mb-1" style={{ color: "var(--pp-muted)", letterSpacing: "0.1em" }}>
+              Progress
             </div>
-            <div className="w-full rounded-full h-2.5" style={{ backgroundColor: "var(--color-muted)" }}>
+            <div className="flex items-baseline gap-1.5 mb-3">
+              <span className="font-display font-bold text-3xl" style={{ color: "var(--pp-ink)" }}>{totalDibuat}</span>
+              <span className="text-sm font-medium" style={{ color: "var(--pp-muted)" }}>/ {totalTarget} soal</span>
+            </div>
+            <div
+              style={{
+                height: 10,
+                borderRadius: 6,
+                border: "1.5px solid var(--pp-ink)",
+                backgroundColor: "var(--pp-bg)",
+                overflow: "hidden",
+              }}
+            >
               <div
-                className="h-2.5 rounded-full transition-all"
-                style={{ width: `${progressPct}%`, backgroundColor: allMet ? "#16a34a" : "#3b82f6" }}
+                style={{
+                  height: "100%",
+                  width: `${progressPct}%`,
+                  background: allMet
+                    ? "linear-gradient(90deg, var(--pp-mint), #22c55e)"
+                    : "linear-gradient(90deg, var(--pp-lemon), var(--pp-primary))",
+                  transition: "width 400ms ease",
+                }}
               />
             </div>
-            {allMet && (
-              <p className="text-xs mt-2 flex items-center gap-1" style={{ color: "#16a34a" }}>
-                <Check className="w-3 h-3" />
-                Semua target terpenuhi
-              </p>
-            )}
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs font-medium" style={{ color: "var(--pp-muted)" }}>{progressPct}%</span>
+              {allMet && (
+                <span
+                  className="text-xs font-semibold flex items-center gap-1 px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: "var(--pp-mint)", color: "var(--pp-ink)", border: "1px solid var(--pp-ink)" }}
+                >
+                  <Check className="w-3 h-3" />
+                  Semua terpenuhi
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Bab navigation tree */}
-          <div id="tour-bab-nav" className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
+          {/* Bab navigation */}
+          <div
+            id="tour-bab-nav"
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "4px 4px 0 0 var(--pp-ink)",
+              overflow: "hidden",
+            }}
+          >
             {matrixData.map((bab, babIdx) => {
               const { done: babDone, total: babTotal } = getBabProgress(bab.bab_id_text)
               const isExpanded = expandedBabs.has(bab.bab_id_text)
@@ -552,78 +671,75 @@ export default function SoalPage() {
               const babAllMet = babTotal > 0 && babDone >= babTotal
 
               return (
-                <div key={bab.bab_id_text} className={babIdx > 0 ? "border-t" : ""} style={{ borderColor: "var(--color-border)" }}>
-                  {/* Bab header */}
+                <div
+                  key={bab.bab_id_text}
+                  style={{ borderTop: babIdx > 0 ? "1.5px solid var(--pp-ink)" : "none" }}
+                >
+                  {/* Bab header button */}
                   <button
-                    className="w-full px-3 py-2.5 flex items-center justify-between text-left"
-                    style={{
-                      backgroundColor: isActive ? "var(--color-primary)" : "var(--color-card)",
-                    }}
+                    className="w-full px-4 py-3 flex items-center justify-between text-left"
+                    style={{ backgroundColor: isActive ? "var(--pp-lemon)" : "transparent" }}
                     onClick={() => {
                       selectBab(bab.bab_id_text)
                       if (!expandedBabs.has(bab.bab_id_text)) toggleBab(bab.bab_id_text)
                     }}
                   >
                     <div className="flex-1 min-w-0">
-                      <p
-                        className="text-sm font-semibold truncate"
-                        style={{ color: isActive ? "var(--color-primary-foreground)" : "var(--color-foreground)" }}
-                      >
+                      <p className="text-sm font-semibold truncate" style={{ color: "var(--pp-ink)" }}>
                         {bab.bab_id_text}
                       </p>
                       <p
-                        className="text-xs"
-                        style={{ color: isActive ? "var(--color-primary-foreground)" : babAllMet ? "#16a34a" : "var(--color-muted-foreground)", opacity: isActive ? 0.85 : 1 }}
+                        className="text-xs mt-0.5"
+                        style={{ color: babAllMet ? "#15803d" : "var(--pp-muted)" }}
                       >
                         {babDone}/{babTotal} soal
+                        {babAllMet && " ✓"}
                       </p>
                     </div>
                     <div
                       role="button"
                       tabIndex={0}
-                      className="p-0.5 ml-1 flex-shrink-0 cursor-pointer"
-                      style={{ color: isActive ? "var(--color-primary-foreground)" : "var(--color-muted-foreground)", opacity: isActive ? 0.85 : 1 }}
+                      className="p-0.5 ml-1 flex-shrink-0"
+                      style={{ color: "var(--pp-muted)" }}
                       onClick={e => { e.stopPropagation(); toggleBab(bab.bab_id_text) }}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); toggleBab(bab.bab_id_text) } }}
                     >
-                      {isExpanded
-                        ? <ChevronUp className="w-4 h-4" />
-                        : <ChevronDown className="w-4 h-4" />}
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </div>
                   </button>
 
                   {/* Slot list */}
                   {isExpanded && (
-                    <div className="px-3 pb-2 pt-1 space-y-1" style={{ backgroundColor: "var(--color-background)" }}>
+                    <div
+                      className="px-3 pb-3 pt-1 space-y-1"
+                      style={{ backgroundColor: "var(--pp-bg)" }}
+                    >
                       {TIPE_OPTIONS.flatMap(tipe =>
                         KESULITAN_OPTIONS.map(kesulitan => {
                           const count = getSoalCount(bab.bab_id_text, tipe, kesulitan)
                           const target = getTargetBank(bab.bab_id_text, tipe, kesulitan)
                           if (target === 0) return null
                           const ok = count >= target
-                          const isSelected =
-                            isActive && selectedTipe === tipe && selectedKesulitan === kesulitan
+                          const isSelected = isActive && selectedTipe === tipe && selectedKesulitan === kesulitan
                           return (
                             <div
                               key={`${tipe}_${kesulitan}`}
-                              className="flex items-center justify-between text-xs px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-opacity"
+                              className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                               style={{
-                                backgroundColor: isSelected
-                                  ? "var(--color-primary)"
-                                  : ok ? "#f0fdf4" : "#fef2f2",
-                                outline: isSelected ? "2px solid var(--color-primary)" : undefined,
+                                backgroundColor: isSelected ? "var(--pp-ink)" : ok ? "#f0fdf4" : "#fef2f2",
+                                border: `1px solid ${isSelected ? "var(--pp-ink)" : ok ? "#bbf7d0" : "#fca5a5"}`,
                               }}
                               onClick={() => openSlot(bab.bab_id_text, tipe, kesulitan)}
                             >
                               <span
-                                className="capitalize"
-                                style={{ color: isSelected ? "var(--color-primary-foreground)" : ok ? "#15803d" : "#dc2626" }}
+                                className="capitalize font-medium"
+                                style={{ color: isSelected ? "#fff" : ok ? "#15803d" : "#dc2626" }}
                               >
-                                {tipe} · {kesulitan}
+                                {TIPE_LABELS[tipe]} · {kesulitan}
                               </span>
                               <span
-                                className="flex items-center gap-0.5 font-medium"
-                                style={{ color: isSelected ? "var(--color-primary-foreground)" : ok ? "#15803d" : "#dc2626" }}
+                                className="flex items-center gap-0.5 font-semibold"
+                                style={{ color: isSelected ? "#fff" : ok ? "#15803d" : "#dc2626" }}
                               >
                                 {ok ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                                 {count}/{target}
@@ -641,122 +757,258 @@ export default function SoalPage() {
         </div>
 
         {/* ── Right Content ── */}
-        <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex-1 min-w-0 space-y-5">
+
           {/* Form */}
-          <div id="tour-form-soal" className="rounded-lg border" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
-              <h2 className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
-                {editingId ? "Edit Soal" : "Tambah Soal"}
-                {activeBab && <span style={{ color: "var(--color-muted-foreground)", fontWeight: 400 }}> — {activeBab}</span>}
-              </h2>
+          <div
+            id="tour-form-soal"
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "4px 4px 0 0 var(--pp-ink)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Form header band */}
+            <div
+              style={{
+                backgroundColor: editingId ? "var(--pp-peach)" : "var(--pp-lemon)",
+                borderBottom: "1.5px solid var(--pp-ink)",
+                padding: "12px 20px",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div className="text-xs font-bold uppercase" style={{ color: "var(--pp-muted)", letterSpacing: "0.1em" }}>
+                  {editingId ? "Mode Edit" : "Tambah Soal"}
+                </div>
+                <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
+                  {activeBab || "Pilih bab terlebih dahulu"}
+                </div>
+              </div>
+              {editingId && (
+                <span
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                  style={{ backgroundColor: "var(--pp-ink)", color: "#fff" }}
+                >
+                  Sedang mengedit
+                </span>
+              )}
             </div>
 
             {!activeBab ? (
-              <div className="p-8 text-center" style={{ color: "var(--color-muted-foreground)" }}>
+              <div
+                className="text-sm text-center"
+                style={{ padding: "48px 24px", color: "var(--pp-muted)" }}
+              >
                 Pilih bab dari navigasi kiri untuk mulai menambah soal
               </div>
             ) : (
-              <div className="p-4 space-y-4">
-                {/* Tipe + Kesulitan */}
-                <div id="tour-tipe-kesulitan" className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: "var(--color-muted-foreground)" }}>Tipe</label>
-                    <select
-                      value={selectedTipe}
-                      onChange={e => { setSelectedTipe(e.target.value); setBobot(getDefaultBobot(e.target.value, selectedKesulitan)) }}
-                      className="w-full p-2 rounded border text-sm"
-                      style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                    >
-                      {TIPE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
+              <div style={{ padding: "20px 20px" }} className="space-y-5">
+
+                {/* Tipe */}
+                <div id="tour-tipe-kesulitan">
+                  <div className="text-xs font-bold uppercase mb-2" style={{ color: "var(--pp-muted)", letterSpacing: "0.1em" }}>
+                    Tipe Soal
                   </div>
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: "var(--color-muted-foreground)" }}>Tingkat Kesulitan</label>
-                    <select
-                      value={selectedKesulitan}
-                      onChange={e => { setSelectedKesulitan(e.target.value); setBobot(getDefaultBobot(selectedTipe, e.target.value)) }}
-                      className="w-full p-2 rounded border text-sm"
-                      style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                  <div className="flex flex-wrap gap-2">
+                    {TIPE_OPTIONS.map(t => {
+                      const isSelected = selectedTipe === t
+                      const tc = TIPE_COLORS[t]
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => { setSelectedTipe(t); setBobot(getDefaultBobot(t, selectedKesulitan)) }}
+                          style={{
+                            border: "1.5px solid var(--pp-ink)",
+                            borderRadius: 20,
+                            padding: "6px 14px",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            backgroundColor: isSelected ? "var(--pp-ink)" : tc.bg,
+                            color: isSelected ? "#fff" : tc.accent,
+                            boxShadow: isSelected ? "none" : "2px 2px 0 0 var(--pp-ink)",
+                            transition: "all 80ms",
+                          }}
+                        >
+                          {TIPE_LABELS[t]}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Kesulitan */}
+                  <div className="text-xs font-bold uppercase mt-4 mb-2" style={{ color: "var(--pp-muted)", letterSpacing: "0.1em" }}>
+                    Tingkat Kesulitan
+                  </div>
+                  <div className="flex gap-2">
+                    {KESULITAN_OPTIONS.map(k => {
+                      const isSelected = selectedKesulitan === k
+                      const kc = KESULITAN_COLORS[k]
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => { setSelectedKesulitan(k); setBobot(getDefaultBobot(selectedTipe, k)) }}
+                          style={{
+                            border: "1.5px solid var(--pp-ink)",
+                            borderRadius: 20,
+                            padding: "6px 16px",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            backgroundColor: isSelected ? "var(--pp-ink)" : kc.bg,
+                            color: isSelected ? "#fff" : kc.text,
+                            boxShadow: isSelected ? "none" : "2px 2px 0 0 var(--pp-ink)",
+                            transition: "all 80ms",
+                          }}
+                          className="capitalize"
+                        >
+                          {k}
+                        </button>
+                      )
+                    })}
+                    <span
+                      className="flex items-center text-xs font-semibold px-3 rounded-full"
+                      style={{
+                        border: "1.5px solid var(--pp-line)",
+                        color: "var(--pp-ink-2)",
+                        backgroundColor: "var(--pp-bg)",
+                      }}
                     >
-                      {KESULITAN_OPTIONS.map(k => <option key={k} value={k}>{k}</option>)}
-                    </select>
+                      Bobot: {bobot}
+                    </span>
                   </div>
                 </div>
 
                 {/* Pertanyaan */}
                 <div id="tour-editor-pertanyaan">
-                  <label className="block text-xs mb-1" style={{ color: "var(--color-muted-foreground)" }}>Pertanyaan *</label>
-                  <RichTextEditor
-                    content={pertanyaan}
-                    onChange={setPertanyaan}
-                    placeholder="Masukkan pertanyaan..."
-                  />
+                  <div className="text-xs font-bold uppercase mb-2" style={{ color: "var(--pp-muted)", letterSpacing: "0.1em" }}>
+                    Pertanyaan <span style={{ color: "#dc2626" }}>*</span>
+                  </div>
+                  <div
+                    style={{
+                      border: "1.5px solid var(--pp-ink)",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <RichTextEditor
+                      content={pertanyaan}
+                      onChange={setPertanyaan}
+                      placeholder="Masukkan pertanyaan..."
+                    />
+                  </div>
                 </div>
 
                 {/* Pilihan jawaban */}
                 {(selectedTipe === "pilgan" || selectedTipe === "ceklist") && (
                   <div>
-                    <label className="block text-xs mb-2" style={{ color: "var(--color-muted-foreground)" }}>Pilihan Jawaban</label>
-                    {pilihan.map((p, i) => (
-                      <div key={i} className="flex items-start gap-2 mb-3">
-                        <div className="mt-2">
-                          {selectedTipe === "pilgan" ? (
-                            <input
-                              type="radio"
-                              name="jawabanBenar"
-                              checked={jawabanBenar === i}
-                              onChange={() => setJawabanBenar(i)}
-                            />
-                          ) : (
-                            <input
-                              type="checkbox"
-                              checked={jawabanBenarCeklist.includes(i)}
-                              onChange={e => setJawabanBenarCeklist(
-                                e.target.checked
-                                  ? [...jawabanBenarCeklist, i]
-                                  : jawabanBenarCeklist.filter(x => x !== i)
+                    <div className="text-xs font-bold uppercase mb-3" style={{ color: "var(--pp-muted)", letterSpacing: "0.1em" }}>
+                      Pilihan Jawaban
+                    </div>
+                    <div className="space-y-3">
+                      {pilihan.map((p, i) => {
+                        const isBenar = selectedTipe === "pilgan"
+                          ? jawabanBenar === i
+                          : jawabanBenarCeklist.includes(i)
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-start gap-2"
+                            style={{
+                              border: `1.5px solid ${isBenar ? "#22c55e" : "var(--pp-line)"}`,
+                              borderRadius: 12,
+                              padding: "10px 12px",
+                              backgroundColor: isBenar ? "#f0fdf4" : "var(--pp-bg)",
+                            }}
+                          >
+                            <div className="mt-2 shrink-0">
+                              {selectedTipe === "pilgan" ? (
+                                <input
+                                  type="radio"
+                                  name="jawabanBenar"
+                                  checked={jawabanBenar === i}
+                                  onChange={() => setJawabanBenar(i)}
+                                  style={{ accentColor: "var(--pp-primary)" }}
+                                />
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={jawabanBenarCeklist.includes(i)}
+                                  onChange={e => setJawabanBenarCeklist(
+                                    e.target.checked
+                                      ? [...jawabanBenarCeklist, i]
+                                      : jawabanBenarCeklist.filter(x => x !== i)
+                                  )}
+                                  style={{ accentColor: "var(--pp-primary)" }}
+                                />
                               )}
-                            />
-                          )}
-                        </div>
-                        <span className="mt-2.5 w-5 text-sm font-medium flex-shrink-0" style={{ color: "var(--color-muted-foreground)" }}>
-                          {String.fromCharCode(65 + i)}.
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <RichTextEditor
-                            mini
-                            content={p}
-                            onChange={html => { const n = [...pilihan]; n[i] = html; setPilihan(n) }}
-                            placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
-                          />
-                        </div>
-                        <div className="mt-1.5">
-                          <ImageUpload
-                            value={pilihanGambar[i]}
-                            onChange={url => { const n = [...pilihanGambar]; n[i] = url; setPilihanGambar(n) }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                            </div>
+                            <span
+                              className="mt-2.5 w-5 text-sm font-bold flex-shrink-0"
+                              style={{ color: isBenar ? "#15803d" : "var(--pp-muted)" }}
+                            >
+                              {String.fromCharCode(65 + i)}.
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <RichTextEditor
+                                mini
+                                content={p}
+                                onChange={html => { const n = [...pilihan]; n[i] = html; setPilihan(n) }}
+                                placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
+                              />
+                            </div>
+                            <div className="mt-1.5 shrink-0">
+                              <ImageUpload
+                                value={pilihanGambar[i]}
+                                onChange={url => { const n = [...pilihanGambar]; n[i] = url; setPilihanGambar(n) }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
 
-                <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {bobot}</p>
-
-                <div id="tour-aksi-soal" className="flex gap-2">
+                {/* Action buttons */}
+                <div id="tour-aksi-soal" className="flex gap-3 pt-1">
                   <button
                     onClick={handleSaveSoal}
                     disabled={saving}
-                    className="py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
-                    style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
+                    onMouseDown={() => setSavePressed(true)}
+                    onMouseUp={() => setSavePressed(false)}
+                    onMouseLeave={() => setSavePressed(false)}
+                    style={{
+                      backgroundColor: "var(--pp-ink)",
+                      color: "#fff",
+                      border: "1.5px solid var(--pp-ink)",
+                      borderRadius: 12,
+                      padding: "10px 20px",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      boxShadow: savePressed ? "none" : "3px 3px 0 0 rgba(0,0,0,0.3)",
+                      transform: savePressed ? "translate(2px,2px)" : "none",
+                      transition: "all 80ms",
+                      opacity: saving ? 0.6 : 1,
+                      cursor: saving ? "not-allowed" : "pointer",
+                    }}
                   >
-                    {saving ? "Menyimpan..." : editingId ? "Update" : "Simpan"}
+                    {saving ? "Menyimpan..." : editingId ? "Update Soal" : "Simpan Soal"}
                   </button>
                   {editingId && (
                     <button
                       onClick={resetForm}
-                      className="py-2 px-4 rounded-md text-sm"
-                      style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}
+                      style={{
+                        backgroundColor: "transparent",
+                        color: "var(--pp-ink-2)",
+                        border: "1.5px solid var(--pp-line)",
+                        borderRadius: 12,
+                        padding: "10px 16px",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                      }}
                     >
                       Batal Edit
                     </button>
@@ -766,108 +1018,197 @@ export default function SoalPage() {
             )}
           </div>
 
-          {/* Soal list for active bab */}
+          {/* Soal list */}
           {activeBab && (
-            <div id="tour-soal-list" className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-              <div className="px-4 py-3 border-b" style={{ borderColor: "var(--color-border)" }}>
-                <h2 className="text-sm font-semibold" style={{ color: "var(--color-foreground)" }}>
+            <div
+              id="tour-soal-list"
+              style={{
+                backgroundColor: "var(--pp-card)",
+                border: "1.5px solid var(--pp-ink)",
+                borderRadius: 22,
+                boxShadow: "4px 4px 0 0 var(--pp-ink)",
+                overflow: "hidden",
+              }}
+            >
+              {/* List header */}
+              <div
+                style={{
+                  padding: "12px 20px",
+                  borderBottom: "1.5px solid var(--pp-ink)",
+                  backgroundColor: "var(--pp-bg)",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}
+              >
+                <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
                   Daftar Soal — {activeBab}
-                  <span className="ml-2 text-xs font-normal" style={{ color: "var(--color-muted-foreground)" }}>
-                    ({activeBabSoal.length} soal)
-                  </span>
-                </h2>
+                </div>
+                <span
+                  className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{
+                    backgroundColor: "var(--pp-ink)",
+                    color: "#fff",
+                  }}
+                >
+                  {activeBabSoal.length} soal
+                </span>
               </div>
 
               {activeBabSoal.length === 0 ? (
-                <div className="p-6 text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+                <div
+                  className="text-sm text-center"
+                  style={{ padding: "48px 24px", color: "var(--pp-muted)" }}
+                >
                   Belum ada soal untuk bab ini
                 </div>
               ) : (
                 <div>
-                  {activeBabSoal.map((soal, idx) => (
-                    <div
-                      key={soal.id}
-                      className="px-4 py-3 flex items-start gap-3 border-b last:border-b-0"
-                      style={{ borderColor: "var(--color-border)" }}
-                    >
-                      <span
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
-                        style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
+                  {activeBabSoal.map((soal, idx) => {
+                    const statusStyle = STATUS_STYLES[soal.status] || STATUS_STYLES["draft"]
+                    const tipeColor = TIPE_COLORS[soal.tipe] || TIPE_COLORS["pilgan"]
+                    const kesColor = KESULITAN_COLORS[soal.tingkat_kesulitan] || KESULITAN_COLORS["mudah"]
+                    const canEdit = soal.status === "draft" || soal.status === "needs_revision" || !soal.status
+
+                    return (
+                      <div
+                        key={soal.id}
+                        style={{
+                          padding: "16px 20px",
+                          borderTop: idx > 0 ? "1.5px solid var(--pp-line)" : "none",
+                          display: "flex", gap: 12, alignItems: "flex-start",
+                        }}
                       >
-                        {idx + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap gap-1 mb-1.5">
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}>
-                            {soal.tipe}
-                          </span>
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-                            {soal.tingkat_kesulitan}
-                          </span>
-                          <span className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>Bobot: {soal.bobot}</span>
-                          {soal.status === "submitted" && <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500 text-white">Submitted</span>}
-                          {soal.status === "approved" && <span className="text-xs px-1.5 py-0.5 rounded bg-green-600 text-white">Approved</span>}
-                          {soal.status === "needs_revision" && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500 text-white">Revisi</span>}
-                        </div>
-                        <div
-                          className="text-sm rich-html"
-                          style={{ color: "var(--color-foreground)" }}
-                          dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
-                        />
-                        {soal.pilihan && soal.pilihan.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }) => (
-                              <div
-                                key={p.id}
-                                className="flex items-start gap-1.5 text-xs px-2 py-1 rounded"
-                                style={{
-                                  backgroundColor: p.benar ? "#f0fdf4" : "var(--color-muted)",
-                                  border: p.benar ? "1px solid #bbf7d0" : "1px solid transparent",
-                                }}
-                              >
-                                <span className="font-semibold flex-shrink-0 mt-0.5" style={{ color: p.benar ? "#15803d" : "var(--color-muted-foreground)" }}>
-                                  {String.fromCharCode(65 + p.id)}.
-                                </span>
-                                <div
-                                  className="flex-1 min-w-0 rich-html"
-                                  style={{ color: p.benar ? "#15803d" : "var(--color-foreground)" }}
-                                  dangerouslySetInnerHTML={{ __html: p.teks }}
-                                />
-                                {p.benar && (
-                                  <Check className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: "#15803d" }} />
-                                )}
-                              </div>
-                            ))}
+                        {/* Number badge */}
+                        <span
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 font-display"
+                          style={{
+                            backgroundColor: "var(--pp-lemon)",
+                            color: "var(--pp-ink)",
+                            border: "1.5px solid var(--pp-ink)",
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+
+                        <div className="flex-1 min-w-0">
+                          {/* Pills row */}
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ backgroundColor: tipeColor.bg, color: tipeColor.accent, border: "1px solid var(--pp-ink)" }}
+                            >
+                              {TIPE_LABELS[soal.tipe] || soal.tipe}
+                            </span>
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold capitalize"
+                              style={{ backgroundColor: kesColor.bg, color: kesColor.text, border: "1px solid var(--pp-ink)" }}
+                            >
+                              {soal.tingkat_kesulitan}
+                            </span>
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ backgroundColor: statusStyle.bg, color: statusStyle.text, border: "1px solid var(--pp-line)" }}
+                            >
+                              {statusStyle.label}
+                            </span>
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: "var(--pp-bg)", color: "var(--pp-ink-2)", border: "1px solid var(--pp-line)" }}
+                            >
+                              Bobot: {soal.bobot}
+                            </span>
                           </div>
-                        )}
-                        {soal.revision_notes && (
-                          <div className="mt-1.5 text-xs p-2 rounded" style={{ backgroundColor: "#fef2f2", color: "#dc2626" }}>
-                            Catatan revisi: {soal.revision_notes}
+
+                          {/* Pertanyaan */}
+                          <div
+                            className="text-sm rich-html"
+                            style={{ color: "var(--pp-ink)" }}
+                            dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                          />
+
+                          {/* Pilihan jawaban */}
+                          {soal.pilihan && soal.pilihan.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }) => (
+                                <div
+                                  key={p.id}
+                                  className="flex items-start gap-1.5 text-xs px-2.5 py-1.5 rounded-lg"
+                                  style={{
+                                    backgroundColor: p.benar ? "#f0fdf4" : "var(--pp-bg)",
+                                    border: `1px solid ${p.benar ? "#86efac" : "var(--pp-line)"}`,
+                                  }}
+                                >
+                                  <span
+                                    className="font-bold flex-shrink-0 mt-0.5"
+                                    style={{ color: p.benar ? "#15803d" : "var(--pp-muted)" }}
+                                  >
+                                    {String.fromCharCode(65 + p.id)}.
+                                  </span>
+                                  <div
+                                    className="flex-1 min-w-0 rich-html"
+                                    style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
+                                    dangerouslySetInnerHTML={{ __html: p.teks }}
+                                  />
+                                  {p.benar && <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#15803d" }} />}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Revision notes */}
+                          {soal.revision_notes && (
+                            <div
+                              className="mt-2 text-xs px-3 py-2 rounded-lg"
+                              style={{
+                                backgroundColor: "#fff0f5",
+                                color: "#be123c",
+                                border: "1px solid var(--pp-pink)",
+                              }}
+                            >
+                              <span className="font-semibold">Catatan revisi:</span> {soal.revision_notes}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Edit/Delete */}
+                        {canEdit && (
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => handleEditSoal(soal)}
+                              title="Edit"
+                              style={{
+                                width: 32, height: 32,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                border: "1.5px solid var(--pp-ink)",
+                                borderRadius: 8,
+                                backgroundColor: "var(--pp-lemon)",
+                                color: "var(--pp-ink)",
+                                boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSoal(soal.id)}
+                              title="Hapus"
+                              style={{
+                                width: 32, height: 32,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                border: "1.5px solid var(--pp-ink)",
+                                borderRadius: 8,
+                                backgroundColor: "var(--pp-pink)",
+                                color: "var(--pp-ink)",
+                                boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
                       </div>
-                      {(soal.status === "draft" || soal.status === "needs_revision" || !soal.status) && (
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => handleEditSoal(soal)}
-                            className="p-1.5 rounded hover:opacity-80"
-                            style={{ color: "#3b82f6" }}
-                            title="Edit"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSoal(soal.id)}
-                            className="p-1.5 rounded hover:opacity-80"
-                            style={{ color: "#dc2626" }}
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
