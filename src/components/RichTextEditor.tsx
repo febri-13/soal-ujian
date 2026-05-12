@@ -95,9 +95,9 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
     const currentHTML = editor.getHTML()
     const isEmpty = currentHTML === "<p></p>" || currentHTML === ""
     if (content === "" && !isEmpty) {
-      editor.commands.setContent("", false)
+      editor.commands.setContent("", { emitUpdate: false })
     } else if (content !== "" && currentHTML !== content) {
-      editor.commands.setContent(content, false)
+      editor.commands.setContent(content, { emitUpdate: false })
     }
   }, [content, editor])
 
