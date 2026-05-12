@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Trash2, LockOpen } from "lucide-react"
+import { ArrowLeft, Trash2, LockOpen, Users } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
+import Toast from "@/components/Toast"
 import { supabase } from "@/lib/supabase"
 
 interface MatrixBab {
@@ -38,10 +39,7 @@ export default function AdminMatrixPage() {
         .select("profile_id, mapel_id, bab_id_text, is_submitted")
         .order("profile_id")
 
-      if (!matrixRows || matrixRows.length === 0) {
-        setLoading(false)
-        return
-      }
+      if (!matrixRows || matrixRows.length === 0) { setLoading(false); return }
 
       const profileIds = [...new Set(matrixRows.map(r => r.profile_id))]
       const mapelIds = [...new Set(matrixRows.map(r => r.mapel_id).filter(Boolean))] as string[]
@@ -91,23 +89,17 @@ export default function AdminMatrixPage() {
     if (!confirm(`Hapus bab "${babIdText}"?`)) return
     const key = `${profileId}:${babIdText}`
     setDeleting(key)
-
     const { error } = await supabase
       .from("psat_matrix_input")
       .delete()
       .eq("profile_id", profileId)
       .eq("bab_id_text", babIdText)
-
     if (error) {
       showToast("Error: " + error.message, "error")
     } else {
       setGroups(prev =>
         prev
-          .map(g =>
-            g.profile_id === profileId
-              ? { ...g, babs: g.babs.filter(b => b.bab_id_text !== babIdText) }
-              : g
-          )
+          .map(g => g.profile_id === profileId ? { ...g, babs: g.babs.filter(b => b.bab_id_text !== babIdText) } : g)
           .filter(g => g.babs.length > 0)
       )
       showToast(`Bab "${babIdText}" dihapus`, "success")
@@ -118,12 +110,7 @@ export default function AdminMatrixPage() {
   const handleDeleteGuru = async (profileId: string, nama: string) => {
     if (!confirm(`Hapus SEMUA matrix milik "${nama}"? Tindakan ini tidak dapat dibatalkan.`)) return
     setDeleting(profileId)
-
-    const { error } = await supabase
-      .from("psat_matrix_input")
-      .delete()
-      .eq("profile_id", profileId)
-
+    const { error } = await supabase.from("psat_matrix_input").delete().eq("profile_id", profileId)
     if (error) {
       showToast("Error: " + error.message, "error")
     } else {
@@ -134,21 +121,17 @@ export default function AdminMatrixPage() {
   }
 
   const handleUnlockGuru = async (profileId: string, nama: string) => {
-    if (!confirm(`Buka kunci edit matrix milik "${nama}"? Guru akan bisa mengedit ulang matrixnya.`)) return
+    if (!confirm(`Buka kunci edit matrix milik "${nama}"?`)) return
     setUnlocking(profileId)
-
     const { error } = await supabase
       .from("psat_matrix_input")
       .update({ is_submitted: false })
       .eq("profile_id", profileId)
-
     if (error) {
       showToast("Error: " + error.message, "error")
     } else {
       setGroups(prev => prev.map(g =>
-        g.profile_id === profileId
-          ? { ...g, babs: g.babs.map(b => ({ ...b, is_submitted: false })) }
-          : g
+        g.profile_id === profileId ? { ...g, babs: g.babs.map(b => ({ ...b, is_submitted: false })) } : g
       ))
       showToast(`Matrix ${nama} dibuka untuk diedit ulang`, "success")
     }
@@ -156,90 +139,196 @@ export default function AdminMatrixPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>
+    return (
+      <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }} className="flex items-center justify-center">
+        <div className="font-display text-xl" style={{ color: "var(--pp-ink-2)" }}>Memuat...</div>
+      </div>
+    )
   }
 
   return (
-    <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
-        <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100"
-              style={{ color: "var(--psat-primary-fg)" }}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Kembali
-            </button>
-            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>
-              Admin — Kelola Matrix Guru
-            </h1>
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
+      <header
+        className="sticky top-0 z-10"
+        style={{ backgroundColor: "var(--pp-card)", borderBottom: "1.5px solid var(--pp-ink)" }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              backgroundColor: "var(--pp-primary)",
+              border: "1.5px dashed rgba(255,255,255,0.45)",
+              borderRadius: 12,
+              boxShadow: "2px 2px 0 0 var(--pp-ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Users className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
+              Kelola Matrix Guru
+            </div>
           </div>
-          <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto py-8 px-4">
+      <div className="max-w-4xl mx-auto px-4 pt-4 pb-1">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity"
+          style={{ color: "var(--pp-muted)" }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Kembali ke Dashboard
+        </button>
+      </div>
+
+      <main className="max-w-4xl mx-auto px-4 py-4 pb-12 space-y-4">
         {groups.length === 0 ? (
-          <div className="rounded-lg p-8 border text-center" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <p style={{ color: "var(--color-muted-foreground)" }}>Belum ada data matrix dari guru.</p>
+          <div
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "4px 4px 0 0 var(--pp-ink)",
+              padding: "48px 24px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{
+              width: 52, height: 52,
+              backgroundColor: "var(--pp-bg)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 16,
+              boxShadow: "2px 2px 0 0 var(--pp-ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+            }}>
+              <Users className="w-6 h-6" style={{ color: "var(--pp-muted)" }} />
+            </div>
+            <p className="font-display font-semibold" style={{ color: "var(--pp-ink)" }}>Belum Ada Data Matrix</p>
+            <p className="text-sm mt-1" style={{ color: "var(--pp-muted)" }}>Belum ada matrix yang dikirimkan oleh guru.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {groups.map(group => (
-              <div key={group.profile_id} className="rounded-lg border overflow-hidden" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-                {/* Header guru */}
-                <div className="px-4 py-3 flex items-center justify-between border-b" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-muted)" }}>
-                  <div>
-                    <p className="font-semibold text-sm" style={{ color: "var(--color-foreground)" }}>{group.nama}</p>
-                    <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                      {group.email} · {group.mapel_nama}
-                    </p>
+          groups.map(group => {
+            const submittedCount = group.babs.filter(b => b.is_submitted).length
+            return (
+              <div
+                key={group.profile_id}
+                style={{
+                  backgroundColor: "var(--pp-card)",
+                  border: "1.5px solid var(--pp-ink)",
+                  borderRadius: 22,
+                  boxShadow: "4px 4px 0 0 var(--pp-ink)",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Guru header band */}
+                <div style={{
+                  backgroundColor: "#FFF0E6",
+                  borderBottom: "1.5px solid var(--pp-ink)",
+                  padding: "14px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: "wrap" as const,
+                }}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div style={{
+                      width: 38, height: 38, flexShrink: 0,
+                      backgroundColor: "var(--pp-card)",
+                      border: "1.5px solid var(--pp-ink)",
+                      borderRadius: 10,
+                      boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <span className="font-display font-bold text-sm" style={{ color: "#c2410c" }}>
+                        {group.nama.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-display font-semibold text-sm" style={{ color: "var(--pp-ink)" }}>{group.nama}</div>
+                      <div className="text-xs mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ color: "var(--pp-muted)" }}>
+                        {group.email}
+                        <span
+                          className="px-1.5 py-0.5 rounded-full text-xs font-semibold"
+                          style={{ backgroundColor: "var(--pp-peach)", color: "#c2410c", border: "1px solid var(--pp-ink)" }}
+                        >
+                          {group.mapel_nama}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  {group.babs.some(b => b.is_submitted) && (
-                    <button
-                      onClick={() => handleUnlockGuru(group.profile_id, group.nama)}
-                      disabled={unlocking === group.profile_id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border disabled:opacity-50"
-                      style={{ backgroundColor: "#fffbeb", color: "#d97706", borderColor: "#fcd34d" }}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      style={{ backgroundColor: "var(--pp-mint)", color: "#15803d", border: "1.5px solid var(--pp-ink)" }}
                     >
-                      <LockOpen className="w-3 h-3" />
-                      Buka Kunci Edit
+                      {submittedCount}/{group.babs.length} submitted
+                    </span>
+                    {group.babs.some(b => b.is_submitted) && (
+                      <button
+                        onClick={() => handleUnlockGuru(group.profile_id, group.nama)}
+                        disabled={unlocking === group.profile_id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-semibold disabled:opacity-50"
+                        style={{
+                          backgroundColor: "var(--pp-lemon)",
+                          color: "#92400e",
+                          border: "1.5px solid var(--pp-ink)",
+                          boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                        }}
+                      >
+                        <LockOpen className="w-3 h-3" />
+                        Buka Kunci
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteGuru(group.profile_id, group.nama)}
+                      disabled={deleting === group.profile_id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-semibold disabled:opacity-50"
+                      style={{
+                        backgroundColor: "var(--pp-pink)",
+                        color: "#be123c",
+                        border: "1.5px solid var(--pp-ink)",
+                        boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Hapus Semua
                     </button>
-                  )}
-                  <button
-                    onClick={() => handleDeleteGuru(group.profile_id, group.nama)}
-                    disabled={deleting === group.profile_id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border disabled:opacity-50"
-                    style={{ backgroundColor: "#fef2f2", color: "#dc2626", borderColor: "#fca5a5" }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Hapus Semua
-                  </button>
+                  </div>
                 </div>
 
-                {/* List bab */}
-                <div className="p-4 space-y-2">
-                  {group.babs.map(bab => {
+                {/* Bab list */}
+                <div style={{ padding: "16px 20px" }} className="space-y-2">
+                  {group.babs.map((bab, bi) => {
                     const key = `${bab.profile_id}:${bab.bab_id_text}`
                     return (
                       <div
                         key={bab.bab_id_text}
-                        className="flex items-center justify-between px-3 py-2 rounded border"
-                        style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-background)" }}
+                        className="flex items-center justify-between px-4 py-2.5 rounded-[12px]"
+                        style={{
+                          backgroundColor: bi % 2 === 0 ? "var(--pp-bg)" : "var(--pp-card)",
+                          border: "1.5px solid var(--pp-line)",
+                        }}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: "var(--pp-lemon)", color: "var(--pp-ink)", border: "1px solid var(--pp-ink)" }}
+                          >
+                            {bi + 1}
+                          </div>
+                          <span className="text-sm font-medium" style={{ color: "var(--pp-ink)" }}>
                             {bab.bab_id_text}
                           </span>
                           <span
-                            className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            className="text-xs px-2 py-0.5 rounded-full font-semibold"
                             style={{
-                              backgroundColor: bab.is_submitted ? "#dcfce7" : "var(--color-muted)",
-                              color: bab.is_submitted ? "#15803d" : "var(--color-muted-foreground)",
+                              backgroundColor: bab.is_submitted ? "var(--pp-mint)" : "var(--pp-bg)",
+                              color: bab.is_submitted ? "#15803d" : "var(--pp-muted)",
+                              border: "1px solid var(--pp-line)",
                             }}
                           >
                             {bab.is_submitted ? "Submitted" : "Draft"}
@@ -248,8 +337,13 @@ export default function AdminMatrixPage() {
                         <button
                           onClick={() => handleDeleteBab(bab.profile_id, bab.bab_id_text)}
                           disabled={deleting === key}
-                          className="flex items-center gap-1 px-2 py-1 rounded text-xs disabled:opacity-50 hover:bg-red-50"
-                          style={{ color: "#dc2626" }}
+                          className="flex items-center gap-1 px-2 py-1.5 rounded-[8px] text-xs font-semibold disabled:opacity-50"
+                          style={{
+                            backgroundColor: "var(--pp-pink)",
+                            color: "#be123c",
+                            border: "1.5px solid var(--pp-ink)",
+                            boxShadow: "1px 1px 0 0 var(--pp-ink)",
+                          }}
                           title="Hapus bab ini"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -259,19 +353,12 @@ export default function AdminMatrixPage() {
                   })}
                 </div>
               </div>
-            ))}
-          </div>
+            )
+          })
         )}
       </main>
 
-      {toast && (
-        <div
-          className="fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg text-white z-50"
-          style={{ backgroundColor: toast.type === "success" ? "#22c55e" : "#ef4444" }}
-        >
-          {toast.message}
-        </div>
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

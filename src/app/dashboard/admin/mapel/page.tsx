@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
-import { Plus, Pencil, Trash2, X } from "lucide-react"
+import { Plus, Pencil, Trash2, X, BookMarked, ArrowLeft } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 
 interface MapelSimple {
@@ -23,7 +23,6 @@ export default function AdminMapelPage() {
   const [deleting, setDeleting] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
-  // Modal state
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null)
   const [selectedMapel, setSelectedMapel] = useState<MapelSimple | null>(null)
   const [formNama, setFormNama] = useState("")
@@ -32,28 +31,18 @@ export default function AdminMapelPage() {
   const [formError, setFormError] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingMapel, setDeletingMapel] = useState<MapelSimple | null>(null)
-  const [cascadeInfo, setCascadeInfo] = useState<{ patokan: number; bobot: number; validator: number } | null>(null)
 
-  useEffect(() => {
-    checkAuthAndLoad()
-  }, [router])
+  useEffect(() => { checkAuthAndLoad() }, [router])
 
   const checkAuthAndLoad = async () => {
     const { data: { user: u } } = await supabase.auth.getUser()
     if (!u) { router.push("/login"); return }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", u.id)
-      .single()
-
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", u.id).single()
     if (!profile || profile.role !== "admin") {
       setToast({ message: "Akses ditolak", type: "error" })
       setTimeout(() => router.push("/dashboard"), 1500)
       return
     }
-
     setUser(u)
     await loadMapel()
   }
@@ -65,12 +54,9 @@ export default function AdminMapelPage() {
         .from("mata_pelajaran")
         .select("id, nama, kode, deskripsi")
         .order("nama", { ascending: true })
-
       if (error) throw error
-
       setMapelList(mapels || [])
     } catch (err: any) {
-      console.error("Load mapel error:", err)
       setToast({ message: err.message || "Gagal memuat data", type: "error" })
     } finally {
       setLoading(false)
@@ -78,90 +64,44 @@ export default function AdminMapelPage() {
   }
 
   const openAddModal = () => {
-    setModalMode("add")
-    setSelectedMapel(null)
-    setFormNama("")
-    setFormKode("")
-    setFormDeskripsi("")
-    setFormError("")
+    setModalMode("add"); setSelectedMapel(null)
+    setFormNama(""); setFormKode(""); setFormDeskripsi(""); setFormError("")
   }
 
   const openEditModal = (mapel: MapelSimple) => {
-    setModalMode("edit")
-    setSelectedMapel(mapel)
-    setFormNama(mapel.nama)
-    setFormKode(mapel.kode || "")
-    setFormDeskripsi(mapel.deskripsi || "")
-    setFormError("")
+    setModalMode("edit"); setSelectedMapel(mapel)
+    setFormNama(mapel.nama); setFormKode(mapel.kode || "")
+    setFormDeskripsi(mapel.deskripsi || ""); setFormError("")
   }
 
-  const closeModal = () => {
-    setModalMode(null)
-    setSelectedMapel(null)
-    setFormError("")
-  }
+  const closeModal = () => { setModalMode(null); setSelectedMapel(null); setFormError("") }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError("")
     setSaving(true)
-
     const trimmedNama = formNama.trim()
-    if (!trimmedNama) {
-      setFormError("Nama mata pelajaran wajib diisi")
-      setSaving(false)
-      return
-    }
-
+    if (!trimmedNama) { setFormError("Nama mata pelajaran wajib diisi"); setSaving(false); return }
     try {
-      const payload = {
-        nama: trimmedNama,
-        kode: formKode.trim() || null,
-        deskripsi: formDeskripsi.trim() || null,
-      }
-
+      const payload = { nama: trimmedNama, kode: formKode.trim() || null, deskripsi: formDeskripsi.trim() || null }
       if (modalMode === "add") {
-        const { data: newMapel, error: createError } = await supabase
-          .from("mata_pelajaran")
-          .insert(payload)
-          .select("id, nama, kode, deskripsi")
-          .single()
-
+        const { error: createError } = await supabase.from("mata_pelajaran").insert(payload).select("id, nama, kode, deskripsi").single()
         if (createError) {
-          if (createError.code === "23505") { // unique violation
-            setFormError(`Mata pelajaran "${trimmedNama}" sudah ada`)
-            setSaving(false)
-            return
-          }
+          if (createError.code === "23505") { setFormError(`"${trimmedNama}" sudah ada`); setSaving(false); return }
           throw createError
         }
-
         setToast({ message: "Mata pelajaran berhasil ditambahkan", type: "success" })
-        closeModal()
-        loadMapel()
+        closeModal(); loadMapel()
       } else {
-        const { data: updatedMapel, error: updateError } = await supabase
-          .from("mata_pelajaran")
-          .update(payload)
-          .eq("id", selectedMapel!.id)
-          .select("id, nama, kode, deskripsi")
-          .single()
-
+        const { error: updateError } = await supabase.from("mata_pelajaran").update(payload).eq("id", selectedMapel!.id).select("id, nama, kode, deskripsi").single()
         if (updateError) {
-          if (updateError.code === "23505") {
-            setFormError(`Mata pelajaran "${trimmedNama}" sudah ada`)
-            setSaving(false)
-            return
-          }
+          if (updateError.code === "23505") { setFormError(`"${trimmedNama}" sudah ada`); setSaving(false); return }
           throw updateError
         }
-
         setToast({ message: "Mata pelajaran berhasil diperbarui", type: "success" })
-        closeModal()
-        loadMapel()
+        closeModal(); loadMapel()
       }
     } catch (err: any) {
-      console.error("Save mapel error:", err)
       setFormError(err.message || "Gagal menyimpan")
     } finally {
       setSaving(false)
@@ -169,11 +109,7 @@ export default function AdminMapelPage() {
   }
 
   const openDeleteConfirm = async (mapel: MapelSimple) => {
-    setDeletingMapel(mapel)
-    setShowDeleteModal(true)
-    setFormError("") // reset error state
-
-    // Check dependencies in background to show informative message
+    setDeletingMapel(mapel); setShowDeleteModal(true); setFormError("")
     try {
       const [guruRes, soalRes, patokanRes, bobotRes, validatorRes] = await Promise.all([
         supabase.from("psat_guru_data").select("id", { count: "exact", head: true }).eq("mapel_id", mapel.id),
@@ -182,17 +118,9 @@ export default function AdminMapelPage() {
         supabase.from("bobot_config").select("id", { count: "exact", head: true }).eq("mapel_id", mapel.id),
         supabase.from("psat_validator_mapel").select("id", { count: "exact", head: true }).eq("mapel_id", mapel.id),
       ])
-
-      const guruCount = guruRes.count || 0
-      const soalCount = soalRes.count || 0
-      const patokanCount = patokanRes.count || 0
-      const bobotCount = bobotRes.count || 0
-      const validatorCount = validatorRes.count || 0
-
-      const totalDeps = guruCount + soalCount + patokanCount + bobotCount + validatorCount
-
+      const totalDeps = (guruRes.count || 0) + (soalRes.count || 0) + (patokanRes.count || 0) + (bobotRes.count || 0) + (validatorRes.count || 0)
       if (totalDeps > 0) {
-        setFormError(`blocked|${guruCount}|${soalCount}|${patokanCount}|${bobotCount}|${validatorCount}`)
+        setFormError(`blocked|${guruRes.count || 0}|${soalRes.count || 0}|${patokanRes.count || 0}|${bobotRes.count || 0}|${validatorRes.count || 0}`)
       }
     } catch (err) {
       console.error("Dependency check error:", err)
@@ -202,63 +130,62 @@ export default function AdminMapelPage() {
   const handleDelete = async () => {
     if (!deletingMapel) return
     setDeleting(true)
-
     try {
-      const { error } = await supabase
-        .from("mata_pelajaran")
-        .delete()
-        .eq("id", deletingMapel.id)
-
+      const { error } = await supabase.from("mata_pelajaran").delete().eq("id", deletingMapel.id)
       if (error) {
-        // If delete fails due to constraints, show error
-        if (error.code === "23503") { // foreign key violation
-          setFormError("delete_blocked")
-        }
+        if (error.code === "23503") setFormError("delete_blocked")
         throw error
       }
-
       setToast({ message: "Mata pelajaran berhasil dihapus", type: "success" })
-      setShowDeleteModal(false)
-      setDeletingMapel(null)
-      loadMapel()
+      setShowDeleteModal(false); setDeletingMapel(null); loadMapel()
     } catch (err: any) {
-      console.error("Delete mapel error:", err)
-      // For foreign key errors, we'll show dependency info
-      if (err.code === "23503") {
-        setFormError("delete_blocked")
-      } else {
-        setFormError(err.message || "Gagal menghapus")
-      }
+      if (err.code === "23503") setFormError("delete_blocked")
+      else setFormError(err.message || "Gagal menghapus")
       setDeleting(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--color-background)" }}>
-        <p style={{ color: "var(--color-muted-foreground)" }}>Memuat...</p>
+      <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }} className="flex items-center justify-center">
+        <div className="font-display text-xl" style={{ color: "var(--pp-ink-2)" }}>Memuat...</div>
       </div>
     )
   }
 
   return (
-    <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh" }}>
-      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--psat-primary)" }}>
-        <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <a href="/dashboard/admin" className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100" style={{ color: "var(--psat-primary-fg)" }}>
-              ← Admin
-            </a>
-            <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>Mata Pelajaran</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
-              <ThemeToggle />
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
+      <header
+        className="sticky top-0 z-10"
+        style={{ backgroundColor: "var(--pp-card)", borderBottom: "1.5px solid var(--pp-ink)" }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div style={{
+              width: 40, height: 40, flexShrink: 0,
+              backgroundColor: "var(--pp-primary)",
+              border: "1.5px dashed rgba(255,255,255,0.45)",
+              borderRadius: 12,
+              boxShadow: "2px 2px 0 0 var(--pp-ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <BookMarked className="w-4 h-4 text-white" />
             </div>
+            <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
+              Mata Pelajaran
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle />
             <button
               onClick={openAddModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-[10px]"
+              style={{
+                backgroundColor: "var(--pp-mint)",
+                color: "#15803d",
+                border: "1.5px solid var(--pp-ink)",
+                boxShadow: "3px 3px 0 0 var(--pp-ink)",
+              }}
             >
               <Plus className="w-4 h-4" />
               Tambah Mapel
@@ -267,39 +194,88 @@ export default function AdminMapelPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-8 px-4">
+      <div className="max-w-4xl mx-auto px-4 pt-4 pb-1">
+        <a
+          href="/dashboard/admin"
+          className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity"
+          style={{ color: "var(--pp-muted)" }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Admin
+        </a>
+      </div>
+
+      <main className="max-w-4xl mx-auto px-4 py-4 pb-12">
         {mapelList.length === 0 ? (
-          <div className="text-center py-12" style={{ color: "var(--color-muted-foreground)" }}>
-            Belum ada mata pelajaran. Klik "Tambah Mapel" untuk membuat.
+          <div
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "4px 4px 0 0 var(--pp-ink)",
+              padding: "48px 24px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{
+              width: 52, height: 52,
+              backgroundColor: "var(--pp-bg)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 16,
+              boxShadow: "2px 2px 0 0 var(--pp-ink)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+            }}>
+              <BookMarked className="w-6 h-6" style={{ color: "var(--pp-muted)" }} />
+            </div>
+            <p className="font-display font-semibold" style={{ color: "var(--pp-ink)" }}>Belum Ada Mata Pelajaran</p>
+            <p className="text-sm mt-1" style={{ color: "var(--pp-muted)" }}>Klik "Tambah Mapel" untuk membuat.</p>
           </div>
         ) : (
-          <div className="rounded-lg border overflow-x-auto" style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}>
-            <table className="w-full text-sm">
-              <thead style={{ backgroundColor: "var(--color-muted)" }}>
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Nama</th>
-                  <th className="px-4 py-3 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Kode</th>
-                  <th className="px-4 py-3 text-left font-medium" style={{ color: "var(--color-muted-foreground)" }}>Deskripsi</th>
-                  <th className="px-4 py-3 text-center font-medium" style={{ color: "var(--color-muted-foreground)" }}>Aksi</th>
+          <div
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "6px 6px 0 0 var(--pp-ink)",
+              overflow: "hidden",
+            }}
+          >
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr style={{ backgroundColor: "var(--pp-lemon)", borderBottom: "1.5px solid var(--pp-ink)" }}>
+                  <th className="px-5 py-3 text-left font-display font-semibold" style={{ color: "var(--pp-ink)" }}>Nama</th>
+                  <th className="px-4 py-3 text-left font-display font-semibold" style={{ color: "var(--pp-ink)" }}>Kode</th>
+                  <th className="px-4 py-3 text-left font-display font-semibold" style={{ color: "var(--pp-ink)" }}>Deskripsi</th>
+                  <th className="px-4 py-3 text-center font-display font-semibold" style={{ color: "var(--pp-ink)" }}>Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y" style={{ borderColor: "var(--color-border)" }}>
+              <tbody>
                 {mapelList.map((mapel, idx) => (
-                  <tr key={mapel.id} style={{ backgroundColor: idx % 2 === 0 ? "var(--color-card)" : "var(--color-muted)" }}>
-                    <td className="px-4 py-3">
-                      <div className="font-medium" style={{ color: "var(--color-foreground)" }}>{mapel.nama}</div>
+                  <tr
+                    key={mapel.id}
+                    style={{
+                      backgroundColor: idx % 2 === 0 ? "var(--pp-card)" : "var(--pp-bg)",
+                      borderBottom: "1px solid var(--pp-line)",
+                    }}
+                  >
+                    <td className="px-5 py-3">
+                      <div className="font-semibold text-sm" style={{ color: "var(--pp-ink)" }}>{mapel.nama}</div>
                     </td>
                     <td className="px-4 py-3">
                       {mapel.kode ? (
-                        <span className="px-2 py-0.5 text-xs rounded" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
+                        <span
+                          className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: "var(--pp-lemon)", color: "var(--pp-ink)", border: "1px solid var(--pp-ink)" }}
+                        >
                           {mapel.kode}
                         </span>
                       ) : (
-                        <span style={{ color: "var(--color-muted-foreground)" }}>—</span>
+                        <span style={{ color: "var(--pp-muted)" }}>—</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-xs truncate max-w-[200px]" style={{ color: "var(--color-muted-foreground)" }}>
+                      <div className="text-xs truncate max-w-[200px]" style={{ color: "var(--pp-muted)" }}>
                         {mapel.deskripsi || "—"}
                       </div>
                     </td>
@@ -307,19 +283,29 @@ export default function AdminMapelPage() {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openEditModal(mapel)}
-                          className="p-1.5 rounded border"
-                          style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-[8px]"
+                          style={{
+                            backgroundColor: "var(--pp-lemon)",
+                            color: "#92400e",
+                            border: "1.5px solid var(--pp-ink)",
+                            boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                          }}
                           title="Edit"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => openDeleteConfirm(mapel)}
-                          className="p-1.5 rounded"
-                          style={{ color: "#dc2626" }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-[8px]"
+                          style={{
+                            backgroundColor: "var(--pp-pink)",
+                            color: "#be123c",
+                            border: "1.5px solid var(--pp-ink)",
+                            boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                          }}
                           title="Hapus"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
                     </td>
@@ -335,104 +321,133 @@ export default function AdminMapelPage() {
       {modalMode && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-lg rounded-xl border shadow-xl overflow-y-auto max-h-[90vh]"
-            style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+            className="w-full max-w-lg"
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "6px 6px 0 0 var(--pp-ink)",
+              overflow: "hidden",
+            }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
-              <div>
-                <h2 className="font-semibold text-base" style={{ color: "var(--color-foreground)" }}>
-                  {modalMode === "add" ? "Tambah Mata Pelajaran" : "Edit Mata Pelajaran"}
-                </h2>
+            <div style={{
+              backgroundColor: modalMode === "add" ? "var(--pp-mint)" : "var(--pp-lemon)",
+              borderBottom: "1.5px solid var(--pp-ink)",
+              padding: "16px 20px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
+                {modalMode === "add" ? "Tambah Mata Pelajaran" : "Edit Mata Pelajaran"}
               </div>
-              <button onClick={closeModal} style={{ color: "var(--color-muted-foreground)" }}>
+              <button onClick={closeModal} style={{ color: "var(--pp-ink-2)" }}>
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-5 space-y-4">
-              {/* Nama */}
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>
-                  Nama Mata Pelajaran <span style={{ color: "#dc2626" }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formNama}
-                  onChange={e => setFormNama(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border text-sm"
-                  style={{
-                    backgroundColor: "var(--color-input)",
-                    borderColor: formError && !formNama.trim() ? "#dc2626" : "var(--color-border)",
-                    color: "var(--color-foreground)",
-                  }}
-                  placeholder="Contoh: Matematika"
-                  autoFocus
-                />
-              </div>
+            <div className="max-h-[70vh] overflow-y-auto">
+              <form onSubmit={handleSave} className="p-5 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--pp-ink)" }}>
+                    Nama Mata Pelajaran <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formNama}
+                    onChange={e => setFormNama(e.target.value)}
+                    className="w-full px-3 py-2 rounded-[10px] text-sm"
+                    style={{
+                      backgroundColor: "var(--pp-bg)",
+                      border: formError && !formNama.trim() ? "1.5px solid #dc2626" : "1.5px solid var(--pp-ink)",
+                      color: "var(--pp-ink)",
+                      outline: "none",
+                    }}
+                    onFocus={e => { e.currentTarget.style.boxShadow = "2px 2px 0 0 var(--pp-primary)" }}
+                    onBlur={e => { e.currentTarget.style.boxShadow = "none" }}
+                    placeholder="Contoh: Matematika"
+                    autoFocus
+                  />
+                </div>
 
-              {/* Kode */}
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>
-                  Kode (opsional)
-                </label>
-                <input
-                  type="text"
-                  value={formKode}
-                  onChange={e => setFormKode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border text-sm"
-                  style={{ backgroundColor: "var(--color-input)", borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                  placeholder="Contoh: MTK"
-                  maxLength={20}
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--pp-ink)" }}>
+                    Kode{" "}
+                    <span style={{ color: "var(--pp-muted)", fontWeight: 400 }}>(opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formKode}
+                    onChange={e => setFormKode(e.target.value)}
+                    className="w-full px-3 py-2 rounded-[10px] text-sm"
+                    style={{
+                      backgroundColor: "var(--pp-bg)",
+                      border: "1.5px solid var(--pp-ink)",
+                      color: "var(--pp-ink)",
+                      outline: "none",
+                    }}
+                    onFocus={e => { e.currentTarget.style.boxShadow = "2px 2px 0 0 var(--pp-primary)" }}
+                    onBlur={e => { e.currentTarget.style.boxShadow = "none" }}
+                    placeholder="Contoh: MTK"
+                    maxLength={20}
+                  />
+                </div>
 
-              {/* Deskripsi */}
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: "var(--color-foreground)" }}>
-                  Deskripsi (opsional)
-                </label>
-                <textarea
-                  value={formDeskripsi}
-                  onChange={e => setFormDeskripsi(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border text-sm"
-                  style={{
-                    backgroundColor: "var(--color-input)",
-                    borderColor: "var(--color-border)",
-                    color: "var(--color-foreground)",
-                  }}
-                  placeholder="Deskripsi singkat..."
-                  rows={3}
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: "var(--pp-ink)" }}>
+                    Deskripsi{" "}
+                    <span style={{ color: "var(--pp-muted)", fontWeight: 400 }}>(opsional)</span>
+                  </label>
+                  <textarea
+                    value={formDeskripsi}
+                    onChange={e => setFormDeskripsi(e.target.value)}
+                    className="w-full px-3 py-2 rounded-[10px] text-sm"
+                    style={{
+                      backgroundColor: "var(--pp-bg)",
+                      border: "1.5px solid var(--pp-ink)",
+                      color: "var(--pp-ink)",
+                      outline: "none",
+                      resize: "vertical",
+                    }}
+                    onFocus={e => { e.currentTarget.style.boxShadow = "2px 2px 0 0 var(--pp-primary)" }}
+                    onBlur={e => { e.currentTarget.style.boxShadow = "none" }}
+                    placeholder="Deskripsi singkat..."
+                    rows={3}
+                  />
+                </div>
 
-              {formError && (
-                <p className="text-sm" style={{ color: "#dc2626" }}>{formError}</p>
-              )}
+                {formError && (
+                  <p className="text-sm" style={{ color: "#dc2626" }}>{formError}</p>
+                )}
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 py-2 px-4 rounded-md text-sm font-medium border"
-                  style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
-                  style={{ backgroundColor: "var(--color-primary)", color: "var(--color-primary-foreground)" }}
-                >
-                  {saving ? "Menyimpan..." : modalMode === "add" ? "Tambah" : "Simpan"}
-                </button>
-              </div>
-            </form>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 py-2 px-4 rounded-[10px] text-sm font-semibold"
+                    style={{ backgroundColor: "var(--pp-bg)", color: "var(--pp-ink)", border: "1.5px solid var(--pp-ink)" }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 py-2 px-4 rounded-[10px] text-sm font-semibold disabled:opacity-50"
+                    style={{
+                      backgroundColor: "var(--pp-ink)",
+                      color: "#fff",
+                      border: "1.5px solid var(--pp-ink)",
+                      boxShadow: "3px 3px 0 0 rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    {saving ? "Menyimpan..." : modalMode === "add" ? "Tambah" : "Simpan"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -441,85 +456,110 @@ export default function AdminMapelPage() {
       {showDeleteModal && deletingMapel && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
           onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
         >
           <div
-            className="w-full max-w-md rounded-xl border shadow-xl"
-            style={{ backgroundColor: "var(--color-card)", borderColor: "var(--color-border)" }}
+            className="w-full max-w-md"
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "1.5px solid var(--pp-ink)",
+              borderRadius: 22,
+              boxShadow: "6px 6px 0 0 var(--pp-ink)",
+              overflow: "hidden",
+            }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--color-border)" }}>
-              <h2 className="font-semibold text-base flex items-center gap-2" style={{ color: "var(--color-foreground)" }}>
-                <Trash2 className="w-4 h-4" style={{ color: "#dc2626" }} />
-                Hapus Mata Pelajaran
-              </h2>
-              <button onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }} style={{ color: "var(--color-muted-foreground)" }}>
+            <div style={{
+              backgroundColor: "var(--pp-pink)",
+              borderBottom: "1.5px solid var(--pp-ink)",
+              padding: "16px 20px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4" style={{ color: "#be123c" }} />
+                <div className="font-display font-semibold text-base" style={{ color: "var(--pp-ink)" }}>
+                  Hapus Mata Pelajaran
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
+                style={{ color: "var(--pp-ink-2)" }}
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="p-5">
               {formError && formError.startsWith("blocked|") ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
-                    Tidak dapat menghapus mata pelajaran ini karena masih digunakan:
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold" style={{ color: "#be123c" }}>
+                    Tidak dapat menghapus — masih digunakan:
                   </p>
-                  <ul className="text-sm list-disc list-inside space-y-1" style={{ color: "var(--color-muted-foreground)" }}>
+                  <div className="space-y-1.5">
                     {(() => {
                       const parts = formError.split("|")
                       const [, guru, soal, patokan, bobot, validator] = parts
                       return [
-                        guru && Number(guru) > 0 && `${guru} guru terdaftar`,
-                        soal && Number(soal) > 0 && `${soal} soal bank`,
-                        patokan && Number(patokan) > 0 && `${patokan} entri patokan`,
-                        bobot && Number(bobot) > 0 && `${bobot} konfigurasi bobot (akan ter-hapus otomatis)`,
-                        validator && Number(validator) > 0 && `${validator} penugasan validator (akan ter-hapus otomatis)`,
-                      ].filter(Boolean)
+                        Number(guru) > 0 && { label: `${guru} guru terdaftar`, blocked: true },
+                        Number(soal) > 0 && { label: `${soal} soal bank`, blocked: true },
+                        Number(patokan) > 0 && { label: `${patokan} entri patokan`, blocked: true },
+                        Number(bobot) > 0 && { label: `${bobot} konfigurasi bobot (akan terhapus otomatis)`, blocked: false },
+                        Number(validator) > 0 && { label: `${validator} penugasan validator (akan terhapus otomatis)`, blocked: false },
+                      ].filter(Boolean).map((item: any, i) => (
+                        <div
+                          key={i}
+                          className="px-3 py-1.5 rounded-[8px] text-xs font-medium"
+                          style={{
+                            backgroundColor: item.blocked ? "var(--pp-pink)" : "var(--pp-lemon)",
+                            color: item.blocked ? "#be123c" : "#92400e",
+                            border: "1px solid var(--pp-ink)",
+                          }}
+                        >
+                          {item.label}
+                        </div>
+                      ))
                     })()}
-                  </ul>
-                  <p className="text-xs mt-3" style={{ color: "var(--color-muted-foreground)" }}>
-                    Silakan hapus, ubah, atau pindahkan data terkait terlebih dahulu sebelum menghapus mata pelajaran ini.
+                  </div>
+                  <p className="text-xs" style={{ color: "var(--pp-muted)" }}>
+                    Hapus atau pindahkan data terkait terlebih dahulu.
                   </p>
                 </div>
-              ) : formError && formError === "delete_blocked" ? (
+              ) : formError === "delete_blocked" ? (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
-                    Gagal menghapus: Mata pelajaran masih memiliki data terikat.
+                  <p className="text-sm font-semibold" style={{ color: "#be123c" }}>
+                    Gagal menghapus: data terikat masih ada.
                   </p>
-                  <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-                    Hapus atau reassign data guru, soal, patokan, bobot, dan validator yang terkait terlebih dahulu.
+                  <p className="text-xs" style={{ color: "var(--pp-muted)" }}>
+                    Hapus atau reassign data guru, soal, patokan, bobot, dan validator terlebih dahulu.
                   </p>
                 </div>
               ) : (
-                <p className="text-sm" style={{ color: "var(--color-foreground)" }}>
+                <p className="text-sm" style={{ color: "var(--pp-ink)" }}>
                   Apakah Anda yakin ingin menghapus <strong>{deletingMapel?.nama}</strong>? Tindakan ini tidak dapat dibatalkan.
                 </p>
               )}
             </div>
 
-            <div className="flex gap-2 px-5 py-4 border-t" style={{ borderColor: "var(--color-border)" }}>
+            <div className="flex gap-3 px-5 py-4" style={{ borderTop: "1.5px solid var(--pp-ink)" }}>
               <button
                 onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
-                className="flex-1 py-2 px-4 rounded-md text-sm font-medium border"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-foreground)" }}
+                className="flex-1 py-2 px-4 rounded-[10px] text-sm font-semibold"
+                style={{ backgroundColor: "var(--pp-bg)", color: "var(--pp-ink)", border: "1.5px solid var(--pp-ink)" }}
               >
-                Batal
+                {formError ? "Kembali" : "Batal"}
               </button>
-              {formError ? (
-                <button
-                  onClick={() => { setShowDeleteModal(false); setDeletingMapel(null); setFormError("") }}
-                  className="flex-1 py-2 px-4 rounded-md text-sm font-medium"
-                  style={{ backgroundColor: "var(--color-muted)", color: "var(--color-foreground)" }}
-                >
-                  Kembali
-                </button>
-              ) : (
+              {!formError && (
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="flex-1 py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
-                  style={{ backgroundColor: "#dc2626", color: "#ffffff" }}
+                  className="flex-1 py-2 px-4 rounded-[10px] text-sm font-semibold disabled:opacity-50"
+                  style={{
+                    backgroundColor: "var(--pp-pink)",
+                    color: "#be123c",
+                    border: "1.5px solid var(--pp-ink)",
+                    boxShadow: "3px 3px 0 0 var(--pp-ink)",
+                  }}
                 >
                   {deleting ? "Menghapus..." : "Hapus"}
                 </button>
