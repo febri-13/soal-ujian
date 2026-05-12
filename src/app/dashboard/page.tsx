@@ -6,16 +6,16 @@ import {
   Check, X,
   User, LayoutGrid, PenSquare, FileText,
   CheckSquare, Settings, Users, Bell,
-  AlertTriangle, AlertCircle, CheckCircle, Lightbulb,
-  LogOut, Lock, BookOpen,
+  AlertCircle, CheckCircle, Lightbulb,
+  LogOut, Lock, BookOpen, ArrowRight,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import ThemeToggle from "@/components/ThemeToggle"
 
-const TIPE_OPTIONS = ["pilgan", "ceklist", "essay"]
+const TIPE_OPTIONS     = ["pilgan", "ceklist", "essay"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
-interface User {
+interface UserData {
   id: string
   email: string
   nama: string | null
@@ -23,22 +23,54 @@ interface User {
   role: string | null
 }
 
+/* ── pastel colours per card slot ── */
+const GURU_STEP_COLORS = [
+  { bg: "#ECE4FF", iconBg: "#C9B8FF", iconColor: "#2E1A6B", blob: "#C9B8FF", border: "#C9B8FF" }, // lilac — Profil
+  { bg: "#FFF5C6", iconBg: "#FFE072", iconColor: "#5A4500", blob: "#FFE072", border: "#FFE072" }, // lemon — Matrix
+  { bg: "#DAF5E7", iconBg: "#9DE3C4", iconColor: "#0E4A2F", blob: "#9DE3C4", border: "#9DE3C4" }, // mint  — Soal
+  { bg: "#FFE3D0", iconBg: "#FFB68A", iconColor: "#6B2D00", blob: "#FFB68A", border: "#FFB68A" }, // peach — Dokumen
+]
+
+const ADMIN_MENU_COLORS = [
+  { bg: "#DAF5E7", iconBg: "#9DE3C4", iconColor: "#0E4A2F" }, // mint  — Validasi
+  { bg: "#FFF5C6", iconBg: "#FFE072", iconColor: "#5A4500" }, // lemon — Patokan
+  { bg: "#FFE3D0", iconBg: "#FFB68A", iconColor: "#6B2D00" }, // peach — Mapel
+  { bg: "#ECE4FF", iconBg: "#C9B8FF", iconColor: "#2E1A6B" }, // lilac — Matrix
+  { bg: "#FFD9E6", iconBg: "#FFA6C5", iconColor: "#6B0E33" }, // pink  — Users
+]
+
+const STAT_VARIANTS = [
+  { bg: "#ECE4FF", iconBg: "#C9B8FF", iconColor: "#2E1A6B", blob: "#C9B8FF" }, // Total   lilac
+  { bg: "#FFF5C6", iconBg: "#FFE072", iconColor: "#5A4500", blob: "#FFE072" }, // Draft   lemon
+  { bg: "#FFE3D0", iconBg: "#FFB68A", iconColor: "#6B2D00", blob: "#FFB68A" }, // Subm.   peach
+  { bg: "#DAF5E7", iconBg: "#9DE3C4", iconColor: "#0E4A2F", blob: "#9DE3C4" }, // Approv. mint
+  { bg: "#FFD9E6", iconBg: "#FFA6C5", iconColor: "#6B0E33", blob: "#FFA6C5" }, // Revisi  pink
+]
+
+const AVATAR_BG = ["#FFB68A","#9DE3C4","#C9B8FF","#FFE072","#FFA6C5"]
+const AVATAR_FG = ["#6B2D00","#0E4A2F","#2E1A6B","#5A4500","#6B0E33"]
+
+function getAvatarColors(name: string | null | undefined) {
+  const idx = name ? name.charCodeAt(0) % 5 : 0
+  return { bg: AVATAR_BG[idx], color: AVATAR_FG[idx] }
+}
+
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [hasProfile, setHasProfile] = useState(false)
+  const [user, setUser]                         = useState<UserData | null>(null)
+  const [hasProfile, setHasProfile]             = useState(false)
   const [hasValidatorProfile, setHasValidatorProfile] = useState(false)
-  const [hasMatrix, setHasMatrix] = useState(false)
-  const [submittedCount, setSubmittedCount] = useState(0)
-  const [approvedCount, setApprovedCount] = useState(0)
-  const [revisionCount, setRevisionCount] = useState(0)
-  const [mapelCounts, setMapelCounts] = useState<Record<string, number>>({})
-  const [mapelNames, setMapelNames] = useState<Record<string, string>>({})
-  const [guruSoalStats, setGuruSoalStats] = useState({ total: 0, submitted: 0, approved: 0, needs_revision: 0, draft: 0 })
-  const [soalCounts, setSoalCounts] = useState<Record<string, number>>({})
-  const [patokan, setPatokan] = useState<Record<string, number>>({})
-  const [targetBank, setTargetBank] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [hasMatrix, setHasMatrix]               = useState(false)
+  const [submittedCount, setSubmittedCount]     = useState(0)
+  const [approvedCount, setApprovedCount]       = useState(0)
+  const [revisionCount, setRevisionCount]       = useState(0)
+  const [mapelCounts, setMapelCounts]           = useState<Record<string, number>>({})
+  const [mapelNames, setMapelNames]             = useState<Record<string, string>>({})
+  const [guruSoalStats, setGuruSoalStats]       = useState({ total: 0, submitted: 0, approved: 0, needs_revision: 0, draft: 0 })
+  const [soalCounts, setSoalCounts]             = useState<Record<string, number>>({})
+  const [patokan, setPatokan]                   = useState<Record<string, number>>({})
+  const [targetBank, setTargetBank]             = useState(0)
+  const [loading, setLoading]                   = useState(true)
 
   useEffect(() => {
     async function checkAuth() {
@@ -58,8 +90,7 @@ export default function DashboardPage() {
         .from("profiles").select("nama, role, no_hp, kelas").eq("id", u.id).maybeSingle()
 
       setUser({
-        id: u.id,
-        email: u.email || "",
+        id: u.id, email: u.email || "",
         nama: u.user_metadata?.nama || fullProfile?.nama || null,
         username: u.user_metadata?.username || null,
         role: fullProfile?.role || "guru",
@@ -118,7 +149,7 @@ export default function DashboardPage() {
           let i = 0
           tipes.forEach((t: string) => tingkatans.forEach((k: string) => {
             p[`${t}_${k}_keluar`] = parseInt(keluarArr[i]) || 0
-            p[`${t}_${k}_bank`] = parseInt(bankArr[i]) || 0
+            p[`${t}_${k}_bank`]   = parseInt(bankArr[i])   || 0
             i++
           }))
           setPatokan(p)
@@ -131,8 +162,8 @@ export default function DashboardPage() {
         const stats = { total: guruSoal.length, submitted: 0, approved: 0, needs_revision: 0, draft: 0 }
         const sc: Record<string, number> = {}
         guruSoal.forEach(s => {
-          if (s.status === "submitted") stats.submitted++
-          else if (s.status === "approved") stats.approved++
+          if (s.status === "submitted")      stats.submitted++
+          else if (s.status === "approved")  stats.approved++
           else if (s.status === "needs_revision") stats.needs_revision++
           else stats.draft++
           if (s.tipe && s.tingkat_kesulitan) {
@@ -168,194 +199,253 @@ export default function DashboardPage() {
     router.push(path)
   }
 
+  /* ── Loading ── */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--psat-bg)" }}>
-        <p style={{ color: "var(--psat-muted)" }}>Memuat...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--pp-bg)" }}>
+        <div className="text-center space-y-3">
+          <div className="font-display font-semibold text-2xl" style={{ color: "var(--pp-ink)" }}>Memuat...</div>
+          <div style={{ color: "var(--pp-muted)", fontSize: "14px" }}>Menyiapkan dashboard Anda</div>
+        </div>
       </div>
     )
   }
 
-  const userRole = user?.role || "guru"
-  const isAdmin = userRole === "admin"
+  const userRole  = user?.role || "guru"
+  const isAdmin   = userRole === "admin"
   const isValidator = userRole === "validator"
 
-   const adminMenuItems = [
-     ...(isValidator ? [{
-       icon: <User className="w-5 h-5" />,
-       label: "Profil",
-       desc: hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu",
-       done: hasValidatorProfile,
-       locked: false,
-       path: "/dashboard/profile",
-       color: "var(--psat-primary-light)",
-     }] : []),
-     {
-       icon: <CheckSquare className="w-5 h-5" />,
-       label: "Validasi",
-       desc: isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu",
-       done: false,
-       locked: !isAdmin && !hasValidatorProfile,
-       path: "/dashboard/validasi",
-       color: "var(--psat-green)",
-     },
-     ...(isAdmin ? [
-       {
-         icon: <Settings className="w-5 h-5" />,
-         label: "Patokan Soal",
-         desc: "Atur target soal per mapel",
-         done: false,
-         locked: false,
-         path: "/dashboard/admin",
-         color: "var(--psat-teal)",
-       },
-       {
-         icon: <BookOpen className="w-5 h-5" />,
-         label: "Mata Pelajaran",
-         desc: "Kelola daftar mata pelajaran",
-         done: false,
-         locked: false,
-         path: "/dashboard/admin/mapel",
-         color: "var(--psat-amber)",
-       },
-       {
-         icon: <LayoutGrid className="w-5 h-5" />,
-         label: "Matrix Guru",
-         desc: "Kelola & hapus matrix guru",
-         done: false,
-         locked: false,
-         path: "/dashboard/admin/matrix",
-         color: "var(--psat-cyan)",
-       },
-       {
-         icon: <Users className="w-5 h-5" />,
-         label: "Users",
-         desc: "Kelola users & roles",
-         done: false,
-         locked: false,
-         path: "/admin/users",
-         color: "var(--psat-burgundy)",
-       },
-     ] : []),
-   ]
+  const avatarCol = getAvatarColors(user?.nama)
+  const displayName = user?.nama || user?.username || userRole
 
+  /* ── Role badge ── */
+  const roleBadge = isAdmin
+    ? { label: "Admin", bg: "#FFD9E6", color: "#6B0E33", border: "#FFA6C5" }
+    : isValidator
+    ? { label: "Validator", bg: "#DAF5E7", color: "#0E4A2F", border: "#9DE3C4" }
+    : { label: "Guru", bg: "#ECE4FF", color: "#2E1A6B", border: "#C9B8FF" }
+
+  /* ── Admin/Validator menu items ── */
+  const adminMenuItems = [
+    ...(isValidator ? [{
+      icon: <User className="w-5 h-5" />,
+      label: "Profil",
+      desc: hasValidatorProfile ? "Data diri lengkap" : "Lengkapi data diri dulu",
+      done: hasValidatorProfile,
+      locked: false,
+      path: "/dashboard/profile",
+      ci: ADMIN_MENU_COLORS[0],
+    }] : []),
+    {
+      icon: <CheckSquare className="w-5 h-5" />,
+      label: "Validasi",
+      desc: isAdmin || hasValidatorProfile ? "Review & approve soal" : "Lengkapi profil dulu",
+      done: false,
+      locked: !isAdmin && !hasValidatorProfile,
+      path: "/dashboard/validasi",
+      ci: ADMIN_MENU_COLORS[0],
+    },
+    ...(isAdmin ? [
+      {
+        icon: <Settings className="w-5 h-5" />,
+        label: "Patokan Soal",
+        desc: "Atur target soal per mapel",
+        done: false, locked: false,
+        path: "/dashboard/admin",
+        ci: ADMIN_MENU_COLORS[1],
+      },
+      {
+        icon: <BookOpen className="w-5 h-5" />,
+        label: "Mata Pelajaran",
+        desc: "Kelola daftar mata pelajaran",
+        done: false, locked: false,
+        path: "/dashboard/admin/mapel",
+        ci: ADMIN_MENU_COLORS[2],
+      },
+      {
+        icon: <LayoutGrid className="w-5 h-5" />,
+        label: "Matrix Guru",
+        desc: "Kelola & hapus matrix guru",
+        done: false, locked: false,
+        path: "/dashboard/admin/matrix",
+        ci: ADMIN_MENU_COLORS[3],
+      },
+      {
+        icon: <Users className="w-5 h-5" />,
+        label: "Users",
+        desc: "Kelola users & roles",
+        done: false, locked: false,
+        path: "/admin/users",
+        ci: ADMIN_MENU_COLORS[4],
+      },
+    ] : []),
+  ]
+
+  /* ── Guru steps ── */
   const guruSteps = [
     {
-      step: 1, icon: <User className="w-5 h-5" />, label: "Profil",
-      desc: hasProfile ? "Data diri lengkap" : "Data diri (WA, Bank, Rekening)",
-      done: hasProfile, locked: false, path: "/dashboard/profile",
-      color: "var(--psat-primary-light)",
+      step: 1, icon: <User className="w-5 h-5" />,
+      label: "Profil", desc: hasProfile ? "Data diri sudah lengkap" : "Data diri (WA, Bank, Rekening)",
+      done: hasProfile, locked: false, path: "/dashboard/profile", ci: GURU_STEP_COLORS[0],
     },
     {
-      step: 2, icon: <LayoutGrid className="w-5 h-5" />, label: "Matrix",
-      desc: hasProfile ? "Pemetaan jumlah soal" : "Lengkapi data diri dulu",
-      done: hasMatrix, locked: !hasProfile, path: "/dashboard/matrix",
-      color: "var(--psat-amber)",
+      step: 2, icon: <LayoutGrid className="w-5 h-5" />,
+      label: "Matrix", desc: hasProfile ? "Pemetaan jumlah soal" : "Lengkapi profil dulu",
+      done: hasMatrix, locked: !hasProfile, path: "/dashboard/matrix", ci: GURU_STEP_COLORS[1],
     },
     {
-      step: 3, icon: <PenSquare className="w-5 h-5" />, label: "Soal",
-      desc: hasMatrix ? "Input soal ujian" : "Selesaikan matrix dulu",
-      done: false, locked: !hasMatrix, path: "/dashboard/soal",
-      color: "var(--psat-green)",
+      step: 3, icon: <PenSquare className="w-5 h-5" />,
+      label: "Soal", desc: hasMatrix ? "Input soal ujian" : "Selesaikan matrix dulu",
+      done: false, locked: !hasMatrix, path: "/dashboard/soal", ci: GURU_STEP_COLORS[2],
     },
     {
-      step: 4, icon: <FileText className="w-5 h-5" />, label: "Dokumen",
-      desc: "Kisi-kisi & Glossary",
-      done: false, locked: false, path: "/dashboard/dokumen",
-      color: "var(--psat-teal)",
+      step: 4, icon: <FileText className="w-5 h-5" />,
+      label: "Dokumen", desc: "Kisi-kisi & Glossary",
+      done: false, locked: false, path: "/dashboard/dokumen", ci: GURU_STEP_COLORS[3],
     },
   ]
 
-  const soalStatCards = [
-    { label: "Total",       value: guruSoalStats.total,         color: "var(--psat-primary)",     bg: "var(--psat-primary-tint)",  icon: <FileText className="w-4 h-4" /> },
-    { label: "Draft",       value: guruSoalStats.draft,         color: "var(--psat-muted)",       bg: "var(--psat-neutral-tint)",  icon: <PenSquare className="w-4 h-4" /> },
-    { label: "Submitted",   value: guruSoalStats.submitted,     color: "var(--psat-yellow-text)", bg: "var(--psat-yellow-tint)",   icon: <Bell className="w-4 h-4" /> },
-    { label: "Approved",    value: guruSoalStats.approved,      color: "var(--psat-green-text)",  bg: "var(--psat-green-tint)",    icon: <CheckCircle className="w-4 h-4" /> },
-    { label: "Perlu Revisi",value: guruSoalStats.needs_revision,color: "var(--psat-red)",         bg: "var(--psat-red-tint)",      icon: <AlertCircle className="w-4 h-4" /> },
+  /* ── Stat cards for guru ── */
+  const statCards = [
+    { label: "Total",        value: guruSoalStats.total,          icon: <FileText className="w-5 h-5" />,    vi: STAT_VARIANTS[0] },
+    { label: "Draft",        value: guruSoalStats.draft,          icon: <PenSquare className="w-5 h-5" />,   vi: STAT_VARIANTS[1] },
+    { label: "Submitted",    value: guruSoalStats.submitted,      icon: <Bell className="w-5 h-5" />,        vi: STAT_VARIANTS[2] },
+    { label: "Approved",     value: guruSoalStats.approved,       icon: <CheckCircle className="w-5 h-5" />, vi: STAT_VARIANTS[3] },
+    { label: "Perlu Revisi", value: guruSoalStats.needs_revision, icon: <AlertCircle className="w-5 h-5" />, vi: STAT_VARIANTS[4] },
   ]
+
+  const progPct = targetBank > 0 ? Math.min(100, Math.round((guruSoalStats.total / targetBank) * 100)) : 0
+  const progGradient = progPct >= 80
+    ? "linear-gradient(90deg,#9DE3C4,#34A86E)"
+    : progPct >= 40
+    ? "linear-gradient(90deg,#FFE072,#C99A14)"
+    : "linear-gradient(90deg,#FFC9C9,#DC4F4F)"
 
   return (
-    <div style={{ backgroundColor: "var(--psat-bg)", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
 
-      {/* Header */}
-      <header style={{ backgroundColor: "var(--psat-primary)" }}>
-        <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold" style={{ color: "var(--psat-primary-fg)" }}>PSAT Dashboard</h1>
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-10" style={{ backgroundColor: "var(--pp-card)", borderBottom: "1px solid var(--pp-line)" }}>
+        <div className="max-w-7xl mx-auto px-6 md:px-8 py-4 flex items-center justify-between gap-4">
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <div style={{
+              width: "44px", height: "44px", borderRadius: "14px",
+              backgroundColor: "var(--pp-primary)",
+              display: "grid", placeItems: "center",
+              color: "white", position: "relative",
+              boxShadow: "0 4px 0 0 #1A2F8B", flexShrink: 0,
+            }}>
+              <BookOpen className="w-5 h-5" />
+              <div style={{
+                position: "absolute", inset: "6px", borderRadius: "10px",
+                border: "1.5px dashed rgba(255,255,255,0.45)", pointerEvents: "none",
+              }} />
+            </div>
+            <div className="hidden sm:block">
+              <div className="font-bold text-sm leading-tight" style={{ color: "var(--pp-ink)" }}>PSAT Dashboard</div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--pp-muted)" }}>Portal Validasi Soal Al Abidin</div>
+            </div>
+          </div>
+
+          {/* Actions */}
           <div className="flex items-center gap-2">
-            <div className="[&_button]:bg-transparent [&_button]:border-white/30 [&_button]:text-white">
+            <div className="[&_button]:rounded-full [&_button]:text-xs">
               <ThemeToggle />
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md border logout-btn"
+              className="flex items-center gap-2 text-sm font-semibold"
+              style={{
+                backgroundColor: "var(--pp-ink)", color: "white",
+                padding: "10px 16px", borderRadius: "999px",
+                border: "none", cursor: "pointer",
+                boxShadow: "0 3px 0 0 rgba(0,0,0,0.4)",
+                fontFamily: "inherit",
+              }}
             >
-              <LogOut className="w-4 h-4" />
-              Logout
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-8 px-4">
+      <main className="max-w-7xl mx-auto px-6 md:px-8 py-8 space-y-6">
 
-        {/* Welcome card */}
-        <div className="rounded-xl p-6 border mb-6 flex items-start gap-4"
-          style={{ backgroundColor: "var(--psat-card)", borderColor: "var(--psat-border)" }}>
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 font-bold text-lg"
-            style={{ backgroundColor: "var(--psat-primary)", color: "var(--psat-primary-fg)" }}
-          >
+        {/* ── Welcome card ── */}
+        <div className="rounded-[22px] shadow-hard-md p-6 flex items-start gap-5"
+             style={{ backgroundColor: "var(--pp-card)", border: "1.5px solid var(--pp-ink)" }}>
+          {/* Avatar */}
+          <div style={{
+            width: "56px", height: "56px", borderRadius: "50%",
+            backgroundColor: avatarCol.bg, color: avatarCol.color,
+            display: "grid", placeItems: "center",
+            fontWeight: 700, fontSize: "20px",
+            border: "1.5px solid var(--pp-ink)", flexShrink: 0,
+          }}>
             {(user?.nama || user?.email || "?")[0].toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold" style={{ color: "var(--psat-primary)" }}>
-              Selamat datang, {user?.nama || user?.username || userRole}!
-            </h2>
-            <p className="text-sm" style={{ color: "var(--psat-muted)" }}>{user?.email}</p>
-            <span
-              className="inline-block mt-1 px-2 py-0.5 text-xs rounded-full font-medium"
-              style={{
-                backgroundColor: isAdmin ? "var(--psat-burgundy)" : isValidator ? "var(--psat-teal)" : "var(--psat-cyan)",
-                color: "var(--psat-primary-fg)",
-              }}
-            >
-              {userRole}
-            </span>
 
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="font-display font-semibold" style={{ fontSize: "22px", color: "var(--pp-ink)", margin: 0 }}>
+                Selamat datang, {displayName}!
+              </h2>
+              <span style={{
+                fontSize: "11px", fontWeight: 700,
+                padding: "3px 10px", borderRadius: "999px",
+                backgroundColor: roleBadge.bg, color: roleBadge.color,
+                border: `1px solid ${roleBadge.border}`,
+                textTransform: "uppercase", letterSpacing: "0.08em",
+              }}>
+                {roleBadge.label}
+              </span>
+            </div>
+            <p className="mt-0.5 text-sm" style={{ color: "var(--pp-muted)" }}>{user?.email}</p>
+
+            {/* Incomplete profile warning */}
             {!isAdmin && !isValidator && !hasProfile && (
-              <div className="flex items-center gap-1.5 mt-2 text-sm" style={{ color: "var(--psat-red)" }}>
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                Silakan lengkapi data diri terlebih dahulu
+              <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
+                   style={{ backgroundColor: "#FFE3D0", border: "1px solid var(--pp-peach)", color: "#6B2D00" }}>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                Silakan lengkapi data diri terlebih dahulu untuk mulai input soal.
               </div>
             )}
             {isValidator && !hasValidatorProfile && (
-              <div className="flex items-center gap-1.5 mt-2 text-sm" style={{ color: "var(--psat-red)" }}>
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                Silakan lengkapi data diri sebelum mulai validasi
+              <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-sm"
+                   style={{ backgroundColor: "#FFE3D0", border: "1px solid var(--pp-peach)", color: "#6B2D00" }}>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                Silakan lengkapi data diri sebelum mulai validasi.
               </div>
             )}
 
-            {/* Notifikasi validator/admin */}
+            {/* Admin/Validator: soal notification */}
             {(isAdmin || isValidator) && submittedCount > 0 && (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Bell className="w-4 h-4" style={{ color: "var(--psat-amber)" }} />
-                  <p className="font-medium text-sm" style={{ color: "var(--psat-primary)" }}>
-                    {submittedCount} soal perlu divalidasi:
-                  </p>
+                  <Bell className="w-4 h-4" style={{ color: "#C99A14" }} />
+                  <span className="font-semibold text-sm" style={{ color: "var(--pp-ink)" }}>
+                    {submittedCount} soal menunggu validasi
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="flex flex-wrap gap-2">
                   {Object.entries(mapelCounts).map(([mapelId, count]) => (
                     <button
                       key={mapelId}
                       onClick={() => { localStorage.setItem("selectedMapelId", mapelId); router.push("/dashboard/validasi") }}
-                      className="p-3 rounded-lg border text-left hover:opacity-80 transition-opacity"
-                      style={{ backgroundColor: "var(--psat-amber-tint)", borderColor: "var(--psat-amber)" }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full"
+                      style={{
+                        backgroundColor: "#FFF5C6", border: "1.5px solid var(--pp-ink)",
+                        color: "var(--pp-ink)", cursor: "pointer",
+                        boxShadow: "2px 2px 0 0 var(--pp-ink)", fontFamily: "inherit",
+                      }}
                     >
-                      <div className="font-medium text-sm" style={{ color: "var(--psat-primary)" }}>
-                        {mapelNames[mapelId] || "Unknown"}
-                      </div>
-                      <div className="text-xs" style={{ color: "var(--psat-muted)" }}>{count} soal</div>
+                      {mapelNames[mapelId] || "Mapel"}
+                      <span style={{
+                        backgroundColor: "var(--pp-ink)", color: "white",
+                        borderRadius: "999px", padding: "1px 7px", fontSize: "11px", fontWeight: 700,
+                      }}>{count}</span>
                     </button>
                   ))}
                 </div>
@@ -364,211 +454,300 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Notifikasi guru: revisi / approved */}
+        {/* ── Guru: revision / approved notifications ── */}
         {!isAdmin && !isValidator && (revisionCount > 0 || approvedCount > 0) && (
-          <div className="flex gap-3 flex-wrap mb-6">
+          <div className="flex gap-3 flex-wrap">
             {revisionCount > 0 && (
-              <div
+              <button
                 onClick={() => router.push("/dashboard/soal")}
-                className="flex items-center gap-2 px-4 py-3 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: "var(--psat-red-tint)", borderColor: "var(--psat-red)" }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full font-medium text-sm"
+                style={{
+                  backgroundColor: "#FFD9E6", border: "1.5px solid var(--pp-pink)",
+                  color: "#6B0E33", cursor: "pointer",
+                  boxShadow: "2px 2px 0 0 var(--pp-ink)", fontFamily: "inherit",
+                }}
               >
-                <AlertCircle className="w-4 h-4 shrink-0" style={{ color: "var(--psat-red)" }} />
-                <span className="text-sm font-medium" style={{ color: "var(--psat-red)" }}>
-                  {revisionCount} soal perlu revisi
-                </span>
-              </div>
+                <AlertCircle className="w-4 h-4" />
+                {revisionCount} soal perlu revisi
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             )}
             {approvedCount > 0 && (
-              <div className="flex items-center gap-2 px-4 py-3 rounded-lg border"
-                style={{ backgroundColor: "var(--psat-green-tint)", borderColor: "var(--psat-green)" }}>
-                <CheckCircle className="w-4 h-4 shrink-0" style={{ color: "var(--psat-green)" }} />
-                <span className="text-sm font-medium" style={{ color: "var(--psat-green-text)" }}>
-                  {approvedCount} soal approved
-                </span>
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-full font-medium text-sm"
+                   style={{
+                     backgroundColor: "#DAF5E7", border: "1.5px solid var(--pp-mint)",
+                     color: "#0E4A2F",
+                   }}>
+                <CheckCircle className="w-4 h-4" />
+                {approvedCount} soal approved
               </div>
             )}
           </div>
         )}
 
-        {/* Menu cards */}
+        {/* ── ADMIN / VALIDATOR: menu grid ── */}
         {(isAdmin || isValidator) ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {adminMenuItems.map(({ icon, label, desc, done, locked, path, color }) => (
-              <button
-                key={label}
-                onClick={() => goTo(path, locked)}
-                disabled={locked}
-                className="rounded-xl p-5 border text-left transition-all hover:shadow-md disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: "var(--psat-card)",
-                  borderColor: "var(--psat-border)",
-                  borderLeftWidth: "4px",
-                  borderLeftColor: done ? "var(--psat-green)" : locked ? "var(--psat-border)" : color,
-                  opacity: locked ? 0.5 : 1,
-                }}
-              >
-                <div className="mb-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center"
-                    style={{
-                      backgroundColor: done ? "var(--psat-green)" : locked ? "var(--psat-muted)" : color,
-                      color: "var(--psat-primary-fg)",
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <span style={{
+                fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em",
+                textTransform: "uppercase", color: "var(--pp-muted)",
+              }}>Menu</span>
+              <div style={{ flex: 1, height: "1px", backgroundColor: "var(--pp-line)" }} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {adminMenuItems.map(({ icon, label, desc, done, locked, path, ci }) => (
+                <button
+                  key={label}
+                  onClick={() => goTo(path, locked)}
+                  disabled={locked}
+                  className="rounded-[18px] p-5 text-left group disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: locked ? "var(--pp-bg)" : ci.bg,
+                    border: "1.5px solid var(--pp-ink)",
+                    boxShadow: locked ? "none" : "4px 4px 0 0 var(--pp-ink)",
+                    opacity: locked ? 0.45 : 1,
+                    cursor: locked ? "not-allowed" : "pointer",
+                    fontFamily: "inherit",
+                    transition: "transform 0.1s, box-shadow 0.1s",
+                  }}
+                  onMouseEnter={e => { if (!locked) { e.currentTarget.style.transform = "translate(-1px,-1px)"; e.currentTarget.style.boxShadow = "5px 5px 0 0 var(--pp-ink)" }}}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = locked ? "none" : "4px 4px 0 0 var(--pp-ink)" }}
+                >
+                  <div className="mb-4">
+                    <div style={{
+                      width: "38px", height: "38px", borderRadius: "12px",
+                      backgroundColor: locked ? "var(--pp-muted)" : done ? "#9DE3C4" : ci.iconBg,
+                      color: locked ? "white" : done ? "#0E4A2F" : ci.iconColor,
+                      display: "grid", placeItems: "center",
                     }}>
-                    {done ? <Check className="w-5 h-5" /> : locked ? <Lock className="w-5 h-5" /> : icon}
+                      {done ? <Check className="w-5 h-5" /> : locked ? <Lock className="w-5 h-5" /> : icon}
+                    </div>
                   </div>
-                </div>
-                <h3 className="font-semibold text-sm mb-0.5"
-                  style={{ color: locked ? "var(--psat-muted)" : "var(--psat-primary)" }}>
-                  {label}
-                </h3>
-                <p className="text-xs leading-snug" style={{ color: "var(--psat-muted)" }}>{desc}</p>
-              </button>
-            ))}
+                  <div className="font-semibold text-sm mb-0.5" style={{ color: "var(--pp-ink)" }}>{label}</div>
+                  <div className="text-xs" style={{ color: "var(--pp-ink-2)" }}>{desc}</div>
+                  {!locked && (
+                    <div className="mt-3 flex items-center gap-1 text-xs font-semibold" style={{ color: ci.iconColor }}>
+                      Buka <ArrowRight className="w-3 h-3" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <>
-            {/* Step cards guru */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {guruSteps.map(({ step, icon, label, desc, done, locked, path, color }) => (
-                <button
-                  key={label}
-                  onClick={() => goTo(path, locked, label === "Soal")}
-                  disabled={locked}
-                  className="rounded-xl p-5 border text-left transition-all hover:shadow-md disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: "var(--psat-card)",
-                    borderColor: "var(--psat-border)",
-                    borderLeftWidth: "4px",
-                    borderLeftColor: done ? "var(--psat-green)" : locked ? "var(--psat-border)" : color,
-                    opacity: locked ? 0.5 : 1,
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center"
-                      style={{
-                        backgroundColor: done ? "var(--psat-green)" : locked ? "var(--psat-muted)" : color,
-                        color: "var(--psat-primary-fg)",
+            {/* ── GURU: step cards ── */}
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--pp-muted)" }}>
+                  Langkah pengerjaan
+                </span>
+                <div style={{ flex: 1, height: "1px", backgroundColor: "var(--pp-line)" }} />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {guruSteps.map(({ step, icon, label, desc, done, locked, path, ci }) => (
+                  <button
+                    key={label}
+                    onClick={() => goTo(path, locked, label === "Soal")}
+                    disabled={locked}
+                    className="rounded-[18px] p-5 text-left"
+                    style={{
+                      backgroundColor: locked ? "var(--pp-bg)" : done ? "#DAF5E7" : ci.bg,
+                      border: "1.5px solid var(--pp-ink)",
+                      boxShadow: locked ? "none" : "4px 4px 0 0 var(--pp-ink)",
+                      opacity: locked ? 0.45 : 1,
+                      cursor: locked ? "not-allowed" : "pointer",
+                      fontFamily: "inherit",
+                      transition: "transform 0.1s, box-shadow 0.1s",
+                    }}
+                    onMouseEnter={e => { if (!locked) { e.currentTarget.style.transform = "translate(-1px,-1px)"; e.currentTarget.style.boxShadow = "5px 5px 0 0 var(--pp-ink)" }}}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = locked ? "none" : "4px 4px 0 0 var(--pp-ink)" }}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div style={{
+                        width: "38px", height: "38px", borderRadius: "12px",
+                        backgroundColor: locked ? "var(--pp-muted)" : done ? "#9DE3C4" : ci.iconBg,
+                        color: locked ? "white" : done ? "#0E4A2F" : ci.iconColor,
+                        display: "grid", placeItems: "center",
                       }}>
-                      {done ? <Check className="w-5 h-5" /> : locked ? <Lock className="w-5 h-5" /> : icon}
+                        {done ? <Check className="w-5 h-5" /> : locked ? <Lock className="w-5 h-5" /> : icon}
+                      </div>
+                      <span className="font-bold text-xs px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: "var(--pp-bg)", color: "var(--pp-muted)", border: "1px solid var(--pp-line)" }}>
+                        {step}
+                      </span>
                     </div>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: "var(--psat-bg)", color: "var(--psat-muted)" }}>
-                      {step}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold text-sm mb-0.5"
-                    style={{ color: locked ? "var(--psat-muted)" : "var(--psat-primary)" }}>
-                    {label}
-                  </h3>
-                  <p className="text-xs leading-snug" style={{ color: "var(--psat-muted)" }}>{desc}</p>
-                </button>
-              ))}
+                    <div className="font-semibold text-sm mb-0.5" style={{ color: "var(--pp-ink)" }}>{label}</div>
+                    <div className="text-xs leading-snug" style={{ color: "var(--pp-ink-2)" }}>{desc}</div>
+                    {done && (
+                      <div className="mt-3 flex items-center gap-1 text-xs font-semibold" style={{ color: "#0E4A2F" }}>
+                        <Check className="w-3 h-3" /> Selesai
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Tips */}
             {!hasMatrix && (
-              <div className="mt-4 flex items-start gap-2 p-4 rounded-lg border"
-                style={{ backgroundColor: "var(--psat-amber-tint)", borderColor: "var(--psat-amber)" }}>
-                <Lightbulb className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "var(--psat-amber)" }} />
-                <p className="text-sm" style={{ color: "var(--psat-amber-text)" }}>
-                  Isi matrix terlebih dahulu untuk dapat input soal. Tetapi Anda bisa upload dokumen sekarang.
+              <div className="flex items-start gap-3 px-4 py-3 rounded-[14px]"
+                   style={{ backgroundColor: "#FFF5C6", border: "1.5px solid var(--pp-lemon)" }}>
+                <Lightbulb className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#C99A14" }} />
+                <p className="text-sm" style={{ color: "#5A4500" }}>
+                  Isi matrix terlebih dahulu untuk dapat input soal. Namun Anda bisa upload dokumen sekarang.
                 </p>
               </div>
             )}
 
-            {/* Statistik Soal */}
-            <div className="mt-6">
-              <h3 className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--psat-muted)" }}>
-                STATISTIK SOAL SAYA
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {soalStatCards.map(({ label, value, color, bg, icon }) => (
-                  <div key={label} className="rounded-xl p-4 border text-center"
-                    style={{ backgroundColor: bg, borderColor: "var(--psat-border)" }}>
-                    <div className="flex justify-center mb-1" style={{ color }}>{icon}</div>
-                    <div className="text-2xl font-bold" style={{ color }}>{value}</div>
-                    <div className="text-xs mt-1" style={{ color: "var(--psat-muted)" }}>{label}</div>
+            {/* ── Stat cards ── */}
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--pp-muted)" }}>
+                  Statistik soal saya
+                </span>
+                <div style={{ flex: 1, height: "1px", backgroundColor: "var(--pp-line)" }} />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {statCards.map(({ label, value, icon, vi }) => (
+                  <div key={label} className="relative overflow-hidden rounded-[22px] shadow-hard-md p-5"
+                       style={{ backgroundColor: vi.bg, border: "1.5px solid var(--pp-ink)", minHeight: "130px" }}>
+                    <div style={{
+                      position: "absolute", right: "-16px", top: "-16px",
+                      width: "70px", height: "70px", borderRadius: "50%",
+                      backgroundColor: vi.blob, opacity: 0.5,
+                    }} />
+                    <div style={{
+                      width: "34px", height: "34px", borderRadius: "10px",
+                      backgroundColor: vi.iconBg, color: vi.iconColor,
+                      display: "grid", placeItems: "center",
+                      marginBottom: "16px", position: "relative",
+                    }}>
+                      {icon}
+                    </div>
+                    <div className="font-display font-semibold relative"
+                         style={{ fontSize: "36px", lineHeight: 1, letterSpacing: "-0.03em", color: "var(--pp-ink)" }}>
+                      {value}
+                    </div>
+                    <div className="font-medium mt-1 relative text-xs" style={{ color: "var(--pp-ink-2)" }}>
+                      {label}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              {targetBank > 0 && (
-                <div className="mt-3 p-4 rounded-lg border"
-                  style={{ backgroundColor: "var(--psat-card)", borderColor: "var(--psat-border)" }}>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span style={{ color: "var(--psat-primary)" }}>Progress Bank Soal</span>
-                    <span style={{ color: "var(--psat-muted)" }}>{guruSoalStats.total} / {targetBank}</span>
-                  </div>
-                  <div className="w-full rounded-full h-2" style={{ backgroundColor: "var(--psat-border)" }}>
-                    <div
-                      className="h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, Math.round((guruSoalStats.total / targetBank) * 100))}%`,
-                        backgroundColor: guruSoalStats.total >= targetBank ? "var(--psat-green)" : "var(--psat-primary-light)",
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs mt-1" style={{ color: "var(--psat-muted)" }}>
-                    {guruSoalStats.total >= targetBank
-                      ? "Target bank soal tercapai"
-                      : `${targetBank - guruSoalStats.total} soal lagi untuk memenuhi target`}
-                  </p>
-                </div>
-              )}
-
-              {/* Progress vs Patokan */}
-              {Object.keys(patokan).length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--psat-muted)" }}>
-                    PROGRESS VS PATOKAN
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {TIPE_OPTIONS.map(tipe => (
-                      <div key={tipe} className="rounded-lg p-3 border"
-                        style={{ backgroundColor: "var(--psat-card)", borderColor: "var(--psat-border)" }}>
-                        <div className="text-sm font-semibold capitalize mb-2" style={{ color: "var(--psat-primary)" }}>{tipe}</div>
-                        <div className="flex gap-1 mb-1">
-                          <span className="text-xs flex-1" />
-                          <span className="text-xs w-16 text-center" style={{ color: "var(--psat-muted)" }}>soal keluar</span>
-                          <span className="text-xs w-16 text-center" style={{ color: "var(--psat-muted)" }}>bank soal</span>
-                        </div>
-                        {KESULITAN_OPTIONS.map(kesulitan => {
-                          const dibuat = soalCounts[`${tipe}_${kesulitan}`] || 0
-                          const targetKeluar = patokan[`${tipe}_${kesulitan}_keluar`] || 0
-                          const targetBankVal = patokan[`${tipe}_${kesulitan}_bank`] || 0
-                          const okKeluar = targetKeluar > 0 && dibuat >= targetKeluar
-                          const okBank = targetBankVal > 0 && dibuat >= targetBankVal
-                          return (
-                            <div key={kesulitan} className="flex items-center gap-1 mb-1">
-                              <span className="text-xs flex-1 capitalize" style={{ color: "var(--psat-muted)" }}>{kesulitan}</span>
-                              <span className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
-                                style={{
-                                  backgroundColor: targetKeluar === 0 ? "var(--psat-bg)" : okKeluar ? "var(--psat-green-tint)" : "var(--psat-red-tint)",
-                                  color: targetKeluar === 0 ? "var(--psat-muted)" : okKeluar ? "var(--psat-green-text)" : "var(--psat-red)",
-                                }}>
-                                {targetKeluar > 0 && (okKeluar ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />)}
-                                {dibuat}/{targetKeluar}
-                              </span>
-                              <span className="w-16 px-1 py-0.5 rounded text-xs text-center font-medium flex items-center justify-center gap-0.5"
-                                style={{
-                                  backgroundColor: targetBankVal === 0 ? "var(--psat-bg)" : okBank ? "var(--psat-green-tint)" : "var(--psat-red-tint)",
-                                  color: targetBankVal === 0 ? "var(--psat-muted)" : okBank ? "var(--psat-green-text)" : "var(--psat-red)",
-                                }}>
-                                {targetBankVal > 0 && (okBank ? <Check className="w-3 h-3 shrink-0" /> : <X className="w-3 h-3 shrink-0" />)}
-                                {dibuat}/{targetBankVal}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
+
+            {/* ── Progress bank soal ── */}
+            {targetBank > 0 && (
+              <div className="rounded-[18px] shadow-hard-md p-5"
+                   style={{ backgroundColor: "var(--pp-card)", border: "1.5px solid var(--pp-ink)" }}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-sm" style={{ color: "var(--pp-ink)" }}>Progress Bank Soal</span>
+                  <span className="font-bold text-sm" style={{ color: "var(--pp-ink-2)", fontVariantNumeric: "tabular-nums" }}>
+                    {guruSoalStats.total} / {targetBank}
+                  </span>
+                </div>
+                <div style={{ height: "10px", borderRadius: "999px", backgroundColor: "#F4ECDF", border: "1.5px solid var(--pp-ink)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${progPct}%`, background: progGradient, transition: "width 0.4s ease" }} />
+                </div>
+                <p className="text-xs mt-2" style={{ color: "var(--pp-ink-2)", fontVariantNumeric: "tabular-nums" }}>
+                  {guruSoalStats.total >= targetBank
+                    ? "Target bank soal tercapai"
+                    : `${targetBank - guruSoalStats.total} soal lagi untuk memenuhi target (${progPct}%)`}
+                </p>
+              </div>
+            )}
+
+            {/* ── Progress vs Patokan ── */}
+            {Object.keys(patokan).length > 0 && (
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--pp-muted)" }}>
+                    Progress vs Patokan
+                  </span>
+                  <div style={{ flex: 1, height: "1px", backgroundColor: "var(--pp-line)" }} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {TIPE_OPTIONS.map((tipe, ti) => {
+                    const tipeColor = GURU_STEP_COLORS[ti]
+                    return (
+                      <div key={tipe} className="rounded-[18px] shadow-hard-md overflow-hidden"
+                           style={{ border: "1.5px solid var(--pp-ink)" }}>
+                        {/* tipe header */}
+                        <div className="px-4 py-3 flex items-center gap-2"
+                             style={{ backgroundColor: tipeColor.bg, borderBottom: "1.5px solid var(--pp-ink)" }}>
+                          <div style={{
+                            width: "8px", height: "8px", borderRadius: "2px",
+                            backgroundColor: tipeColor.iconBg, border: "1px solid var(--pp-ink)",
+                          }} />
+                          <span className="font-semibold text-sm capitalize" style={{ color: "var(--pp-ink)" }}>{tipe}</span>
+                        </div>
+
+                        {/* header row */}
+                        <div className="grid grid-cols-3 px-4 py-2"
+                             style={{ backgroundColor: "#FFF4E5", borderBottom: "1px solid var(--pp-line)" }}>
+                          <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--pp-muted)" }}>Tingkat</span>
+                          <span className="text-center" style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--pp-muted)" }}>Keluar</span>
+                          <span className="text-center" style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--pp-muted)" }}>Bank</span>
+                        </div>
+
+                        <div style={{ backgroundColor: "var(--pp-card)" }}>
+                          {KESULITAN_OPTIONS.map((kesulitan, ki) => {
+                            const dibuat       = soalCounts[`${tipe}_${kesulitan}`] || 0
+                            const tgtKeluar    = patokan[`${tipe}_${kesulitan}_keluar`] || 0
+                            const tgtBank      = patokan[`${tipe}_${kesulitan}_bank`]   || 0
+                            const okKeluar     = tgtKeluar > 0 && dibuat >= tgtKeluar
+                            const okBank       = tgtBank   > 0 && dibuat >= tgtBank
+
+                            const cellStyle = (ok: boolean, target: number): React.CSSProperties => ({
+                              fontSize: "12px", fontWeight: 600, fontVariantNumeric: "tabular-nums",
+                              padding: "2px 8px", borderRadius: "6px", textAlign: "center",
+                              backgroundColor: target === 0 ? "transparent"
+                                : ok ? "#DAF5E7" : "#FFD9E6",
+                              color: target === 0 ? "var(--pp-muted)"
+                                : ok ? "#0E4A2F" : "#6B0E33",
+                            })
+
+                            return (
+                              <div key={kesulitan} className="grid grid-cols-3 items-center px-4 py-2.5"
+                                   style={{ borderBottom: ki < 2 ? "1px solid var(--pp-line)" : "none" }}>
+                                <span className="text-xs capitalize" style={{ color: "var(--pp-ink-2)" }}>{kesulitan}</span>
+                                <div className="flex justify-center">
+                                  <span style={cellStyle(okKeluar, tgtKeluar)}>
+                                    {tgtKeluar > 0 && (okKeluar
+                                      ? <Check className="w-3 h-3 inline mr-0.5" />
+                                      : <X className="w-3 h-3 inline mr-0.5" />
+                                    )}
+                                    {dibuat}/{tgtKeluar}
+                                  </span>
+                                </div>
+                                <div className="flex justify-center">
+                                  <span style={cellStyle(okBank, tgtBank)}>
+                                    {tgtBank > 0 && (okBank
+                                      ? <Check className="w-3 h-3 inline mr-0.5" />
+                                      : <X className="w-3 h-3 inline mr-0.5" />
+                                    )}
+                                    {dibuat}/{tgtBank}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
+
+      <footer className="text-center py-6" style={{ fontSize: "12px", color: "var(--pp-muted)" }}>
+        © 2026 <strong style={{ color: "var(--pp-ink-2)" }}>PSAT SMP Al Abidin</strong>
+      </footer>
     </div>
   )
 }
