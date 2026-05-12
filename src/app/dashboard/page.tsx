@@ -251,7 +251,7 @@ export default function DashboardPage() {
         label: "Patokan Soal",
         desc: "Atur target soal per mapel",
         done: false, locked: false,
-        path: "/dashboard/admin",
+        path: "/dashboard/patokan",
         ci: ADMIN_MENU_COLORS[1],
       },
       {

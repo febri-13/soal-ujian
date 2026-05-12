@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
       return
     }
 
-    router.push("/dashboard/admin")
+    router.push("/dashboard")
   }
 
   return (
