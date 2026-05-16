@@ -110,6 +110,13 @@ export default function DashboardPage() {
         setHasValidatorProfile(namaOk && !!fullProfile?.no_hp && !!vGuruData?.unit_sekolah && !!vGuruData?.bank && !!vGuruData?.no_rekening)
       }
 
+      let validatorMapelIds: string[] | null = null
+      if (vRole === "validator") {
+        const { data: vmRows } = await supabase
+          .from("psat_validator_mapel").select("mapel_id").eq("validator_id", u.id)
+        validatorMapelIds = vmRows?.map((r: any) => r.mapel_id) ?? []
+      }
+
       const { data: matrix } = await supabase
         .from("psat_matrix_input").select("id").eq("profile_id", u.id).eq("is_submitted", true)
       setHasMatrix(!!matrix && matrix.length > 0)
@@ -131,6 +138,11 @@ export default function DashboardPage() {
         submittedByMapel.forEach(s => { if (s.mata_pelajaran_id) counts[s.mata_pelajaran_id] = (counts[s.mata_pelajaran_id] || 0) + 1 })
         const { data: mapels } = await supabase.from("mata_pelajaran").select("id, nama")
         mapels?.forEach(m => { names[m.id] = m.nama })
+      }
+      if (validatorMapelIds !== null) {
+        Object.keys(counts).forEach(mapelId => {
+          if (!validatorMapelIds!.includes(mapelId)) delete counts[mapelId]
+        })
       }
       setMapelCounts(counts)
       setMapelNames(names)
@@ -421,12 +433,12 @@ export default function DashboardPage() {
             )}
 
             {/* Admin/Validator: soal notification */}
-            {(isAdmin || isValidator) && submittedCount > 0 && (
+            {(isAdmin || isValidator) && Object.keys(mapelCounts).length > 0 && (
               <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Bell className="w-4 h-4" style={{ color: "#C99A14" }} />
                   <span className="font-semibold text-sm" style={{ color: "var(--pp-ink)" }}>
-                    {submittedCount} soal menunggu validasi
+                    {Object.values(mapelCounts).reduce((a, b) => a + b, 0)} soal menunggu validasi
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
