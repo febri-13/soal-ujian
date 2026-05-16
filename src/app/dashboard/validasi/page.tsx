@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
-import { CheckCircle, Clock, AlertCircle, ArrowLeft } from "lucide-react"
+import { CheckCircle, Clock, AlertCircle, ArrowLeft, Pencil, Trash2, Check, X } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import DownloadDropdown from "@/components/DownloadDropdown"
 
@@ -48,6 +48,7 @@ export default function ValidasiPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({})
+  const [editingNote, setEditingNote] = useState<{ soalId: string; index: number; text: string } | null>(null)
   const [validatorMapelIds, setValidatorMapelIds] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -228,6 +229,45 @@ export default function ValidasiPage() {
     if (notes.includes("Approved")) return "Approved"
     const match = notes.match(/^\[([^\]]+)\]\s*(.*)/)
     return match ? match[2] : notes
+  }
+
+  const handleEditNote = async (soalId: string, index: number, newText: string) => {
+    const soal = soalList.find(s => s.id === soalId)
+    if (!soal) return
+    setSaving(true)
+    const oldItem = soal.revision_history[index]
+    const prefix = oldItem.match(/^(\[[^\]]+\]\s*)/)?.[1] ?? ""
+    const newHistory = soal.revision_history.map((h: string, i: number) => i === index ? prefix + newText : h)
+    const newNotes = newHistory[newHistory.length - 1]
+    const { error } = await supabase.from("bank_soal")
+      .update({ revision_notes: newNotes, revision_history: newHistory, updated_at: new Date().toISOString() })
+      .eq("id", soalId)
+    setSaving(false)
+    if (error) {
+      setToast({ message: "Gagal mengedit: " + error.message, type: "error" })
+    } else {
+      setSoalList(prev => prev.map(s => s.id === soalId ? { ...s, revision_notes: newNotes, revision_history: newHistory } : s))
+      setEditingNote(null)
+      setToast({ message: "Catatan diperbarui!", type: "success" })
+    }
+  }
+
+  const handleDeleteNote = async (soalId: string, index: number) => {
+    const soal = soalList.find(s => s.id === soalId)
+    if (!soal) return
+    setSaving(true)
+    const newHistory = soal.revision_history.filter((_: any, i: number) => i !== index)
+    const newNotes = newHistory.length > 0 ? newHistory[newHistory.length - 1] : null
+    const { error } = await supabase.from("bank_soal")
+      .update({ revision_notes: newNotes, revision_history: newHistory, updated_at: new Date().toISOString() })
+      .eq("id", soalId)
+    setSaving(false)
+    if (error) {
+      setToast({ message: "Gagal menghapus: " + error.message, type: "error" })
+    } else {
+      setSoalList(prev => prev.map(s => s.id === soalId ? { ...s, revision_notes: newNotes, revision_history: newHistory } : s))
+      setToast({ message: "Catatan dihapus!", type: "success" })
+    }
   }
 
   if (loading) {
@@ -583,46 +623,107 @@ export default function ValidasiPage() {
                       )}
 
                       {/* Catatan revisi sebelumnya */}
-                      {soal.revision_notes && (
-                        <div
-                          className="mb-3 px-3 py-2 rounded-lg text-xs pl-1"
-                          style={{
-                            backgroundColor: soal.status === "approved" ? "#f0fdf4" : "#fff0f5",
-                            border: `1px solid ${soal.status === "approved" ? "#86efac" : "var(--pp-pink)"}`,
-                            color: soal.status === "approved" ? "#15803d" : "#be123c",
-                            marginLeft: 4,
-                          }}
-                        >
-                          <span className="font-semibold">
-                            {soal.revision_notes.match(/^\[([^\]]+)\]/)?.[1] || "Validator"}:
-                          </span>{" "}
-                          {getRevisionNotes(soal.revision_notes)}
-                        </div>
-                      )}
+                      {soal.revision_notes && (() => {
+                        const lastIndex = (soal.revision_history?.length ?? 1) - 1
+                        const isEditing = editingNote?.soalId === soal.id && editingNote?.index === lastIndex
+                        const parsedText = getRevisionNotes(soal.revision_notes)
+                        const validatorName = soal.revision_notes.match(/^\[([^\]]+)\]/)?.[1] || "Validator"
+                        return (
+                          <div className="mb-3 pl-1">
+                            {isEditing ? (
+                              <div className="flex gap-2 items-start">
+                                <textarea
+                                  rows={2}
+                                  className="flex-1 text-xs resize-none"
+                                  style={{ border: "1.5px solid var(--pp-primary)", borderRadius: 8, padding: "6px 10px", backgroundColor: "var(--pp-card)", color: "var(--pp-ink)", outline: "none" }}
+                                  value={editingNote!.text}
+                                  onChange={e => setEditingNote(prev => prev ? { ...prev, text: e.target.value } : prev)}
+                                />
+                                <button onClick={() => handleEditNote(soal.id, lastIndex, editingNote!.text)} disabled={saving}
+                                  style={{ padding: "5px 8px", borderRadius: 8, border: "1.5px solid var(--pp-ink)", backgroundColor: "var(--pp-mint)", color: "#15803d" }}>
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setEditingNote(null)}
+                                  style={{ padding: "5px 8px", borderRadius: 8, border: "1.5px solid var(--pp-ink)", backgroundColor: "var(--pp-bg)", color: "var(--pp-muted)" }}>
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-start justify-between gap-2 px-3 py-2 rounded-lg text-xs"
+                                style={{ backgroundColor: soal.status === "approved" ? "#f0fdf4" : "#fff0f5", border: `1px solid ${soal.status === "approved" ? "#86efac" : "var(--pp-pink)"}`, color: soal.status === "approved" ? "#15803d" : "#be123c" }}>
+                                <span><span className="font-semibold">{validatorName}:</span> {parsedText}</span>
+                                <div className="flex gap-1 shrink-0">
+                                  <button onClick={() => setEditingNote({ soalId: soal.id, index: lastIndex, text: parsedText })}
+                                    style={{ padding: "2px 6px", borderRadius: 6, border: "1.5px solid currentColor", backgroundColor: "transparent", opacity: 0.7 }}>
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                  <button onClick={() => handleDeleteNote(soal.id, lastIndex)} disabled={saving}
+                                    style={{ padding: "2px 6px", borderRadius: 6, border: "1.5px solid currentColor", backgroundColor: "transparent", opacity: 0.7 }}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
 
                       {/* History */}
-                      {soal.revision_history && soal.revision_history.length > 1 && (
+                      {soal.revision_history && soal.revision_history.length > 0 && (
                         <details className="mb-3 pl-1">
                           <summary
                             className="text-xs cursor-pointer font-medium"
                             style={{ color: "var(--pp-muted)" }}
                           >
-                            Lihat riwayat ({soal.revision_history.length} catatan)
+                            Riwayat ({soal.revision_history.length} catatan)
                           </summary>
                           <div className="mt-2 space-y-1">
-                            {soal.revision_history.map((h: string, i: number) => (
-                              <div
-                                key={i}
-                                className="text-xs px-2.5 py-1.5 rounded-lg"
-                                style={{
-                                  backgroundColor: "var(--pp-bg)",
-                                  border: "1px solid var(--pp-line)",
-                                  color: "var(--pp-ink-2)",
-                                }}
-                              >
-                                {h}
-                              </div>
-                            ))}
+                            {soal.revision_history.map((h: string, i: number) => {
+                              const isEditing = editingNote?.soalId === soal.id && editingNote?.index === i
+                              const hText = getRevisionNotes(h)
+                              const hValidator = h.match(/^\[([^\]]+)\]/)?.[1] || "Validator"
+                              return (
+                                <div
+                                  key={i}
+                                  className="text-xs px-2.5 py-1.5 rounded-lg flex items-start justify-between gap-2"
+                                  style={{ backgroundColor: "var(--pp-bg)", border: "1px solid var(--pp-line)", color: "var(--pp-ink-2)" }}
+                                >
+                                  {isEditing ? (
+                                    <div className="flex gap-2 items-start flex-1">
+                                      <textarea
+                                        rows={2}
+                                        className="flex-1 text-xs resize-none"
+                                        style={{ border: "1.5px solid var(--pp-primary)", borderRadius: 8, padding: "4px 8px", backgroundColor: "var(--pp-card)", color: "var(--pp-ink)", outline: "none" }}
+                                        value={editingNote!.text}
+                                        onChange={e => setEditingNote(prev => prev ? { ...prev, text: e.target.value } : prev)}
+                                      />
+                                      <button onClick={() => handleEditNote(soal.id, i, editingNote!.text)} disabled={saving}
+                                        style={{ padding: "4px 6px", borderRadius: 6, border: "1.5px solid var(--pp-ink)", backgroundColor: "var(--pp-mint)", color: "#15803d" }}>
+                                        <Check className="w-3 h-3" />
+                                      </button>
+                                      <button onClick={() => setEditingNote(null)}
+                                        style={{ padding: "4px 6px", borderRadius: 6, border: "1.5px solid var(--pp-ink)", backgroundColor: "var(--pp-bg)", color: "var(--pp-muted)" }}>
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span><span className="font-semibold">{hValidator}:</span> {hText}</span>
+                                      <div className="flex gap-1 shrink-0">
+                                        <button onClick={() => setEditingNote({ soalId: soal.id, index: i, text: hText })}
+                                          style={{ padding: "2px 5px", borderRadius: 5, border: "1px solid var(--pp-line)", backgroundColor: "transparent" }}>
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                        <button onClick={() => handleDeleteNote(soal.id, i)} disabled={saving}
+                                          style={{ padding: "2px 5px", borderRadius: 5, border: "1px solid var(--pp-line)", backgroundColor: "transparent" }}>
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </details>
                       )}
