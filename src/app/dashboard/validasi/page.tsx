@@ -145,14 +145,18 @@ export default function ValidasiPage() {
     setSoalList([])
     setRevisionNotes({})
 
-    const { data: soal } = await supabase
+    const { data: soal, error: soalError } = await supabase
       .from("bank_soal")
       .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,revision_history,guru_id")
       .eq("mata_pelajaran_id", mapel.id)
       .in("status", ["submitted", "needs_revision", "approved"])
       .order("created_at", { ascending: true })
 
-    if (soal) setSoalList(soal)
+    if (soalError) {
+      setToast({ message: "Gagal memuat soal: " + soalError.message, type: "error" })
+    } else {
+      setSoalList(soal ?? [])
+    }
     setLoadingSoal(false)
   }
 
