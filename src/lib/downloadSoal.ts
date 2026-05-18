@@ -47,7 +47,7 @@ export function extractImages(html: string): string[] {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   return Array.from(doc.querySelectorAll('img'))
     .map(img => img.getAttribute('src') ?? '')
-    .filter(Boolean)
+    .filter(src => /^https?:\/\/.+\.(jpg|jpeg|png)(\?.*)?$/i.test(src))
 }
 
 export function processSoal(raw: SoalDownload[]): SoalProcessed[] {

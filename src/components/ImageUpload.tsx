@@ -92,7 +92,7 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
       <input
         type="file"
         ref={fileInputRef}
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept="image/jpeg,image/png"
         onChange={handleFileChange}
         className="hidden"
         id={inputId}

@@ -317,7 +317,7 @@ export default function RichTextEditor({ content, onChange, placeholder = "Write
 
             {sep}
 
-            <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/gif,image/webp"
+            <input type="file" ref={fileInputRef} accept="image/jpeg,image/png"
               onChange={handleImageUpload} className="hidden" id="image-upload-input" />
             <label htmlFor="image-upload-input"
               className={`${btnBase} cursor-pointer ${uploading ? "opacity-50" : ""}`}
