@@ -333,7 +333,7 @@ export default function SoalPage() {
         bobot,
         tingkat_kesulitan: selectedKesulitan,
         pilihan: pilihanObj,
-        pilihan_gambar: pilihanGambar.filter(Boolean),
+        pilihan_gambar: pilihanGambar,
         jawaban_benar: selectedTipe === "pilgan" ? jawabanBenar : null,
         updated_at: new Date().toISOString(),
       }).eq("id", editingId)
@@ -349,7 +349,7 @@ export default function SoalPage() {
         bobot,
         tingkat_kesulitan: selectedKesulitan,
         pilihan: pilihanObj,
-        pilihan_gambar: pilihanGambar.filter(Boolean),
+        pilihan_gambar: pilihanGambar,
         jawaban_benar: selectedTipe === "pilgan" ? jawabanBenar : null,
         gambar_url: gambarUrl || null,
       })
@@ -420,7 +420,7 @@ export default function SoalPage() {
         setJawabanBenarCeklist(soalData.pilihan.filter((p: any) => p.benar).map((p: any) => p.id))
       }
     }
-    if (soalData.pilihan_gambar) setPilihanGambar(soalData.pilihan_gambar)
+    setPilihanGambar(Array(4).fill("").map((_: string, i: number) => soalData.pilihan_gambar?.[i] || ""))
 
     setTimeout(() => {
       document.getElementById("tour-form-soal")?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -1421,29 +1421,43 @@ export default function SoalPage() {
                           {/* Pilihan jawaban */}
                           {soal.pilihan && soal.pilihan.length > 0 && (
                             <div className="mt-2 space-y-1">
-                              {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }) => (
-                                <div
-                                  key={p.id}
-                                  className="flex items-start gap-1.5 text-xs px-2.5 py-1.5 rounded-lg"
-                                  style={{
-                                    backgroundColor: p.benar ? "#f0fdf4" : "var(--pp-bg)",
-                                    border: `1px solid ${p.benar ? "#86efac" : "var(--pp-line)"}`,
-                                  }}
-                                >
-                                  <span
-                                    className="font-bold flex-shrink-0 mt-0.5"
-                                    style={{ color: p.benar ? "#15803d" : "var(--pp-muted)" }}
-                                  >
-                                    {String.fromCharCode(65 + p.id)}.
-                                  </span>
+                              {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }) => {
+                                const gambarUrl = soal.pilihan_gambar?.[p.id] || ""
+                                return (
                                   <div
-                                    className="flex-1 min-w-0 rich-html"
-                                    style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
-                                    dangerouslySetInnerHTML={{ __html: p.teks }}
-                                  />
-                                  {p.benar && <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#15803d" }} />}
-                                </div>
-                              ))}
+                                    key={p.id}
+                                    className="flex items-start gap-1.5 text-xs px-2.5 py-1.5 rounded-lg"
+                                    style={{
+                                      backgroundColor: p.benar ? "#f0fdf4" : "var(--pp-bg)",
+                                      border: `1px solid ${p.benar ? "#86efac" : "var(--pp-line)"}`,
+                                    }}
+                                  >
+                                    <span
+                                      className="font-bold flex-shrink-0 mt-0.5"
+                                      style={{ color: p.benar ? "#15803d" : "var(--pp-muted)" }}
+                                    >
+                                      {String.fromCharCode(65 + p.id)}.
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      {p.teks && (
+                                        <div
+                                          className="rich-html"
+                                          style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
+                                          dangerouslySetInnerHTML={{ __html: p.teks }}
+                                        />
+                                      )}
+                                      {gambarUrl && (
+                                        <img
+                                          src={gambarUrl}
+                                          alt={`Pilihan ${String.fromCharCode(65 + p.id)}`}
+                                          style={{ maxWidth: 160, maxHeight: 100, marginTop: p.teks ? 4 : 0, borderRadius: 6, objectFit: "contain" }}
+                                        />
+                                      )}
+                                    </div>
+                                    {p.benar && <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#15803d" }} />}
+                                  </div>
+                                )
+                              })}
                             </div>
                           )}
 

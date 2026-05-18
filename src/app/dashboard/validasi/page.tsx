@@ -718,7 +718,9 @@ export default function ValidasiPage() {
                       {/* Pilihan */}
                       {soal.pilihan && soal.pilihan.length > 0 && (
                         <div className="mb-3 space-y-1.5 pl-1">
-                          {soal.pilihan.map((p: any, i: number) => (
+                          {soal.pilihan.map((p: any, i: number) => {
+                            const gambarUrl = soal.pilihan_gambar?.[p.id ?? i] || ""
+                            return (
                             <div
                               key={i}
                               className="flex items-start gap-2 text-xs rounded-lg px-2.5 py-1.5"
@@ -733,11 +735,22 @@ export default function ValidasiPage() {
                               >
                                 {String.fromCharCode(65 + i)}.
                               </span>
-                              <span
-                                className="rich-html flex-1"
-                                style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
-                                dangerouslySetInnerHTML={{ __html: p.teks || "" }}
-                              />
+                              <div className="flex-1 min-w-0">
+                                {p.teks && (
+                                  <span
+                                    className="rich-html"
+                                    style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
+                                    dangerouslySetInnerHTML={{ __html: p.teks }}
+                                  />
+                                )}
+                                {gambarUrl && (
+                                  <img
+                                    src={gambarUrl}
+                                    alt={`Pilihan ${String.fromCharCode(65 + i)}`}
+                                    style={{ maxWidth: 180, maxHeight: 110, marginTop: p.teks ? 4 : 0, borderRadius: 6, objectFit: "contain", display: "block" }}
+                                  />
+                                )}
+                              </div>
                               {p.benar && (
                                 <span
                                   className="text-xs px-1.5 py-0.5 rounded-full font-semibold shrink-0"
@@ -747,7 +760,7 @@ export default function ValidasiPage() {
                                 </span>
                               )}
                             </div>
-                          ))}
+                          )})}
                         </div>
                       )}
 
