@@ -169,12 +169,14 @@ export default function ValidasiPage() {
       if (guruIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, full_name, kelas")
+          .select("id, full_name, kelas, email")
           .in("id", guruIds)
         if (profiles) {
           const map: Record<string, { kelas: string; nama: string }> = {}
           profiles.forEach((p: any) => {
-            map[p.id] = { kelas: p.kelas || "—", nama: p.full_name || "Guru" }
+            const angka = p.email?.match(/(\d+)@/)?.[1]
+            const kelas = angka ? `Kelas ${angka}` : (p.kelas || "—")
+            map[p.id] = { kelas, nama: p.full_name || "Guru" }
           })
           setGuruMap(map)
         }
