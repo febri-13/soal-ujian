@@ -36,14 +36,25 @@ export default function DownloadDropdown({ soalList, filename, meta, disabled }:
     setOpen(false)
     setLoadingPdf(true)
     try {
-      const [{ processSoal }, { pdf }, { default: SoalPdfDocument }] = await Promise.all([
+      const [{ processSoal, convertImageToJpegDataUrl }, { pdf }, { default: SoalPdfDocument }] = await Promise.all([
         import('@/lib/downloadSoal'),
         import('@react-pdf/renderer'),
         import('@/components/SoalPdfDocument'),
       ])
       const processed = processSoal(soalList)
+
+      // Konversi semua gambar ke JPEG data URL agar react-pdf bisa render
+      const processedWithImages = await Promise.all(
+        processed.map(async soal => ({
+          ...soal,
+          pertanyaan_images: (await Promise.all(
+            soal.pertanyaan_images.map(url => convertImageToJpegDataUrl(url))
+          )).filter((u): u is string => u !== null),
+        }))
+      )
+
       const blob = await pdf(
-        React.createElement(SoalPdfDocument, { soalList: processed, meta }) as React.ReactElement<any>
+        React.createElement(SoalPdfDocument, { soalList: processedWithImages, meta }) as React.ReactElement<any>
       ).toBlob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

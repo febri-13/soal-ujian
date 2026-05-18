@@ -47,7 +47,30 @@ export function extractImages(html: string): string[] {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   return Array.from(doc.querySelectorAll('img'))
     .map(img => img.getAttribute('src') ?? '')
-    .filter(src => /^https?:\/\/.+\.(jpg|jpeg|png)(\?.*)?$/i.test(src))
+    .filter(src => /^https?:\/\//.test(src))
+}
+
+export async function convertImageToJpegDataUrl(url: string): Promise<string | null> {
+  try {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = () => reject()
+      img.src = url
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, 0, 0)
+    return canvas.toDataURL('image/jpeg', 0.92)
+  } catch {
+    return null
+  }
 }
 
 export function processSoal(raw: SoalDownload[]): SoalProcessed[] {

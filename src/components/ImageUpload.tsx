@@ -16,6 +16,31 @@ async function calculateFileHash(file: File): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
+async function convertToJpeg(file: File): Promise<File> {
+  if (file.type === 'image/jpeg' || file.type === 'image/png') return file
+  return new Promise(resolve => {
+    const img = new window.Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => {
+        resolve(blob
+          ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+          : file)
+      }, 'image/jpeg', 0.92)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
 export default function ImageUpload({ value, onChange }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -29,7 +54,8 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
     setUploading(true)
 
     try {
-      const fileHash = await calculateFileHash(file)
+      const converted = await convertToJpeg(file)
+      const fileHash = await calculateFileHash(converted)
       const { data: existing } = await supabase
         .from('psat_image_uploads')
         .select('image_url')
@@ -43,12 +69,12 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         return
       }
 
-      const fileExt = file.name.split('.').pop()
+      const fileExt = converted.name.split('.').pop() || 'jpg'
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('soal-images')
-        .upload(fileName, file, {
+        .upload(fileName, converted, {
           cacheControl: '3600',
           upsert: false,
         })
@@ -64,8 +90,8 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         .getPublicUrl(fileName)
 
       await supabase.from('psat_image_uploads').insert({
-        file_name: file.name,
-        file_size: file.size,
+        file_name: converted.name,
+        file_size: converted.size,
         file_hash: fileHash,
         image_url: publicUrl,
       })
@@ -92,7 +118,7 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
       <input
         type="file"
         ref={fileInputRef}
-        accept="image/jpeg,image/png"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={handleFileChange}
         className="hidden"
         id={inputId}
