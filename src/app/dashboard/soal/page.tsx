@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check, CircleHelp } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check, CircleHelp, Upload, X, AlertCircle, FileJson } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
@@ -86,6 +86,11 @@ export default function SoalPage() {
   const [bobot, setBobot] = useState<number>(1.0)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [bobotConfig, setBobotConfig] = useState<BobotConfig>({})
+
+  const [showBatchModal, setShowBatchModal] = useState(false)
+  const [batchRaw, setBatchRaw] = useState<any[]>([])
+  const [batchErrors, setBatchErrors] = useState<string[]>([])
+  const [batchSaving, setBatchSaving] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -465,6 +470,124 @@ export default function SoalPage() {
     }
   }
 
+  const validateBatchItem = (item: any, idx: number): string[] => {
+    const errs: string[] = []
+    if (!item.pertanyaan?.trim()) errs.push(`#${idx + 1}: pertanyaan wajib diisi`)
+    if (!TIPE_OPTIONS.includes(item.tipe)) errs.push(`#${idx + 1}: tipe tidak valid — "${item.tipe}" (pilgan/ceklist/essay/isian_singkat)`)
+    if (!KESULITAN_OPTIONS.includes(item.tingkat_kesulitan)) errs.push(`#${idx + 1}: tingkat_kesulitan tidak valid — "${item.tingkat_kesulitan}" (mudah/sedang/sulit)`)
+    const validBabs = matrixData.map(b => b.bab_id_text)
+    if (!validBabs.includes(item.bab_id_text)) errs.push(`#${idx + 1}: bab_id_text tidak ditemukan — "${item.bab_id_text}"`)
+    if ((item.tipe === "pilgan" || item.tipe === "ceklist") && (!Array.isArray(item.pilihan) || item.pilihan.length < 2))
+      errs.push(`#${idx + 1}: pilihan wajib ada minimal 2 item untuk tipe ${item.tipe}`)
+    return errs
+  }
+
+  const handleBatchFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string)
+        if (!Array.isArray(parsed)) { setBatchErrors(["File harus berupa array JSON (dimulai dengan [ dan diakhiri dengan ]"]); setBatchRaw([]); return }
+        const allErrors: string[] = []
+        parsed.forEach((item, i) => allErrors.push(...validateBatchItem(item, i)))
+        setBatchRaw(parsed)
+        setBatchErrors(allErrors)
+      } catch {
+        setBatchErrors(["File JSON tidak valid — pastikan format JSON sudah benar"])
+        setBatchRaw([])
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleBatchInsert = async () => {
+    if (!user || batchErrors.length > 0 || batchRaw.length === 0) return
+    setBatchSaving(true)
+    const rows = batchRaw.map((item: any) => {
+      const pilihanObj = (item.tipe === "pilgan" || item.tipe === "ceklist") && Array.isArray(item.pilihan)
+        ? item.pilihan.map((p: any, i: number) => ({ id: p.id ?? i, teks: p.teks, benar: !!p.benar }))
+        : null
+      const bobotVal = getDefaultBobot(item.tipe, item.tingkat_kesulitan)
+      return {
+        pertanyaan: item.pertanyaan.trim(),
+        tipe: item.tipe,
+        tingkat_kesulitan: item.tingkat_kesulitan,
+        level: item.tingkat_kesulitan,
+        bab_id_text: item.bab_id_text,
+        mata_pelajaran_id: selectedMapelId,
+        guru_id: user.id,
+        bobot: bobotVal,
+        pilihan: pilihanObj,
+        jawaban_benar: item.tipe === "pilgan" ? (pilihanObj?.findIndex((p: any) => p.benar) ?? null) : null,
+        status: "draft",
+      }
+    })
+    const { error } = await supabase.from("bank_soal").insert(rows)
+    setBatchSaving(false)
+    if (error) {
+      setToast({ message: "Error: " + error.message, type: "error" })
+    } else {
+      setToast({ message: `${rows.length} soal berhasil diupload sebagai draft!`, type: "success" })
+      setShowBatchModal(false)
+      setBatchRaw([])
+      setBatchErrors([])
+      await reloadSoal(user.id)
+    }
+  }
+
+  const downloadBatchTemplate = () => {
+    const babContoh = matrixData[0]?.bab_id_text || "Nama Bab"
+    const template = [
+      {
+        pertanyaan: "Contoh soal pilihan ganda — ganti dengan pertanyaan Anda",
+        tipe: "pilgan",
+        tingkat_kesulitan: "mudah",
+        bab_id_text: babContoh,
+        pilihan: [
+          { id: 0, teks: "Pilihan A", benar: false },
+          { id: 1, teks: "Pilihan B (jawaban benar)", benar: true },
+          { id: 2, teks: "Pilihan C", benar: false },
+          { id: 3, teks: "Pilihan D", benar: false },
+        ],
+      },
+      {
+        pertanyaan: "Contoh soal ceklist — bisa ada lebih dari satu jawaban benar",
+        tipe: "ceklist",
+        tingkat_kesulitan: "sedang",
+        bab_id_text: babContoh,
+        pilihan: [
+          { id: 0, teks: "Pilihan A (benar)", benar: true },
+          { id: 1, teks: "Pilihan B", benar: false },
+          { id: 2, teks: "Pilihan C (benar)", benar: true },
+          { id: 3, teks: "Pilihan D", benar: false },
+        ],
+      },
+      {
+        pertanyaan: "Contoh soal essay",
+        tipe: "essay",
+        tingkat_kesulitan: "sulit",
+        bab_id_text: babContoh,
+        pilihan: [],
+      },
+      {
+        pertanyaan: "Contoh soal isian singkat",
+        tipe: "isian_singkat",
+        tingkat_kesulitan: "mudah",
+        bab_id_text: babContoh,
+        pilihan: [],
+      },
+    ]
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "template-soal-batch.json"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const startTour = useCallback(() => {
     const driverObj = driver({
       showProgress: true,
@@ -633,6 +756,25 @@ export default function SoalPage() {
               filename={`soal-${mapelNama || "guru"}`}
               meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString() }}
             />
+            <button
+              onClick={() => { setBatchRaw([]); setBatchErrors([]); setShowBatchModal(true) }}
+              title="Upload Soal (JSON Batch)"
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                border: "1.5px solid var(--pp-ink)",
+                borderRadius: 12,
+                padding: "8px 14px",
+                fontSize: 13,
+                fontWeight: 600,
+                backgroundColor: "var(--pp-card)",
+                color: "var(--pp-ink)",
+                boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                cursor: "pointer",
+              }}
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Upload JSON</span>
+            </button>
             <button
               id="tour-kirim-validator"
               onClick={allMet ? handleKirimValidator : undefined}
@@ -1366,6 +1508,258 @@ export default function SoalPage() {
           )}
         </div>
       </div>
+
+      {/* Batch Upload Modal */}
+      {showBatchModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowBatchModal(false) }}
+        >
+          <div
+            style={{
+              backgroundColor: "var(--pp-card)",
+              border: "2px solid var(--pp-ink)",
+              borderRadius: 24,
+              boxShadow: "6px 6px 0 0 var(--pp-ink)",
+              width: "100%",
+              maxWidth: 640,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* Modal header */}
+            <div
+              style={{
+                backgroundColor: "var(--pp-lemon)",
+                borderBottom: "2px solid var(--pp-ink)",
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <FileJson className="w-5 h-5" style={{ color: "var(--pp-ink)" }} />
+                <span className="font-display font-bold text-base" style={{ color: "var(--pp-ink)" }}>
+                  Upload Soal Batch (JSON)
+                </span>
+              </div>
+              <button
+                onClick={() => setShowBatchModal(false)}
+                style={{ color: "var(--pp-ink-2)", padding: 4, borderRadius: 8, cursor: "pointer" }}
+                className="hover:opacity-70 transition-opacity"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1" style={{ padding: "20px" }}>
+
+              {/* Bab yang valid */}
+              <div
+                className="text-xs mb-4 p-3 rounded-xl"
+                style={{ backgroundColor: "var(--pp-bg)", border: "1px solid var(--pp-line)" }}
+              >
+                <span className="font-bold" style={{ color: "var(--pp-ink)" }}>Bab tersedia: </span>
+                <span style={{ color: "var(--pp-muted)" }}>
+                  {matrixData.map(b => `"${b.bab_id_text}"`).join(", ")}
+                </span>
+              </div>
+
+              {/* Download template */}
+              <button
+                onClick={downloadBatchTemplate}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  border: "1.5px dashed var(--pp-ink)",
+                  borderRadius: 12,
+                  padding: "10px 16px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  backgroundColor: "var(--pp-bg)",
+                  color: "var(--pp-ink)",
+                  cursor: "pointer",
+                  marginBottom: 16,
+                }}
+              >
+                <FileJson className="w-4 h-4" />
+                Download Template JSON
+              </button>
+
+              {/* File input */}
+              <label
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  border: "1.5px dashed var(--pp-ink)",
+                  borderRadius: 14,
+                  padding: "24px 16px",
+                  cursor: "pointer",
+                  backgroundColor: batchRaw.length > 0 ? "var(--pp-mint)" : "var(--pp-bg)",
+                  transition: "background-color 200ms",
+                  marginBottom: 16,
+                }}
+              >
+                <Upload className="w-6 h-6" style={{ color: "var(--pp-ink-2)" }} />
+                <span className="text-sm font-medium" style={{ color: "var(--pp-ink)" }}>
+                  {batchRaw.length > 0
+                    ? `${batchRaw.length} soal terbaca — klik untuk ganti file`
+                    : "Klik untuk pilih file .json"}
+                </span>
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleBatchFileChange}
+                />
+              </label>
+
+              {/* Errors */}
+              {batchErrors.length > 0 && (
+                <div
+                  className="rounded-xl p-3 mb-4 space-y-1"
+                  style={{ backgroundColor: "#fef2f2", border: "1.5px solid #fca5a5" }}
+                >
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                    <span className="text-xs font-bold text-red-700">
+                      {batchErrors.length} error ditemukan — perbaiki sebelum upload
+                    </span>
+                  </div>
+                  {batchErrors.map((e, i) => (
+                    <div key={i} className="text-xs text-red-600 pl-6">• {e}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* Preview table */}
+              {batchRaw.length > 0 && batchErrors.length === 0 && (
+                <div
+                  className="rounded-xl overflow-hidden"
+                  style={{ border: "1.5px solid var(--pp-ink)" }}
+                >
+                  <div
+                    className="text-xs font-bold uppercase px-4 py-2"
+                    style={{
+                      backgroundColor: "var(--pp-bg)",
+                      borderBottom: "1px solid var(--pp-line)",
+                      color: "var(--pp-muted)",
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    Preview — {batchRaw.length} soal
+                  </div>
+                  {batchRaw.map((item: any, i: number) => {
+                    const tc = TIPE_COLORS[item.tipe] || TIPE_COLORS["pilgan"]
+                    const kc = KESULITAN_COLORS[item.tingkat_kesulitan] || KESULITAN_COLORS["mudah"]
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          padding: "12px 16px",
+                          borderTop: i > 0 ? "1px solid var(--pp-line)" : "none",
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <span
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 font-display"
+                          style={{ backgroundColor: "var(--pp-lemon)", color: "var(--pp-ink)", border: "1.5px solid var(--pp-ink)" }}
+                        >
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: tc.bg, color: tc.accent, border: "1px solid var(--pp-ink)" }}>
+                              {TIPE_LABELS[item.tipe] || item.tipe}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold capitalize" style={{ backgroundColor: kc.bg, color: kc.text, border: "1px solid var(--pp-ink)" }}>
+                              {item.tingkat_kesulitan}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "var(--pp-bg)", color: "var(--pp-ink-2)", border: "1px solid var(--pp-line)" }}>
+                              {item.bab_id_text}
+                            </span>
+                          </div>
+                          <div className="text-sm" style={{ color: "var(--pp-ink)" }}>
+                            {item.pertanyaan}
+                          </div>
+                          {Array.isArray(item.pilihan) && item.pilihan.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {item.pilihan.map((p: any, j: number) => (
+                                <div key={j} className="text-xs flex items-start gap-1" style={{ color: p.benar ? "#15803d" : "var(--pp-muted)" }}>
+                                  <span className="font-bold">{String.fromCharCode(65 + j)}.</span>
+                                  <span>{p.teks}{p.benar ? " ✓" : ""}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div
+              style={{
+                padding: "16px 20px",
+                borderTop: "1.5px solid var(--pp-ink)",
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={() => setShowBatchModal(false)}
+                style={{
+                  border: "1.5px solid var(--pp-line)",
+                  borderRadius: 12,
+                  padding: "10px 20px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  backgroundColor: "transparent",
+                  color: "var(--pp-ink-2)",
+                  cursor: "pointer",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleBatchInsert}
+                disabled={batchSaving || batchErrors.length > 0 || batchRaw.length === 0}
+                style={{
+                  border: "1.5px solid var(--pp-ink)",
+                  borderRadius: 12,
+                  padding: "10px 24px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  backgroundColor: batchErrors.length === 0 && batchRaw.length > 0 ? "var(--pp-ink)" : "var(--pp-bg)",
+                  color: batchErrors.length === 0 && batchRaw.length > 0 ? "#fff" : "var(--pp-muted)",
+                  cursor: batchErrors.length === 0 && batchRaw.length > 0 && !batchSaving ? "pointer" : "not-allowed",
+                  boxShadow: batchErrors.length === 0 && batchRaw.length > 0 ? "3px 3px 0 0 rgba(0,0,0,0.2)" : "none",
+                  opacity: batchSaving ? 0.6 : 1,
+                }}
+              >
+                {batchSaving ? "Menyimpan..." : `Upload ${batchRaw.length > 0 ? batchRaw.length + " " : ""}Soal`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
