@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
-import { CheckCircle, Clock, AlertCircle, ArrowLeft, Pencil, Trash2, Check, X } from "lucide-react"
+import { CheckCircle, Clock, AlertCircle, ArrowLeft, Pencil, Trash2, Check, X, Users } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import DownloadDropdown from "@/components/DownloadDropdown"
 
@@ -50,6 +50,9 @@ export default function ValidasiPage() {
   const [revisionNotes, setRevisionNotes] = useState<Record<string, string>>({})
   const [editingNote, setEditingNote] = useState<{ soalId: string; index: number; text: string } | null>(null)
   const [validatorMapelIds, setValidatorMapelIds] = useState<string[] | null>(null)
+  const [guruMap, setGuruMap] = useState<Record<string, { kelas: string; nama: string }>>({})
+  const [filterKelas, setFilterKelas] = useState<string | null>(null)
+  const [filterGuru, setFilterGuru] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -144,6 +147,9 @@ export default function ValidasiPage() {
     setSelectedMapel(mapel)
     setLoadingSoal(true)
     setSoalList([])
+    setGuruMap({})
+    setFilterKelas(null)
+    setFilterGuru(null)
     setRevisionNotes({})
 
     const { data: soal, error: soalError } = await supabase
@@ -156,7 +162,23 @@ export default function ValidasiPage() {
     if (soalError) {
       setToast({ message: "Gagal memuat soal: " + soalError.message, type: "error" })
     } else {
-      setSoalList(soal ?? [])
+      const soalData = soal ?? []
+      setSoalList(soalData)
+
+      const guruIds = [...new Set(soalData.map((s: any) => s.guru_id).filter(Boolean))]
+      if (guruIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, kelas")
+          .in("id", guruIds)
+        if (profiles) {
+          const map: Record<string, { kelas: string; nama: string }> = {}
+          profiles.forEach((p: any) => {
+            map[p.id] = { kelas: p.kelas || "—", nama: p.full_name || "Guru" }
+          })
+          setGuruMap(map)
+        }
+      }
     }
     setLoadingSoal(false)
   }
@@ -277,6 +299,15 @@ export default function ValidasiPage() {
       </div>
     )
   }
+
+  const availableKelas = [...new Set(soalList.map(s => guruMap[s.guru_id]?.kelas).filter(Boolean))] as string[]
+  const availableGuru = [...new Map(
+    soalList.map(s => [s.guru_id, guruMap[s.guru_id]?.nama || s.guru_id])
+  ).entries()] as [string, string][]
+
+  const filteredSoal = soalList
+    .filter(s => !filterKelas || guruMap[s.guru_id]?.kelas === filterKelas)
+    .filter(s => !filterGuru || s.guru_id === filterGuru)
 
   return (
     <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
@@ -496,6 +527,90 @@ export default function ValidasiPage() {
                   />
                 )}
               </div>
+
+              {/* Filter kelas & guru */}
+              {!loadingSoal && soalList.length > 0 && (availableKelas.length > 1 || availableGuru.length > 1) && (
+                <div
+                  style={{
+                    borderTop: "1.5px solid var(--pp-ink)",
+                    backgroundColor: "var(--pp-bg)",
+                    padding: "10px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 6,
+                  }}
+                >
+                  <Users className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--pp-muted)" }} />
+
+                  {/* Kelas pills */}
+                  {availableKelas.map(kelas => {
+                    const active = filterKelas === kelas
+                    return (
+                      <button
+                        key={kelas}
+                        onClick={() => setFilterKelas(active ? null : kelas)}
+                        className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all"
+                        style={{
+                          backgroundColor: active ? "#6d28d9" : "#ECE4FF",
+                          color: active ? "#fff" : "#6d28d9",
+                          border: `1.5px solid ${active ? "#6d28d9" : "var(--pp-line)"}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {kelas}
+                      </button>
+                    )
+                  })}
+
+                  {availableKelas.length > 0 && availableGuru.length > 0 && (
+                    <div style={{ width: 1, height: 16, backgroundColor: "var(--pp-line)", margin: "0 2px" }} />
+                  )}
+
+                  {/* Guru pills */}
+                  {availableGuru.map(([guruId, nama]) => {
+                    const active = filterGuru === guruId
+                    return (
+                      <button
+                        key={guruId}
+                        onClick={() => setFilterGuru(active ? null : guruId)}
+                        className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all"
+                        style={{
+                          backgroundColor: active ? "#0369a1" : "#e0f2fe",
+                          color: active ? "#fff" : "#0369a1",
+                          border: `1.5px solid ${active ? "#0369a1" : "var(--pp-line)"}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {nama}
+                      </button>
+                    )
+                  })}
+
+                  {/* Reset */}
+                  {(filterKelas || filterGuru) && (
+                    <button
+                      onClick={() => { setFilterKelas(null); setFilterGuru(null) }}
+                      className="text-xs px-2.5 py-1 rounded-full transition-all"
+                      style={{
+                        backgroundColor: "var(--pp-bg)",
+                        color: "var(--pp-muted)",
+                        border: "1.5px solid var(--pp-line)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      × Reset
+                    </button>
+                  )}
+
+                  {/* Count info */}
+                  {(filterKelas || filterGuru) && (
+                    <span className="text-xs ml-auto" style={{ color: "var(--pp-muted)" }}>
+                      {filteredSoal.length} / {soalList.length} soal
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {loadingSoal ? (
@@ -506,9 +621,13 @@ export default function ValidasiPage() {
               <div className="p-10 text-center" style={{ color: "var(--pp-muted)" }}>
                 Belum ada soal untuk mata pelajaran ini.
               </div>
+            ) : filteredSoal.length === 0 ? (
+              <div className="p-10 text-center" style={{ color: "var(--pp-muted)" }}>
+                Tidak ada soal yang cocok dengan filter.
+              </div>
             ) : (
               <div>
-                {soalList.map((soal, index) => {
+                {filteredSoal.map((soal, index) => {
                   const tipeColor = TIPE_COLORS[soal.tipe] || TIPE_COLORS["pilgan"]
                   const kesColor = KESULITAN_COLORS[soal.tingkat_kesulitan] || KESULITAN_COLORS["mudah"]
 
@@ -566,6 +685,14 @@ export default function ValidasiPage() {
                           >
                             Bobot: {soal.bobot}
                           </span>
+                          {guruMap[soal.guru_id] && (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ backgroundColor: "var(--pp-peach)", color: "var(--pp-ink)", border: "1px solid var(--pp-ink)" }}
+                            >
+                              {guruMap[soal.guru_id].kelas} · {guruMap[soal.guru_id].nama}
+                            </span>
+                          )}
                         </div>
                         <span
                           className="text-xs px-2.5 py-1 rounded-full font-semibold shrink-0"
