@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check, CircleHelp, Upload, X, AlertCircle, FileJson } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Plus, Pencil, Trash2, Check, CircleHelp, Upload, X, AlertCircle, FileJson, Highlighter } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
@@ -55,6 +55,31 @@ const BOBOT_DEFAULT: Record<string, Record<string, number>> = {
 }
 
 type BobotConfig = Record<string, number>
+
+interface HighlightItem {
+  id: string
+  field: string
+  text: string
+  color: "yellow" | "red"
+  note: string
+}
+
+function applyHighlights(html: string, highlights: HighlightItem[], field: string): string {
+  const relevant = highlights.filter(h => h.field === field)
+  if (!relevant.length) return html
+  let result = html
+  for (const h of relevant) {
+    const escaped = h.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const bg = h.color === "red" ? "#fecaca" : "#fef08a"
+    const parts = result.split(/(<[^>]+>)/)
+    result = parts.map(part =>
+      part.startsWith("<") ? part :
+      part.replace(new RegExp(escaped, "g"),
+        `<mark style="background:${bg};border-radius:3px;padding:0 2px;cursor:help" title="${h.note || "Ditandai validator"}">${h.text}</mark>`)
+    ).join("")
+  }
+  return result
+}
 
 export default function SoalPage() {
   const router = useRouter()
@@ -154,7 +179,7 @@ export default function SoalPage() {
   const reloadSoal = async (uid: string): Promise<Record<string, number>> => {
     const { data } = await supabase
       .from("bank_soal")
-      .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes")
+      .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,highlights")
       .eq("guru_id", uid)
       .order("created_at", { ascending: true })
 
@@ -1415,14 +1440,15 @@ export default function SoalPage() {
                           <div
                             className="text-sm rich-html"
                             style={{ color: "var(--pp-ink)" }}
-                            dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                            dangerouslySetInnerHTML={{ __html: applyHighlights(soal.pertanyaan, soal.highlights || [], "pertanyaan") }}
                           />
 
                           {/* Pilihan jawaban */}
                           {soal.pilihan && soal.pilihan.length > 0 && (
                             <div className="mt-2 space-y-1">
-                              {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }) => {
+                              {soal.pilihan.map((p: { id: number; teks: string; benar: boolean }, i: number) => {
                                 const gambarUrl = soal.pilihan_gambar?.[p.id] || ""
+                                const field = `pilihan_${i}`
                                 return (
                                   <div
                                     key={p.id}
@@ -1443,7 +1469,7 @@ export default function SoalPage() {
                                         <div
                                           className="rich-html"
                                           style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
-                                          dangerouslySetInnerHTML={{ __html: p.teks }}
+                                          dangerouslySetInnerHTML={{ __html: applyHighlights(p.teks, soal.highlights || [], field) }}
                                         />
                                       )}
                                       {gambarUrl && (
@@ -1458,6 +1484,33 @@ export default function SoalPage() {
                                   </div>
                                 )
                               })}
+                            </div>
+                          )}
+
+                          {/* Highlights chips (read-only) */}
+                          {soal.highlights && soal.highlights.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-xs flex items-center gap-1 mb-1" style={{ color: "var(--pp-muted)" }}>
+                                <Highlighter className="w-3 h-3" />
+                                Ditandai validator:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {soal.highlights.map((h: HighlightItem) => (
+                                  <span
+                                    key={h.id}
+                                    className="text-xs px-2 py-0.5 rounded-full"
+                                    style={{
+                                      backgroundColor: h.color === "red" ? "#fecaca" : "#fef08a",
+                                      border: "1px solid var(--pp-ink)",
+                                      color: "var(--pp-ink)",
+                                    }}
+                                    title={h.note || undefined}
+                                  >
+                                    "{h.text.length > 30 ? h.text.slice(0, 30) + "…" : h.text}"
+                                    {h.note && <span style={{ color: "var(--pp-muted)" }}> — {h.note}</span>}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           )}
 

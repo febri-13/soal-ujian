@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import Toast from "@/components/Toast"
-import { CheckCircle, Clock, AlertCircle, ArrowLeft, Pencil, Trash2, Check, X, Users } from "lucide-react"
+import { CheckCircle, Clock, AlertCircle, ArrowLeft, Pencil, Trash2, Check, X, Users, Highlighter } from "lucide-react"
 import ThemeToggle from "@/components/ThemeToggle"
 import DownloadDropdown from "@/components/DownloadDropdown"
 
@@ -37,6 +37,32 @@ const KESULITAN_COLORS: Record<string, { bg: string; text: string }> = {
   sulit:  { bg: "#fee2e2", text: "#991b1b" },
 }
 
+interface HighlightItem {
+  id: string
+  field: string   // "pertanyaan" | "pilihan_0" | "pilihan_1" | ...
+  text: string
+  color: "yellow" | "red"
+  note: string
+}
+
+function applyHighlights(html: string, highlights: HighlightItem[], field: string): string {
+  const relevant = highlights.filter(h => h.field === field)
+  if (!relevant.length) return html
+  let result = html
+  for (const h of relevant) {
+    const escaped = h.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const bg = h.color === "red" ? "#fecaca" : "#fef08a"
+    // Split by HTML tags, only replace inside text nodes
+    const parts = result.split(/(<[^>]+>)/)
+    result = parts.map(part =>
+      part.startsWith("<") ? part :
+      part.replace(new RegExp(escaped, "g"),
+        `<mark style="background:${bg};border-radius:3px;padding:0 2px;cursor:help" title="${h.note || "Ditandai validator"}">${h.text}</mark>`)
+    ).join("")
+  }
+  return result
+}
+
 export default function ValidasiPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -53,6 +79,10 @@ export default function ValidasiPage() {
   const [guruMap, setGuruMap] = useState<Record<string, { kelas: string; nama: string }>>({})
   const [filterKelas, setFilterKelas] = useState<string | null>(null)
   const [filterGuru, setFilterGuru] = useState<string | null>(null)
+  const [highlightPopover, setHighlightPopover] = useState<{ soalId: string; field: string; text: string; x: number; y: number } | null>(null)
+  const [highlightColor, setHighlightColor] = useState<"yellow" | "red">("yellow")
+  const [highlightNote, setHighlightNote] = useState("")
+  const [savingHighlight, setSavingHighlight] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -154,7 +184,7 @@ export default function ValidasiPage() {
 
     const { data: soal, error: soalError } = await supabase
       .from("bank_soal")
-      .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,revision_history,guru_id")
+      .select("id,pertanyaan,tipe,tingkat_kesulitan,bobot,bab_id_text,created_at,pilihan,pilihan_gambar,status,revision_notes,revision_history,guru_id,highlights")
       .eq("mata_pelajaran_id", mapel.id)
       .in("status", ["submitted", "needs_revision", "approved"])
       .order("created_at", { ascending: true })
@@ -292,6 +322,47 @@ export default function ValidasiPage() {
       setSoalList(prev => prev.map(s => s.id === soalId ? { ...s, revision_notes: newNotes, revision_history: newHistory } : s))
       setToast({ message: "Catatan dihapus!", type: "success" })
     }
+  }
+
+  const handleTextSelect = (soalId: string, field: string) => (e: React.MouseEvent) => {
+    const selection = window.getSelection()
+    const text = selection?.toString().trim()
+    if (!text || text.length < 2) return
+    const range = selection!.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    setHighlightPopover({ soalId, field, text, x: rect.left + rect.width / 2, y: rect.bottom + 8 })
+    setHighlightColor("yellow")
+    setHighlightNote("")
+  }
+
+  const handleSaveHighlight = async () => {
+    if (!highlightPopover) return
+    const soal = soalList.find(s => s.id === highlightPopover.soalId)
+    if (!soal) return
+    setSavingHighlight(true)
+    const newHighlight: HighlightItem = {
+      id: Date.now().toString(),
+      field: highlightPopover.field,
+      text: highlightPopover.text,
+      color: highlightColor,
+      note: highlightNote.trim(),
+    }
+    const updated = [...(soal.highlights || []), newHighlight]
+    const { error } = await supabase.from("bank_soal").update({ highlights: updated }).eq("id", highlightPopover.soalId)
+    setSavingHighlight(false)
+    if (!error) {
+      setSoalList(prev => prev.map(s => s.id === highlightPopover.soalId ? { ...s, highlights: updated } : s))
+      setHighlightPopover(null)
+      window.getSelection()?.removeAllRanges()
+    }
+  }
+
+  const handleDeleteHighlight = async (soalId: string, highlightId: string) => {
+    const soal = soalList.find(s => s.id === soalId)
+    if (!soal) return
+    const updated = (soal.highlights || []).filter((h: HighlightItem) => h.id !== highlightId)
+    const { error } = await supabase.from("bank_soal").update({ highlights: updated }).eq("id", soalId)
+    if (!error) setSoalList(prev => prev.map(s => s.id === soalId ? { ...s, highlights: updated } : s))
   }
 
   if (loading) {
@@ -710,9 +781,10 @@ export default function ValidasiPage() {
 
                       {/* Pertanyaan */}
                       <div
-                        className="text-sm rich-html mb-3"
-                        style={{ color: "var(--pp-ink)", paddingLeft: 4 }}
-                        dangerouslySetInnerHTML={{ __html: soal.pertanyaan }}
+                        className="text-sm rich-html mb-3 select-text"
+                        style={{ color: "var(--pp-ink)", paddingLeft: 4, cursor: "text" }}
+                        onMouseUp={handleTextSelect(soal.id, "pertanyaan")}
+                        dangerouslySetInnerHTML={{ __html: applyHighlights(soal.pertanyaan, soal.highlights || [], "pertanyaan") }}
                       />
 
                       {/* Pilihan */}
@@ -720,13 +792,15 @@ export default function ValidasiPage() {
                         <div className="mb-3 space-y-1.5 pl-1">
                           {soal.pilihan.map((p: any, i: number) => {
                             const gambarUrl = soal.pilihan_gambar?.[p.id ?? i] || ""
+                            const field = `pilihan_${i}`
                             return (
                             <div
                               key={i}
-                              className="flex items-start gap-2 text-xs rounded-lg px-2.5 py-1.5"
+                              className="flex items-start gap-2 text-xs rounded-lg px-2.5 py-1.5 select-text"
                               style={{
                                 backgroundColor: p.benar ? "#f0fdf4" : "var(--pp-bg)",
                                 border: `1px solid ${p.benar ? "#86efac" : "var(--pp-line)"}`,
+                                cursor: "text",
                               }}
                             >
                               <span
@@ -735,12 +809,12 @@ export default function ValidasiPage() {
                               >
                                 {String.fromCharCode(65 + i)}.
                               </span>
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0" onMouseUp={handleTextSelect(soal.id, field)}>
                                 {p.teks && (
                                   <span
                                     className="rich-html"
                                     style={{ color: p.benar ? "#15803d" : "var(--pp-ink)" }}
-                                    dangerouslySetInnerHTML={{ __html: p.teks }}
+                                    dangerouslySetInnerHTML={{ __html: applyHighlights(p.teks, soal.highlights || [], field) }}
                                   />
                                 )}
                                 {gambarUrl && (
@@ -761,6 +835,43 @@ export default function ValidasiPage() {
                               )}
                             </div>
                           )})}
+                        </div>
+                      )}
+
+                      {/* Highlights list */}
+                      {soal.highlights && soal.highlights.length > 0 && (
+                        <div className="mb-3 pl-1">
+                          <div className="text-xs font-medium mb-1.5 flex items-center gap-1" style={{ color: "var(--pp-muted)" }}>
+                            <Highlighter className="w-3 h-3" />
+                            Teks ditandai ({soal.highlights.length})
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {soal.highlights.map((h: HighlightItem) => (
+                              <div
+                                key={h.id}
+                                className="flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: h.color === "red" ? "#fecaca" : "#fef08a",
+                                  border: "1px solid var(--pp-ink)",
+                                  color: "var(--pp-ink)",
+                                }}
+                                title={h.note || undefined}
+                              >
+                                <span>"{h.text.length > 30 ? h.text.slice(0, 30) + "…" : h.text}"</span>
+                                {h.note && (
+                                  <span style={{ color: "var(--pp-muted)" }}>
+                                    — {h.note.length > 20 ? h.note.slice(0, 20) + "…" : h.note}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteHighlight(soal.id, h.id)}
+                                  style={{ lineHeight: 1, padding: 1, borderRadius: "50%", backgroundColor: "transparent", cursor: "pointer", border: "none" }}
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -945,6 +1056,108 @@ export default function ValidasiPage() {
           </div>
         )}
       </main>
+
+      {/* Highlight popover */}
+      {highlightPopover && (
+        <div
+          style={{
+            position: "fixed",
+            left: highlightPopover.x,
+            top: highlightPopover.y,
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            backgroundColor: "var(--pp-card)",
+            border: "1.5px solid var(--pp-ink)",
+            borderRadius: 14,
+            padding: "12px 14px",
+            boxShadow: "4px 4px 0 0 var(--pp-ink)",
+            minWidth: 220,
+            maxWidth: 300,
+          }}
+        >
+          <div className="text-xs font-semibold mb-2" style={{ color: "var(--pp-muted)" }}>
+            Highlight teks:
+          </div>
+          <div
+            className="text-xs mb-3 px-2 py-1 rounded"
+            style={{ backgroundColor: "#fef9c3", color: "var(--pp-ink)", border: "1px solid var(--pp-line)", maxHeight: 48, overflow: "hidden" }}
+          >
+            "{highlightPopover.text.length > 60 ? highlightPopover.text.slice(0, 60) + "…" : highlightPopover.text}"
+          </div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs" style={{ color: "var(--pp-muted)" }}>Warna:</span>
+            <button
+              onClick={() => setHighlightColor("yellow")}
+              style={{
+                width: 22, height: 22, borderRadius: "50%",
+                backgroundColor: "#fef08a",
+                border: highlightColor === "yellow" ? "2.5px solid var(--pp-ink)" : "2px solid var(--pp-line)",
+                boxShadow: highlightColor === "yellow" ? "1px 1px 0 0 var(--pp-ink)" : "none",
+                cursor: "pointer",
+              }}
+            />
+            <button
+              onClick={() => setHighlightColor("red")}
+              style={{
+                width: 22, height: 22, borderRadius: "50%",
+                backgroundColor: "#fecaca",
+                border: highlightColor === "red" ? "2.5px solid var(--pp-ink)" : "2px solid var(--pp-line)",
+                boxShadow: highlightColor === "red" ? "1px 1px 0 0 var(--pp-ink)" : "none",
+                cursor: "pointer",
+              }}
+            />
+            <span className="text-xs" style={{ color: "var(--pp-muted)" }}>
+              {highlightColor === "yellow" ? "Kuning" : "Merah"}
+            </span>
+          </div>
+          <textarea
+            value={highlightNote}
+            onChange={e => setHighlightNote(e.target.value)}
+            placeholder="Catatan (opsional)..."
+            rows={2}
+            className="w-full text-xs resize-none mb-3"
+            style={{
+              border: "1.5px solid var(--pp-line)",
+              borderRadius: 8,
+              padding: "6px 8px",
+              backgroundColor: "var(--pp-bg)",
+              color: "var(--pp-ink)",
+              outline: "none",
+              display: "block",
+            }}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveHighlight}
+              disabled={savingHighlight}
+              className="flex-1 text-xs font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1"
+              style={{
+                backgroundColor: "var(--pp-primary)",
+                color: "#fff",
+                border: "1.5px solid var(--pp-ink)",
+                boxShadow: "2px 2px 0 0 var(--pp-ink)",
+                cursor: savingHighlight ? "not-allowed" : "pointer",
+                opacity: savingHighlight ? 0.6 : 1,
+              }}
+            >
+              <Highlighter className="w-3 h-3" />
+              Simpan
+            </button>
+            <button
+              onClick={() => { setHighlightPopover(null); window.getSelection()?.removeAllRanges() }}
+              className="text-xs px-3 py-1.5 rounded-lg"
+              style={{
+                backgroundColor: "var(--pp-bg)",
+                color: "var(--pp-muted)",
+                border: "1.5px solid var(--pp-line)",
+                cursor: "pointer",
+              }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
