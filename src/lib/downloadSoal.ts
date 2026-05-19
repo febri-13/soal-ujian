@@ -101,3 +101,84 @@ export function downloadJSON(soalList: SoalDownload[], filename: string): void {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: string): void {
+  const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const soalData = soalList.map(s => ({
+    pertanyaan: htmlToPlainText(s.pertanyaan),
+    tipe: s.tipe,
+    poin: Math.max(1, Math.round(s.bobot)),
+    pilihan: (s.pilihan ?? []).map(p => ({
+      teks: htmlToPlainText(p.teks),
+      benar: p.benar,
+    })),
+  }))
+
+  const script = `/**
+ * Script Ekspor Soal ke Google Forms
+ * Judul : ${formTitle}
+ * Dibuat: ${tanggal}
+ * Soal  : ${soalData.length} soal
+ *
+ * CARA PAKAI:
+ * 1. Buka https://script.google.com > Proyek Baru
+ * 2. Hapus kode bawaan, paste seluruh isi file ini
+ * 3. Pilih fungsi "createPsatForm" di dropdown atas
+ * 4. Klik tombol Run (▶)
+ * 5. Izinkan akses saat popup muncul (pilih akun Google kamu)
+ * 6. Setelah selesai: klik "View" > "Logs" untuk melihat link form
+ */
+
+function createPsatForm() {
+  var judulForm = ${JSON.stringify(formTitle)};
+  var soalData = ${JSON.stringify(soalData, null, 2)};
+
+  var form = FormApp.create(judulForm);
+  form.setIsQuiz(true);
+  form.setCollectEmail(false);
+  form.setLimitOneResponsePerUser(false);
+
+  soalData.forEach(function(soal) {
+    if (soal.tipe === 'pilgan') {
+      var pilganItem = form.addMultipleChoiceItem();
+      pilganItem.setTitle(soal.pertanyaan);
+      pilganItem.setRequired(true);
+      pilganItem.setPoints(soal.poin);
+      pilganItem.setChoices(soal.pilihan.map(function(p) {
+        return pilganItem.createChoice(p.teks, p.benar);
+      }));
+    } else if (soal.tipe === 'ceklist') {
+      var ceklistItem = form.addCheckboxItem();
+      ceklistItem.setTitle(soal.pertanyaan);
+      ceklistItem.setRequired(true);
+      ceklistItem.setPoints(soal.poin);
+      ceklistItem.setChoices(soal.pilihan.map(function(p) {
+        return ceklistItem.createChoice(p.teks, p.benar);
+      }));
+    } else if (soal.tipe === 'essay') {
+      form.addParagraphTextItem().setTitle(soal.pertanyaan);
+    } else {
+      form.addTextItem().setTitle(soal.pertanyaan);
+    }
+  });
+
+  var linkSiswa = form.getPublishedUrl();
+  var linkEdit  = form.getEditUrl();
+
+  console.log('=== FORM BERHASIL DIBUAT ===');
+  console.log('Judul      : ' + judulForm);
+  console.log('Jumlah soal: ' + soalData.length);
+  console.log('Link siswa : ' + linkSiswa);
+  console.log('Link edit  : ' + linkEdit);
+}
+`
+
+  const blob = new Blob([script], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${formTitle.replace(/[^a-zA-Z0-9\-_]/g, '_')}_gform.gs`
+  a.click()
+  URL.revokeObjectURL(url)
+}

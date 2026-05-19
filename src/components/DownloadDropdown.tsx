@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Download, ChevronDown, FileText, FileJson } from 'lucide-react'
+import { Download, ChevronDown, FileText, FileJson, FileCode } from 'lucide-react'
 import type { SoalDownload, PdfMeta } from '@/lib/downloadSoal'
 
 interface Props {
@@ -29,6 +29,13 @@ export default function DownloadDropdown({ soalList, filename, meta, disabled }:
     setOpen(false)
     import('@/lib/downloadSoal').then(({ downloadJSON }) => {
       downloadJSON(soalList, filename)
+    })
+  }
+
+  const handleGoogleForms = () => {
+    setOpen(false)
+    import('@/lib/downloadSoal').then(({ generateGoogleFormsScript }) => {
+      generateGoogleFormsScript(soalList, meta.judul)
     })
   }
 
@@ -119,6 +126,18 @@ export default function DownloadDropdown({ soalList, filename, meta, disabled }:
             <FileJson className="w-4 h-4 shrink-0" />
             Download JSON
           </button>
+          <div style={{ height: 1, backgroundColor: 'var(--color-border)', margin: '2px 8px' }} />
+          <button
+            onClick={handleGoogleForms}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:opacity-70"
+            style={{ color: 'var(--color-foreground)' }}
+          >
+            <FileCode className="w-4 h-4 shrink-0" />
+            Script Google Forms
+          </button>
+          <div className="px-3 pb-2 text-xs" style={{ color: 'var(--color-muted-foreground)', lineHeight: 1.4 }}>
+            Download .gs → jalankan di<br />script.google.com
+          </div>
         </div>
       )}
     </div>
