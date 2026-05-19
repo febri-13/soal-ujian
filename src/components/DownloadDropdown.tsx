@@ -9,9 +9,10 @@ interface Props {
   filename: string
   meta: PdfMeta
   disabled?: boolean
+  googleFormsSoalList?: SoalDownload[]
 }
 
-export default function DownloadDropdown({ soalList, filename, meta, disabled }: Props) {
+export default function DownloadDropdown({ soalList, filename, meta, disabled, googleFormsSoalList }: Props) {
   const [open, setOpen] = useState(false)
   const [loadingPdf, setLoadingPdf] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -35,7 +36,7 @@ export default function DownloadDropdown({ soalList, filename, meta, disabled }:
   const handleGoogleForms = () => {
     setOpen(false)
     import('@/lib/downloadSoal').then(({ generateGoogleFormsScript }) => {
-      generateGoogleFormsScript(soalList, meta.judul)
+      generateGoogleFormsScript(googleFormsSoalList ?? soalList, meta.judul)
     })
   }
 

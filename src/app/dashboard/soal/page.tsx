@@ -9,6 +9,7 @@ import Toast from "@/components/Toast"
 import RichTextEditor from "@/components/RichTextEditor"
 import ImageUpload from "@/components/ImageUpload"
 import DownloadDropdown from "@/components/DownloadDropdown"
+import { sampleSoalByMatrix } from "@/lib/downloadSoal"
 import { driver } from "driver.js"
 import "driver.js/dist/driver.css"
 
@@ -733,6 +734,7 @@ export default function SoalPage() {
     .filter(s => !filterTipe || s.tipe === filterTipe)
     .filter(s => !filterKesulitan || s.tingkat_kesulitan === filterKesulitan)
     .filter(s => !filterStatus || s.status === filterStatus)
+  const matrixSampledSoal = sampleSoalByMatrix(soalList, matrixData)
 
   const selectStyle: React.CSSProperties = {
     border: "1.5px solid var(--pp-ink)",
@@ -793,6 +795,7 @@ export default function SoalPage() {
               soalList={soalList}
               filename={`soal-${mapelNama || "guru"}`}
               meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString() }}
+              googleFormsSoalList={matrixSampledSoal}
             />
             <button
               onClick={() => { setBatchRaw([]); setBatchErrors([]); setShowBatchModal(true) }}

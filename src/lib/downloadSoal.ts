@@ -102,6 +102,35 @@ export function downloadJSON(soalList: SoalDownload[], filename: string): void {
   URL.revokeObjectURL(url)
 }
 
+export function sampleSoalByMatrix(
+  soalList: SoalDownload[],
+  matrixData: { bab_id_text: string; data: Record<string, number> }[]
+): SoalDownload[] {
+  const result: SoalDownload[] = []
+
+  for (const bab of matrixData) {
+    for (const [key, target] of Object.entries(bab.data)) {
+      if (!target) continue
+      const lastIdx = key.lastIndexOf('_')
+      const tipe = key.slice(0, lastIdx)
+      const kesulitan = key.slice(lastIdx + 1)
+
+      const matching = soalList.filter(s =>
+        s.bab_id_text === bab.bab_id_text &&
+        s.tipe === tipe &&
+        s.tingkat_kesulitan === kesulitan
+      )
+
+      const approved = matching.filter(s => s.status === 'approved')
+      const source = approved.length > 0 ? approved : matching
+      const shuffled = [...source].sort(() => Math.random() - 0.5)
+      result.push(...shuffled.slice(0, target))
+    }
+  }
+
+  return result
+}
+
 export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: string): void {
   const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 
