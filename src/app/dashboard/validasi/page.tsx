@@ -601,8 +601,8 @@ export default function ValidasiPage() {
                 )}
               </div>
 
-              {/* Filter kelas & guru */}
-              {!loadingSoal && soalList.length > 0 && (availableKelas.length > 1 || availableGuru.length > 1) && (
+              {/* Filter kelas */}
+              {!loadingSoal && soalList.length > 0 && availableKelas.length > 1 && (
                 <div
                   style={{
                     borderTop: "1.5px solid var(--pp-ink)",
@@ -616,7 +616,6 @@ export default function ValidasiPage() {
                 >
                   <Users className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--pp-muted)" }} />
 
-                  {/* Kelas pills */}
                   {availableKelas.map(kelas => {
                     const active = filterKelas === kelas
                     return (
@@ -636,34 +635,9 @@ export default function ValidasiPage() {
                     )
                   })}
 
-                  {availableKelas.length > 0 && availableGuru.length > 0 && (
-                    <div style={{ width: 1, height: 16, backgroundColor: "var(--pp-line)", margin: "0 2px" }} />
-                  )}
-
-                  {/* Guru pills */}
-                  {availableGuru.map(([guruId, nama]) => {
-                    const active = filterGuru === guruId
-                    return (
-                      <button
-                        key={guruId}
-                        onClick={() => setFilterGuru(active ? null : guruId)}
-                        className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all"
-                        style={{
-                          backgroundColor: active ? "#0369a1" : "#e0f2fe",
-                          color: active ? "#fff" : "#0369a1",
-                          border: `1.5px solid ${active ? "#0369a1" : "var(--pp-line)"}`,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {nama}
-                      </button>
-                    )
-                  })}
-
-                  {/* Reset */}
-                  {(filterKelas || filterGuru) && (
+                  {filterKelas && (
                     <button
-                      onClick={() => { setFilterKelas(null); setFilterGuru(null) }}
+                      onClick={() => setFilterKelas(null)}
                       className="text-xs px-2.5 py-1 rounded-full transition-all"
                       style={{
                         backgroundColor: "var(--pp-bg)",
@@ -676,8 +650,7 @@ export default function ValidasiPage() {
                     </button>
                   )}
 
-                  {/* Count info */}
-                  {(filterKelas || filterGuru) && (
+                  {filterKelas && (
                     <span className="text-xs ml-auto" style={{ color: "var(--pp-muted)" }}>
                       {filteredSoal.length} / {soalList.length} soal
                     </span>
