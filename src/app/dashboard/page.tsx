@@ -471,7 +471,7 @@ export default function DashboardPage() {
           <div className="flex gap-3 flex-wrap">
             {revisionCount > 0 && (
               <button
-                onClick={() => router.push("/dashboard/soal")}
+                onClick={() => { localStorage.setItem("soal_filter_revisi", "1"); router.push("/dashboard/soal") }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full font-medium text-sm"
                 style={{
                   backgroundColor: "#FFD9E6", border: "1.5px solid var(--pp-pink)",

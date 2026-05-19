@@ -101,6 +101,7 @@ export default function SoalPage() {
   const [expandedBabs, setExpandedBabs] = useState<Set<string>>(new Set())
   const [filterTipe, setFilterTipe] = useState<string | null>(null)
   const [filterKesulitan, setFilterKesulitan] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<string | null>(null)
 
   const [pertanyaan, setPertanyaan] = useState("")
   const [gambarUrl, setGambarUrl] = useState("")
@@ -706,6 +707,17 @@ export default function SoalPage() {
     }
   }, [loading, startTour])
 
+  useEffect(() => {
+    if (loading || soalList.length === 0) return
+    const revisiFlag = localStorage.getItem("soal_filter_revisi")
+    if (revisiFlag) {
+      localStorage.removeItem("soal_filter_revisi")
+      setFilterStatus("needs_revision")
+      const firstRevisionSoal = soalList.find(s => s.status === "needs_revision")
+      if (firstRevisionSoal) setActiveBab(firstRevisionSoal.bab_id_text)
+    }
+  }, [loading, soalList])
+
   if (loading) {
     return (
       <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }} className="flex items-center justify-center">
@@ -720,6 +732,7 @@ export default function SoalPage() {
   const filteredSoal = activeBabSoal
     .filter(s => !filterTipe || s.tipe === filterTipe)
     .filter(s => !filterKesulitan || s.tingkat_kesulitan === filterKesulitan)
+    .filter(s => !filterStatus || s.status === filterStatus)
 
   const selectStyle: React.CSSProperties = {
     border: "1.5px solid var(--pp-ink)",
@@ -914,6 +927,7 @@ export default function SoalPage() {
               const isExpanded = expandedBabs.has(bab.bab_id_text)
               const isActive = activeBab === bab.bab_id_text
               const babAllMet = babTotal > 0 && babDone >= babTotal
+              const babRevisiCount = soalList.filter(s => s.bab_id_text === bab.bab_id_text && s.status === "needs_revision").length
 
               return (
                 <div
@@ -941,10 +955,18 @@ export default function SoalPage() {
                         {babAllMet && " ✓"}
                       </p>
                     </div>
+                    {babRevisiCount > 0 && (
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded-full font-bold shrink-0 mr-1"
+                        style={{ backgroundColor: "var(--pp-pink)", color: "#be123c", border: "1px solid var(--pp-ink)" }}
+                      >
+                        {babRevisiCount}
+                      </span>
+                    )}
                     <div
                       role="button"
                       tabIndex={0}
-                      className="p-0.5 ml-1 flex-shrink-0"
+                      className="p-0.5 flex-shrink-0"
                       style={{ color: "var(--pp-muted)" }}
                       onClick={e => { e.stopPropagation(); toggleBab(bab.bab_id_text) }}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); toggleBab(bab.bab_id_text) } }}
@@ -1297,12 +1319,33 @@ export default function SoalPage() {
                     className="text-xs font-bold px-2.5 py-1 rounded-full"
                     style={{ backgroundColor: "var(--pp-ink)", color: "#fff" }}
                   >
-                    {filteredSoal.length}{filterTipe || filterKesulitan ? `/${activeBabSoal.length}` : ""} soal
+                    {filteredSoal.length}{filterTipe || filterKesulitan || filterStatus ? `/${activeBabSoal.length}` : ""} soal
                   </span>
                 </div>
 
                 {/* Filter pills */}
                 <div className="flex flex-wrap gap-1.5">
+                  {/* Status revisi filter */}
+                  {(() => {
+                    const revisiCount = activeBabSoal.filter(s => s.status === "needs_revision").length
+                    if (revisiCount === 0) return null
+                    const active = filterStatus === "needs_revision"
+                    return (
+                      <button
+                        onClick={() => setFilterStatus(active ? null : "needs_revision")}
+                        className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all"
+                        style={{
+                          backgroundColor: active ? "#be123c" : "var(--pp-pink)",
+                          color: active ? "#fff" : "#be123c",
+                          border: `1.5px solid ${active ? "#be123c" : "var(--pp-line)"}`,
+                          boxShadow: active ? "none" : "1px 1px 0 0 var(--pp-line)",
+                        }}
+                      >
+                        Revisi ({revisiCount})
+                      </button>
+                    )
+                  })()}
+
                   {/* Tipe filter */}
                   {TIPE_OPTIONS.map(tipe => {
                     const c = TIPE_COLORS[tipe]
@@ -1355,9 +1398,9 @@ export default function SoalPage() {
                   })}
 
                   {/* Reset filter */}
-                  {(filterTipe || filterKesulitan) && (
+                  {(filterTipe || filterKesulitan || filterStatus) && (
                     <button
-                      onClick={() => { setFilterTipe(null); setFilterKesulitan(null) }}
+                      onClick={() => { setFilterTipe(null); setFilterKesulitan(null); setFilterStatus(null) }}
                       className="text-xs px-2.5 py-1 rounded-full"
                       style={{
                         backgroundColor: "var(--pp-bg)",
