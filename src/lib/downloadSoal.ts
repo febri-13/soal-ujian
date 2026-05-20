@@ -140,11 +140,13 @@ export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: s
 
   const soalData = soalList.map(s => ({
     pertanyaan: htmlToPlainText(s.pertanyaan),
+    pertanyaan_images: extractImages(s.pertanyaan),
     tipe: s.tipe,
     poin: Math.max(1, Math.round(s.bobot)),
-    pilihan: (s.pilihan ?? []).map(p => ({
+    pilihan: (s.pilihan ?? []).map((p, i) => ({
       teks: htmlToPlainText(p.teks),
       benar: p.benar,
+      gambar_url: s.pilihan_gambar?.[i] ?? null,
     })),
   }))
 
@@ -173,13 +175,24 @@ function createPsatForm() {
   form.setLimitOneResponsePerUser(false);
 
   soalData.forEach(function(soal) {
+    // Sisipkan gambar pertanyaan sebagai ImageItem sebelum soal
+    if (soal.pertanyaan_images && soal.pertanyaan_images.length > 0) {
+      soal.pertanyaan_images.forEach(function(url) {
+        try {
+          var blob = UrlFetchApp.fetch(url).getBlob();
+          form.addImageItem().setImage(blob);
+        } catch(e) { /* skip jika gambar tidak bisa diakses */ }
+      });
+    }
+
     if (soal.tipe === 'pilgan') {
       var pilganItem = form.addMultipleChoiceItem();
       pilganItem.setTitle(soal.pertanyaan);
       pilganItem.setRequired(true);
       pilganItem.setPoints(soal.poin);
       pilganItem.setChoices(soal.pilihan.map(function(p) {
-        return pilganItem.createChoice(p.teks, p.benar);
+        var teks = p.teks + (p.gambar_url ? '\n[Gambar: ' + p.gambar_url + ']' : '');
+        return pilganItem.createChoice(teks, p.benar);
       }));
     } else if (soal.tipe === 'ceklist') {
       var ceklistItem = form.addCheckboxItem();
@@ -187,7 +200,8 @@ function createPsatForm() {
       ceklistItem.setRequired(true);
       ceklistItem.setPoints(soal.poin);
       ceklistItem.setChoices(soal.pilihan.map(function(p) {
-        return ceklistItem.createChoice(p.teks, p.benar);
+        var teks = p.teks + (p.gambar_url ? '\n[Gambar: ' + p.gambar_url + ']' : '');
+        return ceklistItem.createChoice(teks, p.benar);
       }));
     } else if (soal.tipe === 'essay') {
       form.addParagraphTextItem().setTitle(soal.pertanyaan);
