@@ -28,6 +28,7 @@ const styles = StyleSheet.create({
   header: { marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   title: { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   subtitle: { fontSize: 9, color: '#6b7280' },
+  subtitleGuru: { fontSize: 9.5, color: '#374151', marginBottom: 2, fontWeight: 'bold' },
   soalWrap: { marginBottom: 14, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: '#e5e7eb' },
   soalMeta: { flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' },
   nomor: { fontSize: 11, fontWeight: 'bold', color: '#111827' },
@@ -80,6 +81,11 @@ export default function SoalPdfDocument({ soalList, meta }: Props) {
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>{meta.judul}</Text>
+          {(meta.namaGuru || meta.kelas) && (
+            <Text style={styles.subtitleGuru}>
+              {[meta.namaGuru, meta.kelas].filter(Boolean).join(' · ')}
+            </Text>
+          )}
           <Text style={styles.subtitle}>
             Diekspor: {tanggalFormatted} | {soalList.length} soal
           </Text>

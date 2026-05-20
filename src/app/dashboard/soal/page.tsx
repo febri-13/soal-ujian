@@ -100,6 +100,8 @@ export default function SoalPage() {
   const [activeBab, setActiveBab] = useState<string | null>(null)
   const [selectedMapelId, setSelectedMapelId] = useState("")
   const [mapelNama, setMapelNama] = useState("")
+  const [namaGuru, setNamaGuru] = useState("")
+  const [kelasGuru, setKelasGuru] = useState("")
   const [selectedTipe, setSelectedTipe] = useState("pilgan")
   const [selectedKesulitan, setSelectedKesulitan] = useState("mudah")
   const [loading, setLoading] = useState(true)
@@ -133,6 +135,17 @@ export default function SoalPage() {
       const { data: { user: u } } = await supabase.auth.getUser()
       if (!u) { router.push("/login"); return }
       setUser(u)
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nama, kelas")
+        .eq("id", u.id)
+        .maybeSingle()
+      if (profile) {
+        setNamaGuru(profile.nama || "")
+        const angka = profile.kelas ? profile.kelas.replace(/\D/g, "") : ""
+        setKelasGuru(angka ? `Kelas ${angka}` : (profile.kelas || ""))
+      }
 
       const { data: matrixRows } = await supabase
         .from("psat_matrix_input")
@@ -821,7 +834,7 @@ export default function SoalPage() {
             <DownloadDropdown
               soalList={soalList}
               filename={`soal-${mapelNama || "guru"}`}
-              meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString() }}
+              meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString(), namaGuru: namaGuru || undefined, kelas: kelasGuru || undefined }}
               googleFormsSoalList={matrixSampledSoal}
             />
             <button

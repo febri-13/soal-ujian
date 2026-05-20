@@ -31,6 +31,8 @@ export interface SoalProcessed {
 export interface PdfMeta {
   judul: string
   tanggal: string
+  namaGuru?: string
+  kelas?: string
 }
 
 export function htmlToPlainText(html: string): string {
