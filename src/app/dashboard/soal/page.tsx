@@ -63,6 +63,7 @@ interface HighlightItem {
   text: string
   color: "yellow" | "red"
   note: string
+  occurrenceIndex?: number
 }
 
 function applyHighlights(html: string, highlights: HighlightItem[], field: string): string {
@@ -72,12 +73,19 @@ function applyHighlights(html: string, highlights: HighlightItem[], field: strin
   for (const h of relevant) {
     const escaped = h.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     const bg = h.color === "red" ? "#fecaca" : "#fef08a"
+    const targetIndex = h.occurrenceIndex ?? 0
+    let count = 0
     const parts = result.split(/(<[^>]+>)/)
-    result = parts.map(part =>
-      part.startsWith("<") ? part :
-      part.replace(new RegExp(escaped, "g"),
-        `<mark style="background:${bg};border-radius:3px;padding:0 2px;cursor:help" title="${h.note || "Ditandai validator"}">${h.text}</mark>`)
-    ).join("")
+    result = parts.map(part => {
+      if (part.startsWith("<")) return part
+      return part.replace(new RegExp(escaped, "g"), match => {
+        const isTarget = count === targetIndex
+        count++
+        return isTarget
+          ? `<mark style="background:${bg};border-radius:3px;padding:0 2px;cursor:help" title="${h.note || "Ditandai validator"}">${match}</mark>`
+          : match
+      })
+    }).join("")
   }
   return result
 }

@@ -43,6 +43,7 @@ interface HighlightItem {
   text: string
   color: "yellow" | "red"
   note: string
+  occurrenceIndex?: number  // which occurrence to highlight (0-indexed)
 }
 
 function applyHighlights(html: string, highlights: HighlightItem[], field: string): string {
@@ -52,13 +53,20 @@ function applyHighlights(html: string, highlights: HighlightItem[], field: strin
   for (const h of relevant) {
     const escaped = h.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     const bg = h.color === "red" ? "#fecaca" : "#fef08a"
+    const targetIndex = h.occurrenceIndex ?? 0
+    let count = 0
     // Split by HTML tags, only replace inside text nodes
     const parts = result.split(/(<[^>]+>)/)
-    result = parts.map(part =>
-      part.startsWith("<") ? part :
-      part.replace(new RegExp(escaped, "g"),
-        `<mark style="background:${bg};border-radius:3px;padding:0 2px;cursor:help" title="${h.note || "Ditandai validator"}">${h.text}</mark>`)
-    ).join("")
+    result = parts.map(part => {
+      if (part.startsWith("<")) return part
+      return part.replace(new RegExp(escaped, "g"), match => {
+        const isTarget = count === targetIndex
+        count++
+        return isTarget
+          ? `<mark style="background:${bg};border-radius:3px;padding:0 2px;cursor:help" title="${h.note || "Ditandai validator"}">${match}</mark>`
+          : match
+      })
+    }).join("")
   }
   return result
 }
@@ -80,7 +88,7 @@ export default function ValidasiPage() {
   const [filterKelas, setFilterKelas] = useState<string | null>(null)
   const [filterGuru, setFilterGuru] = useState<string | null>(null)
   const [filterStatusValidasi, setFilterStatusValidasi] = useState<string | null>(null)
-  const [highlightPopover, setHighlightPopover] = useState<{ soalId: string; field: string; text: string; x: number; y: number } | null>(null)
+  const [highlightPopover, setHighlightPopover] = useState<{ soalId: string; field: string; text: string; x: number; y: number; occurrenceIndex: number } | null>(null)
   const [highlightColor, setHighlightColor] = useState<"yellow" | "red">("yellow")
   const [highlightNote, setHighlightNote] = useState("")
   const [savingHighlight, setSavingHighlight] = useState(false)
@@ -332,7 +340,22 @@ export default function ValidasiPage() {
     if (!text || text.length < 2) return
     const range = selection!.getRangeAt(0)
     const rect = range.getBoundingClientRect()
-    setHighlightPopover({ soalId, field, text, x: rect.left + rect.width / 2, y: rect.bottom + 8 })
+
+    // Count which occurrence of `text` was selected
+    const container = e.currentTarget as HTMLElement
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
+    let charOffset = 0
+    let node = walker.nextNode() as Text | null
+    while (node) {
+      if (node === range.startContainer) { charOffset += range.startOffset; break }
+      charOffset += node.length
+      node = walker.nextNode() as Text | null
+    }
+    const fullText = container.innerText || container.textContent || ""
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const occurrenceIndex = (fullText.slice(0, charOffset).match(new RegExp(escaped, "g")) || []).length
+
+    setHighlightPopover({ soalId, field, text, x: rect.left + rect.width / 2, y: rect.bottom + 8, occurrenceIndex })
     setHighlightColor("yellow")
     setHighlightNote("")
   }
@@ -348,6 +371,7 @@ export default function ValidasiPage() {
       text: highlightPopover.text,
       color: highlightColor,
       note: highlightNote.trim(),
+      occurrenceIndex: highlightPopover.occurrenceIndex,
     }
     const updated = [...(soal.highlights || []), newHighlight]
     const { error } = await supabase.from("bank_soal").update({ highlights: updated }).eq("id", highlightPopover.soalId)
