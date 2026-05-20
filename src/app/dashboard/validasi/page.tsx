@@ -267,15 +267,13 @@ export default function ValidasiPage() {
       }))
       setRevisionNotes(prev => ({ ...prev, [soalId]: "" }))
 
-      if (newStatus === "needs_revision" && currentSoal?.guru_id && selectedMapel) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!session) return
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) return
+
+        if (newStatus === "needs_revision" && currentSoal?.guru_id && selectedMapel) {
           fetch("/api/notifications/whatsapp", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${session.access_token}`,
-            },
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
             body: JSON.stringify({
               type: "needs_revision",
               guruId: currentSoal.guru_id,
@@ -283,8 +281,28 @@ export default function ValidasiPage() {
               catatanRevisi: notes || "Mohon periksa kembali soal Anda.",
             }),
           }).catch(() => {})
-        })
-      }
+        }
+
+        if (newStatus === "approved" && currentSoal?.guru_id && selectedMapel) {
+          // Hitung updatedList manual karena setSoalList bersifat async
+          const updatedList = soalList.map(s => s.id === soalId ? { ...s, status: newStatus } : s)
+          const guruSoal = updatedList.filter(s => s.guru_id === currentSoal.guru_id)
+          const allApproved = guruSoal.length > 0 && guruSoal.every(s => s.status === "approved")
+
+          if (allApproved) {
+            fetch("/api/notifications/whatsapp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+              body: JSON.stringify({
+                type: "guru_all_approved",
+                guruId: currentSoal.guru_id,
+                mapelNama: selectedMapel.nama,
+                totalSoal: guruSoal.length,
+              }),
+            }).catch(() => {})
+          }
+        }
+      })
     }
   }
 

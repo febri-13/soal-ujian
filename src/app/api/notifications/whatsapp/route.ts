@@ -149,6 +149,27 @@ export async function POST(req: NextRequest) {
 
       await Promise.all([...targets].map(phone => sendWA(phone, message)))
 
+    } else if (type === "guru_all_approved") {
+      const { guruId, mapelNama, totalSoal } = body as {
+        guruId: string
+        mapelNama: string
+        totalSoal: number
+      }
+
+      const [{ data: guruContact }, { data: guruProfile }] = await Promise.all([
+        supabaseAdmin.from("psat_guru_data").select("whatsapp").eq("profile_id", guruId).maybeSingle(),
+        supabaseAdmin.from("profiles").select("nama").eq("id", guruId).maybeSingle(),
+      ])
+
+      if (guruContact?.whatsapp) {
+        const guruNama = (guruProfile as any)?.nama || "Bapak/Ibu"
+        const message =
+          `Halo *${guruNama}*, selamat! 🎉\n\n` +
+          `Semua *${totalSoal} soal* Anda untuk mata pelajaran *${mapelNama}* telah disetujui (approved) oleh validator.\n\n` +
+          `Terima kasih atas kontribusi Anda!`
+        await sendWA(guruContact.whatsapp, message)
+      }
+
     } else {
       return NextResponse.json({ error: "Unknown type" }, { status: 400 })
     }
