@@ -126,6 +126,7 @@ export default function SoalPage() {
   const [batchRaw, setBatchRaw] = useState<any[]>([])
   const [batchErrors, setBatchErrors] = useState<string[]>([])
   const [batchSaving, setBatchSaving] = useState(false)
+  const [batchPasteText, setBatchPasteText] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -517,24 +518,41 @@ export default function SoalPage() {
     return errs
   }
 
+  const applyBatchJson = (text: string) => {
+    try {
+      const parsed = JSON.parse(text)
+      if (!Array.isArray(parsed)) {
+        setBatchErrors(["Harus berupa array JSON (dimulai dengan [ dan diakhiri dengan ])"])
+        setBatchRaw([])
+        return
+      }
+      const allErrors: string[] = []
+      parsed.forEach((item, i) => allErrors.push(...validateBatchItem(item, i)))
+      setBatchRaw(parsed)
+      setBatchErrors(allErrors)
+    } catch {
+      setBatchErrors(["JSON tidak valid — pastikan format JSON sudah benar"])
+      setBatchRaw([])
+    }
+  }
+
   const handleBatchFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      try {
-        const parsed = JSON.parse(ev.target?.result as string)
-        if (!Array.isArray(parsed)) { setBatchErrors(["File harus berupa array JSON (dimulai dengan [ dan diakhiri dengan ]"]); setBatchRaw([]); return }
-        const allErrors: string[] = []
-        parsed.forEach((item, i) => allErrors.push(...validateBatchItem(item, i)))
-        setBatchRaw(parsed)
-        setBatchErrors(allErrors)
-      } catch {
-        setBatchErrors(["File JSON tidak valid — pastikan format JSON sudah benar"])
-        setBatchRaw([])
-      }
+      const text = ev.target?.result as string
+      setBatchPasteText("")
+      applyBatchJson(text)
     }
     reader.readAsText(file)
+  }
+
+  const handleBatchPasteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value
+    setBatchPasteText(text)
+    if (!text.trim()) { setBatchRaw([]); setBatchErrors([]); return }
+    applyBatchJson(text)
   }
 
   const handleBatchInsert = async () => {
@@ -568,6 +586,7 @@ export default function SoalPage() {
       setShowBatchModal(false)
       setBatchRaw([])
       setBatchErrors([])
+      setBatchPasteText("")
       await reloadSoal(user.id)
     }
   }
@@ -806,7 +825,7 @@ export default function SoalPage() {
               googleFormsSoalList={matrixSampledSoal}
             />
             <button
-              onClick={() => { setBatchRaw([]); setBatchErrors([]); setShowBatchModal(true) }}
+              onClick={() => { setBatchRaw([]); setBatchErrors([]); setBatchPasteText(""); setShowBatchModal(true) }}
               title="Upload Soal (JSON Batch)"
               style={{
                 display: "flex", alignItems: "center", gap: 6,
@@ -1635,7 +1654,7 @@ export default function SoalPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-          onClick={e => { if (e.target === e.currentTarget) setShowBatchModal(false) }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowBatchModal(false); setBatchPasteText(""); setBatchRaw([]); setBatchErrors([]) } }}
         >
           <div
             style={{
@@ -1669,7 +1688,7 @@ export default function SoalPage() {
                 </span>
               </div>
               <button
-                onClick={() => setShowBatchModal(false)}
+                onClick={() => { setShowBatchModal(false); setBatchPasteText(""); setBatchRaw([]); setBatchErrors([]) }}
                 style={{ color: "var(--pp-ink-2)", padding: 4, borderRadius: 8, cursor: "pointer" }}
                 className="hover:opacity-70 transition-opacity"
               >
@@ -1745,6 +1764,32 @@ export default function SoalPage() {
                   onChange={handleBatchFileChange}
                 />
               </label>
+
+              {/* Paste JSON */}
+              <div className="flex items-center gap-3 mb-4">
+                <div style={{ flex: 1, height: 1, backgroundColor: "var(--pp-line)" }} />
+                <span className="text-xs font-medium" style={{ color: "var(--pp-muted)" }}>atau paste JSON langsung</span>
+                <div style={{ flex: 1, height: 1, backgroundColor: "var(--pp-line)" }} />
+              </div>
+              <textarea
+                value={batchPasteText}
+                onChange={handleBatchPasteChange}
+                placeholder={'[\n  {\n    "pertanyaan": "...",\n    "tipe": "pilgan",\n    "tingkat_kesulitan": "mudah",\n    "bab_id_text": "Bab 1",\n    "pilihan": [...]\n  }\n]'}
+                rows={7}
+                className="w-full text-xs resize-y mb-4"
+                style={{
+                  border: "1.5px solid var(--pp-ink)",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  backgroundColor: "var(--pp-bg)",
+                  color: "var(--pp-ink)",
+                  outline: "none",
+                  fontFamily: "monospace",
+                  lineHeight: 1.5,
+                }}
+                onFocus={e => { e.target.style.borderColor = "var(--pp-primary)"; e.target.style.boxShadow = "2px 2px 0 0 var(--pp-primary)" }}
+                onBlur={e => { e.target.style.borderColor = "var(--pp-ink)"; e.target.style.boxShadow = "none" }}
+              />
 
               {/* Errors */}
               {batchErrors.length > 0 && (
