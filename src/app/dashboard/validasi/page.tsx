@@ -79,6 +79,7 @@ export default function ValidasiPage() {
   const [guruMap, setGuruMap] = useState<Record<string, { kelas: string; nama: string }>>({})
   const [filterKelas, setFilterKelas] = useState<string | null>(null)
   const [filterGuru, setFilterGuru] = useState<string | null>(null)
+  const [filterStatusValidasi, setFilterStatusValidasi] = useState<string | null>(null)
   const [highlightPopover, setHighlightPopover] = useState<{ soalId: string; field: string; text: string; x: number; y: number } | null>(null)
   const [highlightColor, setHighlightColor] = useState<"yellow" | "red">("yellow")
   const [highlightNote, setHighlightNote] = useState("")
@@ -173,13 +174,14 @@ export default function ValidasiPage() {
     load()
   }, [router])
 
-  const openMapel = async (mapel: MapelSummary) => {
+  const openMapel = async (mapel: MapelSummary, initialStatus?: string) => {
     setSelectedMapel(mapel)
     setLoadingSoal(true)
     setSoalList([])
     setGuruMap({})
     setFilterKelas(null)
     setFilterGuru(null)
+    setFilterStatusValidasi(initialStatus ?? null)
     setRevisionNotes({})
 
     const { data: soal, error: soalError } = await supabase
@@ -380,7 +382,7 @@ export default function ValidasiPage() {
 
   const filteredSoal = soalList
     .filter(s => !filterKelas || guruMap[s.guru_id]?.kelas === filterKelas)
-    .filter(s => !filterGuru || s.guru_id === filterGuru)
+    .filter(s => !filterStatusValidasi || s.status === filterStatusValidasi)
 
   return (
     <div style={{ backgroundColor: "var(--pp-bg)", minHeight: "100vh" }}>
@@ -510,28 +512,31 @@ export default function ValidasiPage() {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {m.submitted > 0 && (
-                        <span
+                        <button
+                          onClick={e => { e.stopPropagation(); openMapel(m, "submitted") }}
                           className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: "var(--pp-lemon)", color: "#92400e", border: "1px solid var(--pp-ink)" }}
+                          style={{ backgroundColor: "var(--pp-lemon)", color: "#92400e", border: "1px solid var(--pp-ink)", cursor: "pointer" }}
                         >
                           <Clock className="w-3 h-3" /> {m.submitted}
-                        </span>
+                        </button>
                       )}
                       {m.needs_revision > 0 && (
-                        <span
+                        <button
+                          onClick={e => { e.stopPropagation(); openMapel(m, "needs_revision") }}
                           className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: "var(--pp-pink)", color: "#be123c", border: "1px solid var(--pp-ink)" }}
+                          style={{ backgroundColor: "var(--pp-pink)", color: "#be123c", border: "1px solid var(--pp-ink)", cursor: "pointer" }}
                         >
                           <AlertCircle className="w-3 h-3" /> {m.needs_revision}
-                        </span>
+                        </button>
                       )}
                       {m.approved > 0 && (
-                        <span
+                        <button
+                          onClick={e => { e.stopPropagation(); openMapel(m, "approved") }}
                           className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: "var(--pp-mint)", color: "#15803d", border: "1px solid var(--pp-ink)" }}
+                          style={{ backgroundColor: "var(--pp-mint)", color: "#15803d", border: "1px solid var(--pp-ink)", cursor: "pointer" }}
                         >
                           <CheckCircle className="w-3 h-3" /> {m.approved}
-                        </span>
+                        </button>
                       )}
                     </div>
                   </button>
@@ -635,9 +640,9 @@ export default function ValidasiPage() {
                     )
                   })}
 
-                  {filterKelas && (
+                  {(filterKelas || filterStatusValidasi) && (
                     <button
-                      onClick={() => setFilterKelas(null)}
+                      onClick={() => { setFilterKelas(null); setFilterStatusValidasi(null) }}
                       className="text-xs px-2.5 py-1 rounded-full transition-all"
                       style={{
                         backgroundColor: "var(--pp-bg)",
@@ -650,10 +655,78 @@ export default function ValidasiPage() {
                     </button>
                   )}
 
-                  {filterKelas && (
+                  {(filterKelas || filterStatusValidasi) && (
                     <span className="text-xs ml-auto" style={{ color: "var(--pp-muted)" }}>
                       {filteredSoal.length} / {soalList.length} soal
                     </span>
+                  )}
+                </div>
+              )}
+
+              {/* Filter status */}
+              {!loadingSoal && soalList.length > 0 && (
+                <div
+                  style={{
+                    borderTop: "1.5px solid var(--pp-ink)",
+                    backgroundColor: "var(--pp-bg)",
+                    padding: "10px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 6,
+                  }}
+                >
+                  {(() => {
+                    const countByStatus = {
+                      submitted: soalList.filter(s => s.status === "submitted").length,
+                      needs_revision: soalList.filter(s => s.status === "needs_revision").length,
+                      approved: soalList.filter(s => s.status === "approved").length,
+                    }
+                    const pills = [
+                      { key: "submitted",      label: "Dikirim", bg: "var(--pp-lemon)", activeBg: "#92400e", color: "#92400e", activeColor: "#fff" },
+                      { key: "needs_revision", label: "Revisi",  bg: "var(--pp-pink)",  activeBg: "#be123c", color: "#be123c", activeColor: "#fff" },
+                      { key: "approved",       label: "Approved", bg: "var(--pp-mint)",  activeBg: "#15803d", color: "#15803d", activeColor: "#fff" },
+                    ]
+                    return pills.map(pill => {
+                      const count = countByStatus[pill.key as keyof typeof countByStatus]
+                      if (!count) return null
+                      const active = filterStatusValidasi === pill.key
+                      return (
+                        <button
+                          key={pill.key}
+                          onClick={() => setFilterStatusValidasi(active ? null : pill.key)}
+                          className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all flex items-center gap-1"
+                          style={{
+                            backgroundColor: active ? pill.activeBg : pill.bg,
+                            color: active ? pill.activeColor : pill.color,
+                            border: `1.5px solid ${active ? pill.activeBg : "var(--pp-line)"}`,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {pill.label} ({count})
+                        </button>
+                      )
+                    })
+                  })()}
+
+                  {filterStatusValidasi && availableKelas.length <= 1 && (
+                    <>
+                      <button
+                        onClick={() => setFilterStatusValidasi(null)}
+                        className="text-xs px-2.5 py-1 rounded-full transition-all"
+                        style={{
+                          backgroundColor: "var(--pp-bg)",
+                          color: "var(--pp-muted)",
+                          border: "1.5px solid var(--pp-line)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        × Reset
+                      </button>
+                      <span className="text-xs ml-auto" style={{ color: "var(--pp-muted)" }}>
+                        {filteredSoal.length} / {soalList.length} soal
+                      </span>
+                    </>
                   )}
                 </div>
               )}
