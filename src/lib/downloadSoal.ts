@@ -33,6 +33,7 @@ export interface PdfMeta {
   tanggal: string
   namaGuru?: string
   kelas?: string
+  matrixData?: { bab_id_text: string; data: Record<string, number> }[]
 }
 
 export function htmlToPlainText(html: string): string {

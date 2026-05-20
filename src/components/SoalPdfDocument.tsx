@@ -23,25 +23,39 @@ const LABELS = ['A', 'B', 'C', 'D', 'E']
 
 const BADGE_BASE = { fontSize: 8, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 }
 
+const TIPE_ORDER = ['pilgan', 'ceklist', 'essay', 'isian_singkat']
+const KESULITAN_ORDER = ['mudah', 'sedang', 'sulit']
+const TIPE_SHORT: Record<string, string> = { pilgan: 'PG', ceklist: 'CK', essay: 'ES', isian_singkat: 'IS' }
+const KESULITAN_SHORT: Record<string, string> = { mudah: 'M', sedang: 'S', sulit: 'T' }
+
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 10, fontFamily: 'Helvetica', color: '#1f2937' },
-  header: { marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  header: { marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   title: { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   subtitle: { fontSize: 9, color: '#6b7280' },
   subtitleGuru: { fontSize: 9.5, color: '#374151', marginBottom: 2, fontWeight: 'bold' },
+  // Matrix table
+  matrixSection: { marginBottom: 14, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  matrixTitle: { fontSize: 8.5, fontWeight: 'bold', color: '#374151', marginBottom: 5 },
+  matrixTable: { borderWidth: 0.5, borderColor: '#d1d5db', borderRadius: 2 },
+  matrixRow: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#e5e7eb' },
+  matrixHeaderRow: { backgroundColor: '#f3f4f6' },
+  matrixLastRow: { borderBottomWidth: 0 },
+  matrixBabCell: { flex: 3, paddingHorizontal: 5, paddingVertical: 3, fontSize: 7.5 },
+  matrixDataCell: { flex: 1, paddingHorizontal: 2, paddingVertical: 3, fontSize: 7.5, textAlign: 'center', borderLeftWidth: 0.5, borderLeftColor: '#e5e7eb' },
+  matrixTotalCell: { flex: 1, paddingHorizontal: 2, paddingVertical: 3, fontSize: 7.5, textAlign: 'center', borderLeftWidth: 0.5, borderLeftColor: '#d1d5db', fontWeight: 'bold', color: '#111827' },
+  matrixHeaderText: { fontWeight: 'bold', color: '#374151' },
+  // Soal
   soalWrap: { marginBottom: 14, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: '#e5e7eb' },
   soalMeta: { flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' },
   nomor: { fontSize: 11, fontWeight: 'bold', color: '#111827' },
-  // Badge tipe soal — warna berbeda per tipe
   badgePilgan:      { ...BADGE_BASE, backgroundColor: '#dbeafe', color: '#1d4ed8' },
   badgeCeklist:     { ...BADGE_BASE, backgroundColor: '#ffedd5', color: '#c2410c' },
   badgeEssay:       { ...BADGE_BASE, backgroundColor: '#dcfce7', color: '#15803d' },
   badgeIsian:       { ...BADGE_BASE, backgroundColor: '#ede9fe', color: '#6d28d9' },
-  // Badge kesulitan
   badgeMudah:       { ...BADGE_BASE, backgroundColor: '#d1fae5', color: '#065f46' },
   badgeSedang:      { ...BADGE_BASE, backgroundColor: '#fef9c3', color: '#854d0e' },
   badgeSulit:       { ...BADGE_BASE, backgroundColor: '#fee2e2', color: '#991b1b' },
-  // Badge netral (bab, bobot)
   badgeNeutral:     { ...BADGE_BASE, backgroundColor: '#f3f4f6', color: '#374151' },
   pertanyaan: { fontSize: 10.5, lineHeight: 1.6, marginBottom: 6 },
   gambar: { maxWidth: 280, maxHeight: 180, marginVertical: 6, objectFit: 'contain' },
@@ -69,6 +83,70 @@ const KESULITAN_STYLE: Record<string, any> = {
   sulit:  styles.badgeSulit,
 }
 
+function MatrixTable({ matrixData }: { matrixData: NonNullable<PdfMeta['matrixData']> }) {
+  // Kumpulkan kolom yang punya target > 0 di setidaknya satu bab
+  const activeColumns: string[] = []
+  for (const tipe of TIPE_ORDER) {
+    for (const kesulitan of KESULITAN_ORDER) {
+      const key = `${tipe}_${kesulitan}_keluar`
+      if (matrixData.some(bab => (bab.data[key] || 0) > 0)) {
+        activeColumns.push(`${tipe}_${kesulitan}`)
+      }
+    }
+  }
+
+  if (activeColumns.length === 0) return null
+
+  const colLabel = (col: string) => {
+    const parts = col.split('_')
+    const kesulitan = parts[parts.length - 1]
+    const tipe = parts.slice(0, -1).join('_')
+    return `${TIPE_SHORT[tipe] ?? tipe}\n${KESULITAN_SHORT[kesulitan] ?? kesulitan}`
+  }
+
+  const getVal = (bab: typeof matrixData[0], col: string) =>
+    bab.data[`${col}_keluar`] || 0
+
+  const rowTotal = (bab: typeof matrixData[0]) =>
+    activeColumns.reduce((sum, col) => sum + getVal(bab, col), 0)
+
+  return (
+    <View style={styles.matrixSection} wrap={false}>
+      <Text style={styles.matrixTitle}>Distribusi Soal per Bab</Text>
+      <View style={styles.matrixTable}>
+        {/* Header */}
+        <View style={[styles.matrixRow, styles.matrixHeaderRow]}>
+          <Text style={[styles.matrixBabCell, styles.matrixHeaderText]}>Bab</Text>
+          {activeColumns.map(col => (
+            <Text key={col} style={[styles.matrixDataCell, styles.matrixHeaderText]}>
+              {colLabel(col)}
+            </Text>
+          ))}
+          <Text style={[styles.matrixTotalCell, styles.matrixHeaderText]}>Total</Text>
+        </View>
+        {/* Data rows */}
+        {matrixData.map((bab, idx) => (
+          <View
+            key={bab.bab_id_text}
+            style={[styles.matrixRow, idx === matrixData.length - 1 ? styles.matrixLastRow : {}]}
+          >
+            <Text style={styles.matrixBabCell}>{bab.bab_id_text}</Text>
+            {activeColumns.map(col => {
+              const val = getVal(bab, col)
+              return (
+                <Text key={col} style={styles.matrixDataCell}>
+                  {val > 0 ? val : '—'}
+                </Text>
+              )
+            })}
+            <Text style={styles.matrixTotalCell}>{rowTotal(bab)}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
 export default function SoalPdfDocument({ soalList, meta }: Props) {
   const tanggalFormatted = new Date(meta.tanggal).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -90,6 +168,10 @@ export default function SoalPdfDocument({ soalList, meta }: Props) {
             Diekspor: {tanggalFormatted} | {soalList.length} soal
           </Text>
         </View>
+
+        {meta.matrixData && meta.matrixData.length > 0 && (
+          <MatrixTable matrixData={meta.matrixData} />
+        )}
 
         {soalList.map((soal, idx) => (
           <View key={soal.id} style={styles.soalWrap} wrap={false}>

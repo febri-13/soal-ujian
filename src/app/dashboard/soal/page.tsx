@@ -834,7 +834,7 @@ export default function SoalPage() {
             <DownloadDropdown
               soalList={soalList}
               filename={`soal-${mapelNama || "guru"}`}
-              meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString(), namaGuru: namaGuru || undefined, kelas: kelasGuru || undefined }}
+              meta={{ judul: `Soal ${mapelNama}`, tanggal: new Date().toISOString(), namaGuru: namaGuru || undefined, kelas: kelasGuru || undefined, matrixData: matrixData.length > 0 ? matrixData : undefined }}
               googleFormsSoalList={matrixSampledSoal}
             />
             <button
