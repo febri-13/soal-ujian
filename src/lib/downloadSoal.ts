@@ -111,9 +111,13 @@ export function sampleSoalByMatrix(
   for (const bab of matrixData) {
     for (const [key, target] of Object.entries(bab.data)) {
       if (!target) continue
-      const lastIdx = key.lastIndexOf('_')
-      const tipe = key.slice(0, lastIdx)
-      const kesulitan = key.slice(lastIdx + 1)
+      // Keys are stored as "tipe_kesulitan_keluar" / "tipe_kesulitan_bank"
+      // Only use _keluar values (how many should appear in the exam)
+      if (!key.endsWith('_keluar')) continue
+      const baseKey = key.slice(0, -'_keluar'.length)
+      const lastIdx = baseKey.lastIndexOf('_')
+      const tipe = baseKey.slice(0, lastIdx)
+      const kesulitan = baseKey.slice(lastIdx + 1)
 
       const matching = soalList.filter(s =>
         s.bab_id_text === bab.bab_id_text &&
