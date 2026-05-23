@@ -237,6 +237,17 @@ export default function MatrixPage() {
 
   const validateAll = (): string[] => {
     const errors: string[] = []
+
+    babs.forEach(bab => {
+      const d = matrixDataRef.current[bab.id] || {}
+      TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
+        const bank = d[`${t}_${k}_bank`] || 0
+        const keluar = d[`${t}_${k}_keluar`] || 0
+        if (bank > 0 && keluar === 0)
+          errors.push(`${bab.nama_bab} - ${TIPE_LABELS[t]} ${k}: bank soal (${bank}) terisi tapi soal keluar belum diisi`)
+      }))
+    })
+
     const totals = getTotals()
     TIPE_OPTIONS.forEach(t => KESULITAN_OPTIONS.forEach(k => {
       const tk = `${t}_${k}_keluar`, tb = `${t}_${k}_bank`
@@ -245,6 +256,7 @@ export default function MatrixPage() {
       if (patokan[tb] > 0 && totals[tb] !== patokan[tb])
         errors.push(`${TIPE_LABELS[t]} ${k} bank: target ${patokan[tb]}, aktual ${totals[tb]}`)
     }))
+
     return errors
   }
 
@@ -293,6 +305,7 @@ export default function MatrixPage() {
     if (field.endsWith("_keluar")) {
       const bankField = field.replace("_keluar", "_bank")
       const currentBank = matrixDataRef.current[babId]?.[bankField] || 0
+      if (value > 0 && currentBank === 0) { showToast("Isi bank soal dulu sebelum mengisi soal keluar", "error"); return }
       if (value > currentBank) { showToast(`Soal keluar (${value}) tidak boleh melebihi bank soal (${currentBank})`, "error"); return }
       if (currentBank > 0 && value === 0) { showToast("Soal keluar minimal 1 jika bank soal > 0", "error"); return }
     }
