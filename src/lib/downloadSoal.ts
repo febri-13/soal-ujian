@@ -95,8 +95,16 @@ export function processSoal(raw: SoalDownload[]): SoalProcessed[] {
   }))
 }
 
+const TIPE_EXPORT_MAP: Record<string, string> = {
+  pilgan: 'pilihan_ganda',
+  essay: 'esai',
+  ceklist: 'ceklist',
+  isian_singkat: 'isian_singkat',
+}
+
 export function downloadJSON(soalList: SoalDownload[], filename: string): void {
-  const blob = new Blob([JSON.stringify(soalList, null, 2)], { type: 'application/json' })
+  const mapped = soalList.map(s => ({ ...s, tipe: TIPE_EXPORT_MAP[s.tipe] ?? s.tipe }))
+  const blob = new Blob([JSON.stringify(mapped, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
