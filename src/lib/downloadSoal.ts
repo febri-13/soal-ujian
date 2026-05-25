@@ -100,10 +100,41 @@ const TIPE_EXPORT_MAP: Record<string, string> = {
   essay: 'esai',
   ceklist: 'ceklist',
   isian_singkat: 'isian_singkat',
+  benar_salah: 'benar_salah',
 }
 
 export function downloadJSON(soalList: SoalDownload[], filename: string): void {
-  const mapped = soalList.map(s => ({ ...s, tipe: TIPE_EXPORT_MAP[s.tipe] ?? s.tipe }))
+  const mapped = soalList.map(s => {
+    const tipe = TIPE_EXPORT_MAP[s.tipe] ?? s.tipe
+    const pertanyaan = htmlToPlainText(s.pertanyaan)
+    const gambar = extractImages(s.pertanyaan)[0]
+    const pilihanTeks = s.pilihan?.map(p => htmlToPlainText(p.teks)) ?? []
+
+    const obj: Record<string, unknown> = { pertanyaan, tipe }
+
+    if (tipe === 'pilihan_ganda') {
+      obj.pilihan = pilihanTeks
+      const idx = s.pilihan?.findIndex(p => p.benar) ?? -1
+      if (idx >= 0) obj.jawaban_benar = idx
+    } else if (tipe === 'ceklist') {
+      obj.items = pilihanTeks
+      obj.jawaban_benar = s.pilihan?.reduce<number[]>((acc, p, i) => (p.benar ? [...acc, i] : acc), []) ?? []
+    } else if (tipe === 'isian_singkat') {
+      const kunci = s.pilihan?.find(p => p.benar) ?? s.pilihan?.[0]
+      obj.pilihan = kunci ? [htmlToPlainText(kunci.teks)] : []
+    } else if (tipe === 'benar_salah') {
+      const idx = s.pilihan?.findIndex(p => p.benar) ?? 0
+      obj.jawaban_benar = idx >= 0 ? idx : 0
+    }
+
+    obj.bobot = s.bobot
+    obj.tingkat_kesulitan = s.tingkat_kesulitan
+    if (gambar) obj.gambar_url = gambar
+    if (s.bab_id_text) obj.nama_bab = s.bab_id_text
+
+    return obj
+  })
+
   const blob = new Blob([JSON.stringify(mapped, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
