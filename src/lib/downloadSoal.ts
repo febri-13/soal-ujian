@@ -233,7 +233,7 @@ function createPsatForm() {
       pilganItem.setRequired(true);
       pilganItem.setPoints(soal.poin);
       pilganItem.setChoices(soal.pilihan.map(function(p) {
-        var teks = p.teks + (p.gambar_url ? '\n[Gambar: ' + p.gambar_url + ']' : '');
+        var teks = p.teks + (p.gambar_url ? '\\n[Gambar: ' + p.gambar_url + ']' : '');
         return pilganItem.createChoice(teks, p.benar);
       }));
     } else if (soal.tipe === 'ceklist') {
@@ -242,7 +242,7 @@ function createPsatForm() {
       ceklistItem.setRequired(true);
       ceklistItem.setPoints(soal.poin);
       ceklistItem.setChoices(soal.pilihan.map(function(p) {
-        var teks = p.teks + (p.gambar_url ? '\n[Gambar: ' + p.gambar_url + ']' : '');
+        var teks = p.teks + (p.gambar_url ? '\\n[Gambar: ' + p.gambar_url + ']' : '');
         return ceklistItem.createChoice(teks, p.benar);
       }));
     } else if (soal.tipe === 'essay') {
