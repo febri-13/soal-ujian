@@ -232,19 +232,31 @@ function createPsatForm() {
       pilganItem.setTitle(soal.pertanyaan);
       pilganItem.setRequired(true);
       pilganItem.setPoints(soal.poin);
-      pilganItem.setChoices(soal.pilihan.map(function(p) {
+      var pilganChoices = [];
+      var pilganSeen = {};
+      soal.pilihan.forEach(function(p) {
         var teks = p.teks + (p.gambar_url ? '\\n[Gambar: ' + p.gambar_url + ']' : '');
-        return pilganItem.createChoice(teks, p.benar);
-      }));
+        if (!pilganSeen[teks]) {
+          pilganSeen[teks] = true;
+          pilganChoices.push(pilganItem.createChoice(teks, p.benar));
+        }
+      });
+      pilganItem.setChoices(pilganChoices);
     } else if (soal.tipe === 'ceklist') {
       var ceklistItem = form.addCheckboxItem();
       ceklistItem.setTitle(soal.pertanyaan);
       ceklistItem.setRequired(true);
       ceklistItem.setPoints(soal.poin);
-      ceklistItem.setChoices(soal.pilihan.map(function(p) {
+      var ceklistChoices = [];
+      var ceklistSeen = {};
+      soal.pilihan.forEach(function(p) {
         var teks = p.teks + (p.gambar_url ? '\\n[Gambar: ' + p.gambar_url + ']' : '');
-        return ceklistItem.createChoice(teks, p.benar);
-      }));
+        if (!ceklistSeen[teks]) {
+          ceklistSeen[teks] = true;
+          ceklistChoices.push(ceklistItem.createChoice(teks, p.benar));
+        }
+      });
+      ceklistItem.setChoices(ceklistChoices);
     } else if (soal.tipe === 'essay') {
       form.addParagraphTextItem().setTitle(soal.pertanyaan);
     } else {
