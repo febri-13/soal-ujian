@@ -180,17 +180,27 @@ export function sampleSoalByMatrix(
 export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: string): void {
   const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 
-  const soalData = soalList.map(s => ({
-    pertanyaan: htmlToPlainText(s.pertanyaan),
-    pertanyaan_images: extractImages(s.pertanyaan),
-    tipe: s.tipe,
-    poin: Math.max(1, Math.round(s.bobot)),
-    pilihan: (s.pilihan ?? []).map((p, i) => ({
-      teks: htmlToPlainText(p.teks),
-      benar: p.benar,
-      gambar_url: s.pilihan_gambar?.[i] ?? null,
-    })),
-  }))
+  const TIPE_ORDER: Record<string, number> = {
+    pilgan: 1,
+    ceklist: 2,
+    isian_singkat: 3,
+    benar_salah: 4,
+    essay: 5,
+  }
+
+  const soalData = soalList
+    .map(s => ({
+      pertanyaan: htmlToPlainText(s.pertanyaan),
+      pertanyaan_images: extractImages(s.pertanyaan),
+      tipe: s.tipe,
+      poin: Math.max(1, Math.round(s.bobot)),
+      pilihan: (s.pilihan ?? []).map((p, i) => ({
+        teks: htmlToPlainText(p.teks),
+        benar: p.benar,
+        gambar_url: s.pilihan_gambar?.[i] ?? null,
+      })),
+    }))
+    .sort((a, b) => (TIPE_ORDER[a.tipe] ?? 99) - (TIPE_ORDER[b.tipe] ?? 99))
 
   const script = `/**
  * Script Ekspor Soal ke Google Forms
