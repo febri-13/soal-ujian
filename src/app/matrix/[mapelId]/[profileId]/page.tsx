@@ -11,11 +11,11 @@ interface MatrixRow {
 const TIPE_OPTIONS = ["pilgan", "ceklist", "essay", "isian_singkat"]
 const KESULITAN_OPTIONS = ["mudah", "sedang", "sulit"]
 
-export default async function PublikMatrixPage({ params }: { params: Promise<{ mapelId: string }> }) {
-  const { mapelId } = await params
+export default async function PublikMatrixPage({ params }: { params: Promise<{ mapelId: string; profileId: string }> }) {
+  const { mapelId, profileId } = await params
 
   const [matrixRes, mapelRes] = await Promise.all([
-    supabase.rpc("get_public_matrix_by_mapel", { p_mapel_id: mapelId }),
+    supabase.rpc("get_public_matrix_by_mapel", { p_mapel_id: mapelId, p_profile_id: profileId }),
     supabase.from("mata_pelajaran").select("nama, kode").eq("id", mapelId).maybeSingle(),
   ])
 
@@ -54,7 +54,7 @@ export default async function PublikMatrixPage({ params }: { params: Promise<{ m
           >
             <Inbox className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--color-muted-foreground)" }} />
             <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-              Belum ada matrix yang disubmit untuk mata pelajaran ini.
+              Belum ada matrix yang disubmit untuk akun ini.
             </p>
           </div>
         ) : (

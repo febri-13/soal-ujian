@@ -326,7 +326,7 @@ export default async function HomePage() {
                       <div className="flex items-center gap-1.5">
                         <IconBtn href={row.glossary_url} title="Download Glossary" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
                         <IconBtn href={row.kisi_kisi_url} title="Download Kisi-kisi" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
-                        <IconBtn href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} title="Lihat Matrix"><LayoutGrid className="w-3.5 h-3.5" /></IconBtn>
+                        <IconBtn href={row.has_matrix ? `/matrix/${row.mapel_id}/${row.profile_id}` : null} title="Lihat Matrix"><LayoutGrid className="w-3.5 h-3.5" /></IconBtn>
                       </div>
                     </div>
                   )
@@ -429,7 +429,7 @@ export default async function HomePage() {
                             <div className="flex items-center gap-1.5">
                               <IconBtn href={row.glossary_url} title="Download Glossary" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
                               <IconBtn href={row.kisi_kisi_url} title="Download Kisi-kisi" newTab><Download className="w-3.5 h-3.5" /></IconBtn>
-                              <IconBtn href={row.has_matrix ? `/matrix/${row.mapel_id}` : null} title="Lihat Matrix"><LayoutGrid className="w-3.5 h-3.5" /></IconBtn>
+                              <IconBtn href={row.has_matrix ? `/matrix/${row.mapel_id}/${row.profile_id}` : null} title="Lihat Matrix"><LayoutGrid className="w-3.5 h-3.5" /></IconBtn>
                             </div>
                           </td>
                         </tr>
