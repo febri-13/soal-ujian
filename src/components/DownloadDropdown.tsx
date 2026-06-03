@@ -33,11 +33,10 @@ export default function DownloadDropdown({ soalList, filename, meta, disabled, g
     })
   }
 
-  const handleGoogleForms = () => {
+  const handleGoogleForms = async () => {
     setOpen(false)
-    import('@/lib/downloadSoal').then(({ generateGoogleFormsScript }) => {
-      generateGoogleFormsScript(googleFormsSoalList ?? soalList, meta.judul)
-    })
+    const { generateGoogleFormsScript } = await import('@/lib/downloadSoal')
+    await generateGoogleFormsScript(googleFormsSoalList ?? soalList, meta.judul)
   }
 
   const handlePdf = async () => {

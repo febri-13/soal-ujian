@@ -177,7 +177,7 @@ export function sampleSoalByMatrix(
   return result
 }
 
-export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: string): void {
+export async function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: string): Promise<void> {
   const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 
   const TIPE_ORDER: Record<string, number> = {
@@ -188,25 +188,49 @@ export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: s
     essay: 5,
   }
 
-  const soalData = soalList
-    .map(s => ({
-      pertanyaan: htmlToPlainText(s.pertanyaan),
-      pertanyaan_images: extractImages(s.pertanyaan),
-      tipe: s.tipe,
-      poin: Math.max(1, Math.round(s.bobot)),
-      pilihan: (s.pilihan ?? []).map((p, i) => ({
-        teks: htmlToPlainText(p.teks),
-        benar: p.benar,
-        gambar_url: s.pilihan_gambar?.[i] ?? null,
-      })),
-    }))
-    .sort((a, b) => (TIPE_ORDER[a.tipe] ?? 99) - (TIPE_ORDER[b.tipe] ?? 99))
+  // Konversi gambar ke base64 di browser agar Apps Script tidak perlu fetch network
+  const soalData = await Promise.all(
+    soalList.map(async (s) => {
+      const imageUrls = extractImages(s.pertanyaan)
+      const imagesBase64 = (
+        await Promise.all(
+          imageUrls.map(async (url) => {
+            const dataUrl = await convertImageToJpegDataUrl(url)
+            if (!dataUrl) return null
+            // "data:image/jpeg;base64,xxxx"
+            const parts = dataUrl.split(',')
+            const mimeMatch = parts[0]?.match(/data:(.*);base64/)
+            return {
+              mime: mimeMatch ? mimeMatch[1] : 'image/jpeg',
+              data: parts[1] ?? '',
+            }
+          })
+        )
+      ).filter((img): img is { mime: string; data: string } => img !== null)
 
+      return {
+        pertanyaan: htmlToPlainText(s.pertanyaan),
+        pertanyaan_images: imagesBase64,
+        tipe: s.tipe,
+        poin: Math.max(1, Math.round(s.bobot)),
+        pilihan: (s.pilihan ?? []).map((p, i) => ({
+          teks: htmlToPlainText(p.teks),
+          benar: p.benar,
+          gambar_url: s.pilihan_gambar?.[i] ?? null,
+        })),
+      }
+    })
+  )
+
+  soalData.sort((a, b) => (TIPE_ORDER[a.tipe] ?? 99) - (TIPE_ORDER[b.tipe] ?? 99))
+
+  const totalGambar = soalData.reduce((sum, s) => sum + s.pertanyaan_images.length, 0)
   const script = `/**
  * Script Ekspor Soal ke Google Forms
  * Judul : ${formTitle}
  * Dibuat: ${tanggal}
  * Soal  : ${soalData.length} soal
+ * Gambar: ${totalGambar} (embedded base64)
  *
  * CARA PAKAI:
  * 1. Buka https://script.google.com > Proyek Baru
@@ -219,7 +243,7 @@ export function generateGoogleFormsScript(soalList: SoalDownload[], formTitle: s
 
 function createPsatForm() {
   var judulForm = ${JSON.stringify(formTitle)};
-  var soalData = ${JSON.stringify(soalData, null, 2)};
+  var soalData = ${JSON.stringify(soalData)};
 
   var form = FormApp.create(judulForm);
   form.setIsQuiz(true);
@@ -229,11 +253,14 @@ function createPsatForm() {
   soalData.forEach(function(soal) {
     // Sisipkan gambar pertanyaan sebagai ImageItem sebelum soal
     if (soal.pertanyaan_images && soal.pertanyaan_images.length > 0) {
-      soal.pertanyaan_images.forEach(function(url) {
+      soal.pertanyaan_images.forEach(function(img, idx) {
         try {
-          var blob = UrlFetchApp.fetch(url).getBlob();
+          var decoded = Utilities.base64Decode(img.data);
+          var blob = Utilities.newBlob(decoded, img.mime, 'gambar_' + idx);
           form.addImageItem().setImage(blob);
-        } catch(e) { /* skip jika gambar tidak bisa diakses */ }
+        } catch(e) {
+          console.error('Gagal decode gambar ke-' + idx + ': ' + e.message);
+        }
       });
     }
 
